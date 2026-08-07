@@ -12,15 +12,39 @@
 - **纵轴独立**：`Shift`+滚轮单独缩放每个区域的纵轴，亦可手动输入 Y 范围或一键自适应
 - **自动分析**：汇总报文总数/时间范围/报文率/未知ID，并检测信号超量程、恒定/卡死、报文丢帧等问题
 
-## 使用方法
+## 在线访问
 
-1. 下载本仓库全部文件（`can-signal-analyzer.html` 与 `echarts.min.js` 需放在同一目录）
-2. 用浏览器（推荐 Chrome）打开 `can-signal-analyzer.html`
+已部署至 Cloudflare，访问根 URL 即可使用：
+
+```
+https://can-analysis.<your-subdomain>.workers.dev
+```
+
+## 本地使用方法
+
+1. 克隆或下载本仓库
+2. 用浏览器（推荐 Chrome）打开 `public/index.html`
 3. 依次点击「加载 DBC 文件」「加载 ASC 文件」
 4. 在左侧勾选需要分析的信号
 5. 点击「开始分析」
 
-> 若仅拷贝 HTML 单文件，联网时会自动从 CDN 加载图表库，无需额外文件。
+> 若仅拷贝 `index.html` 单文件，联网时会自动从 CDN 加载图表库，无需额外文件。
+
+## 部署到 Cloudflare
+
+本项目使用 [Cloudflare Workers Static Assets](https://developers.cloudflare.com/workers/static-assets/) 部署，仓库根目录的 `wrangler.jsonc` 已配置好静态资源目录。
+
+```bash
+# 安装 wrangler
+npm install -D wrangler
+
+# 部署
+npx wrangler deploy
+```
+
+在 Cloudflare Dashboard 中连接此 GitHub 仓库后，Build 配置如下：
+- **Build command**: 留空（纯静态项目无需构建）
+- **Deploy command**: `npx wrangler deploy`
 
 ## 鼠标/键盘操作
 
@@ -32,7 +56,7 @@
 
 ## 示例文件
 
-仓库附带 `sample.dbc` 与 `sample.asc` 可直接试用，包含正弦波、恒定值、超量程、丢帧、未知 ID 等多种测试场景。
+仓库附带 `public/sample.dbc` 与 `public/sample.asc` 可直接试用，包含正弦波、恒定值、超量程、丢帧、未知 ID 等多种测试场景。
 
 ## 技术栈
 
