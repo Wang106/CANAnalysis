@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CAN 信号波形分析工具</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel2:#1d212b; --line:#2a2f3a;
+    --txt:#d6dae3; --txt2:#8b93a3; --accent:#4a9eff; --accent2:#3ddc84;
+    --warn:#ffb454; --err:#ff6b6b; --info:#9aa4b2;
+    --radius:8px;
+    font-family:"Noto Sans CJK SC","Microsoft YaHei","WenQuanYi Micro Hei",system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;}
+  body{background:var(--bg);color:var(--txt);overflow:hidden;}
+  button{font-family:inherit;cursor:pointer;border:1px solid var(--line);background:var(--panel2);color:var(--txt);border-radius:6px;padding:6px 12px;font-size:13px;transition:.15s;}
+  button:hover:not(:disabled){border-color:var(--accent);color:#fff;}
+  button:disabled{opacity:.4;cursor:not-allowed;}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#04121f;font-weight:600;}
+  button.primary:hover:not(:disabled){filter:brightness(1.1);color:#04121f;}
+  button.go{background:var(--accent2);border-color:var(--accent2);color:#042015;font-weight:600;}
+  button.go:hover:not(:disabled){filter:brightness(1.1);}
+  input[type=text],input[type=number]{background:var(--panel2);border:1px solid var(--line);color:var(--txt);border-radius:6px;padding:5px 8px;font-size:13px;font-family:inherit;}
+  input:focus{outline:none;border-color:var(--accent);}
+
+  /* layout */
+  #app{display:flex;flex-direction:column;height:100%;}
+  #toolbar{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap;}
+  #toolbar .brand{font-weight:700;font-size:15px;letter-spacing:.5px;margin-right:6px;}
+  #toolbar .brand span{color:var(--accent);}
+  #toolbar .fileinfo{font-size:12px;color:var(--txt2);max-width:230px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  #toolbar .spacer{flex:1;}
+  #help{font-size:11px;color:var(--txt2);}
+  #help b{color:var(--accent);}
+  #help b.g{color:var(--accent2);}
+
+  #main{flex:1;display:flex;min-height:0;}
+  /* sidebar */
+  #sidebar{width:340px;min-width:340px;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;}
+  .sb-head{padding:10px 12px;border-bottom:1px solid var(--line);}
+  .sb-head .row{display:flex;gap:8px;align-items:center;margin-bottom:8px;}
+  .sb-head .row:last-child{margin-bottom:0;}
+  #searchInput{flex:1;}
+  .selstat{font-size:12px;color:var(--txt2);}
+  .selstat b{color:var(--accent2);}
+  #sigList{flex:1;overflow-y:auto;padding:6px 8px;}
+  .msg-group{margin:6px 0 10px;}
+  .msg-group .mtitle{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--accent);cursor:pointer;padding:3px 4px;border-radius:4px;user-select:none;}
+  .msg-group .mtitle:hover{background:var(--panel2);}
+  .msg-group .mtitle .id{color:var(--txt2);font-size:11px;}
+  .msg-group .mtitle .cnt{margin-left:auto;color:var(--txt2);font-size:11px;}
+  .sig-item{display:flex;align-items:center;gap:7px;padding:4px 6px 4px 20px;border-radius:4px;font-size:13px;cursor:pointer;}
+  .sig-item:hover{background:var(--panel2);}
+  .sig-item input{margin:0;}
+  .sig-item .sname{flex:1;}
+  .sig-item .sunit{color:var(--txt2);font-size:11px;}
+  .sig-item.hasdata .sname::after{content:"●";color:var(--accent2);font-size:9px;margin-left:5px;}
+  .empty-hint{color:var(--txt2);font-size:13px;padding:20px;text-align:center;}
+
+  /* content */
+  #content{flex:1;display:flex;flex-direction:column;min-width:0;}
+  #contentTop{padding:8px 12px;border-bottom:1px solid var(--line);background:var(--panel);display:flex;align-items:center;gap:10px;min-height:42px;}
+  #contentTop .title{font-size:13px;color:var(--txt2);}
+  #analysisWrap{flex:1;overflow-y:auto;}
+  #analysisPanel{padding:10px 14px;border-bottom:1px solid var(--line);background:#13161d;}
+  #analysisPanel.hidden{display:none;}
+  .a-summary{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;}
+  .chip{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:5px 10px;font-size:12px;}
+  .chip b{color:var(--accent);font-weight:600;}
+  .chip.err b{color:var(--err);}
+  .chip.warn b{color:var(--warn);}
+  .a-issues{display:flex;flex-direction:column;gap:6px;}
+  .issue{display:flex;gap:8px;font-size:12.5px;padding:7px 10px;border-radius:6px;border:1px solid var(--line);background:var(--panel2);align-items:flex-start;}
+  .issue .sev{font-size:14px;line-height:1.2;}
+  .issue.err{border-color:#5a2a2a;}
+  .issue.warn{border-color:#5a4a20;}
+  .issue .tag{color:var(--accent);font-weight:600;}
+
+  #chartArea{padding:8px 12px 30px;}
+  .chart-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);margin-bottom:10px;overflow:hidden;}
+  .cc-head{display:flex;align-items:center;gap:10px;padding:7px 12px;border-bottom:1px solid var(--line);background:var(--panel2);flex-wrap:wrap;}
+  .cc-head .signame{font-weight:600;font-size:14px;}
+  .cc-head .msgtag{font-size:11px;color:var(--txt2);background:#0f1115;padding:2px 7px;border-radius:4px;}
+  .cc-head .stat{font-size:11px;color:var(--txt2);}
+  .cc-head .stat b{color:var(--txt);}
+  .cc-head .spacer{flex:1;}
+  .cc-head .yctrl{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--txt2);}
+  .cc-head .yctrl input{width:62px;padding:3px 5px;font-size:11px;}
+  .chart{width:100%;height:230px;}
+  .chart.empty{height:60px;display:flex;align-items:center;justify-content:center;color:var(--err);font-size:13px;}
+
+  #dropZone{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:50;}
+  #dropZone.show{display:flex;}
+  #dropZone .box{background:var(--panel);border:2px dashed var(--accent);border-radius:12px;padding:40px 60px;font-size:18px;color:var(--accent);}
+
+  #toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--accent);color:var(--txt);padding:10px 18px;border-radius:8px;font-size:13px;z-index:60;opacity:0;transition:.25s;pointer-events:none;}
+  #toast.show{opacity:1;}
+  #loadingOverlay{position:fixed;inset:0;background:rgba(8,10,14,.75);display:none;align-items:center;justify-content:center;z-index:70;flex-direction:column;gap:14px;}
+  #loadingOverlay.show{display:flex;}
+  #loadingOverlay .spin{width:42px;height:42px;border:3px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:sp 1s linear infinite;}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  #loadingOverlay .txt{color:var(--txt);font-size:14px;}
+  #progressBar{width:280px;height:6px;background:var(--line);border-radius:4px;overflow:hidden;}
+  #progressBar > div{height:100%;width:0;background:var(--accent);transition:.1s;}
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- toolbar -->
+  <div id="toolbar">
+    <div class="brand">CAN<span>·Scope</span></div>
+    <button id="btnDbc">① 加载 DBC 文件</button>
+    <div class="fileinfo" id="dbcInfo">未加载</div>
+    <button id="btnAsc">② 加载 ASC 文件</button>
+    <div class="fileinfo" id="ascInfo">未加载</div>
+    <div class="spacer"></div>
+    <div id="help">滚轮=<b>横轴缩放(同步)</b> · Shift+滚轮=<b class="g">纵轴缩放(独立)</b> · 拖拽=平移横轴</div>
+    <button id="btnReset" disabled>重置缩放</button>
+    <button id="btnStart" class="go" disabled>③ 开始分析</button>
+  </div>
+
+  <div id="main">
+    <!-- sidebar: signal selection -->
+    <div id="sidebar">
+      <div class="sb-head">
+        <div class="row">
+          <input type="text" id="searchInput" placeholder="搜索信号名 / 报文名…" />
+        </div>
+        <div class="row">
+          <button id="btnSelectAll" style="flex:1">全选(筛选结果)</button>
+          <button id="btnClearAll" style="flex:1">清空</button>
+        </div>
+        <div class="row selstat">已选 <b id="selCount">0</b> 个信号 · 共 <span id="totalCount">0</span> 个 <span style="color:var(--accent2)">●</span>=有数据</div>
+      </div>
+      <div id="sigList">
+        <div class="empty-hint">请先加载 DBC 文件</div>
+      </div>
+    </div>
+
+    <!-- content -->
+    <div id="content">
+      <div id="contentTop">
+        <div class="title" id="contentTitle">加载 DBC 与 ASC 文件后，选择信号并开始分析</div>
+        <div class="spacer"></div>
+        <button id="btnToggleAnalysis" disabled>显示分析</button>
+      </div>
+      <div id="analysisWrap">
+        <div id="analysisPanel" class="hidden"></div>
+        <div id="chartArea"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="fileDbc" accept=".dbc" style="display:none" />
+<input type="file" id="fileAsc" accept=".asc" style="display:none" />
+<div id="toast"></div>
+<div id="loadingOverlay"><div class="spin"></div><div class="txt" id="loadTxt">解析中…</div><div id="progressBar"><div></div></div></div>
+
+<script src="echarts.min.js"></script>
+<script>if(typeof echarts==='undefined'){document.write('<'+'script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"><'+'/script>');}</script>
+<script>
+"use strict";
+/* ============================================================
+ * CAN 信号波形分析工具
+ *  - DBC 解析 (BO_/SG_/VAL_)
+ *  - ASC 解析 (按ID分组, 紧凑存储)
+ *  - 信号提取 (Intel/Motorola 位序, 符号, factor/offset, 枚举)
+ *  - 多曲线纵向堆叠, 横轴滚轮同步, 纵轴独立
+ *  - 自动分析统计与问题检测
+ * ============================================================ */
+
+const $ = id => document.getElementById(id);
+const el = (tag, cls, html) => { const e=document.createElement(tag); if(cls)e.className=cls; if(html!=null)e.innerHTML=html; return e; };
+
+let dbcData = null;     // {messages, signals}
+let ascData = null;     // {map, totalMessages, tMin, tMax, unknownIds, idOrder}
+let charts = [];        // echarts instances
+let syncing = false;
+let lastX = {start:0, end:100};
+
+/* ---------- DBC parser ---------- */
+function parseDBC(text){
+  const messages = {};
+  const lines = text.split(/\r?\n/);
+  let cur = null;
+  for(const raw of lines){
+    const line = raw.trim();
+    if(line.startsWith('BO_ ')){
+      const m = line.match(/^BO_\s+(\d+)\s+(\S+)\s*:\s*(\d+)\s*(\S+)/);
+      if(m){
+        const id = parseInt(m[1],10);
+        const isExt = (id & 0x80000000)!==0;
+        const realId = id & 0x1FFFFFFF;
+        cur = { id, realId, isExt, key: realId+'_'+(isExt?'x':'s'),
+                name:m[2], dlc:parseInt(m[3],10), sender:m[4], signals:[] };
+        messages[cur.key]=cur;
+      }
+    } else if(line.startsWith('SG_ ')){
+      const m = line.match(/^SG_\s+(\w+)\s*(?:(M|m\d+)\s*)?:\s*(\d+)\|(\d+)@(\d)([+-])\s*\(([^,]+),([^)]+)\)\s*\[([^|]+)\|([^\]]+)\]\s*"([^"]*)"\s*(.*)$/);
+      if(m && cur){
+        const sig = {
+          name:m[1], mux:m[2]||null,
+          startBit:parseInt(m[3],10), length:parseInt(m[4],10),
+          byteOrder:parseInt(m[5],10), isSigned:m[6]==='-',
+          factor:parseFloat(m[7]), offset:parseFloat(m[8]),
+          min:parseFloat(m[9]), max:parseFloat(m[10]),
+          unit:m[11]||'', receivers:(m[12]||'').trim(),
+          messageName:cur.name, messageId:cur.id, messageKey:cur.key,
+          valueTable:null
+        };
+        if(!isFinite(sig.factor)||sig.factor===0) sig.factor=1;
+        if(!isFinite(sig.offset)) sig.offset=0;
+        if(!isFinite(sig.min)) sig.min=-Infinity;
+        if(!isFinite(sig.max)) sig.max=Infinity;
+        cur.signals.push(sig);
+      }
+    } else if(line.startsWith('VAL_ ')){
+      const m = line.match(/^VAL_\s+(\d+)\s+(\w+)\s+(.*);$/);
+      if(m){
+        const id=parseInt(m[1],10);
+        const isExt=(id&0x80000000)!==0;
+        const realId=id&0x1FFFFFFF;
+        const key=realId+'_'+(isExt?'x':'s');
+        const msg=messages[key];
+        if(msg){
+          const sig=msg.signals.find(s=>s.name===m[2]);
+          if(sig){
+            const table={};
+            const re=/(-?\d+)\s+"([^"]*)"/g; let pm;
+            while((pm=re.exec(m[3]))!==null) table[parseInt(pm[1],10)]=pm[2];
+            sig.valueTable=table;
+          }
+        }
+      }
+    }
+  }
+  const signals=[];
+  Object.values(messages).forEach(msg=>msg.signals.forEach(s=>signals.push(s)));
+  return {messages, signals};
+}
+
+/* ---------- raw value extraction ---------- */
+function extractRawAt(data, base, dlc, sig){
+  const {startBit, length, byteOrder} = sig;
+  let value=0;
+  if(length<=32){
+    if(byteOrder===0){ // Intel LE
+      let bp=startBit;
+      for(let i=0;i<length;i++){
+        const bi=bp>>>3;
+        const bit = (bi<dlc) ? ((data[base+bi]>>>(bp&7))&1) : 0;
+        value |= bit<<i;
+        bp++;
+      }
+    } else { // Motorola BE
+      let bp=startBit;
+      for(let i=0;i<length;i++){
+        const bi=bp>>>3;
+        const bit = (bi<dlc) ? ((data[base+bi]>>>(bp&7))&1) : 0;
+        value |= bit<<(length-1-i);
+        if((bp&7)===0) bp+=15; else bp-=1;
+      }
+    }
+    value = value>>>0;
+  } else {
+    if(byteOrder===0){
+      let bp=startBit;
+      for(let i=0;i<length;i++){ const bi=bp>>>3; const bit=(bi<dlc)?((data[base+bi]>>>(bp&7))&1):0; value+=bit*Math.pow(2,i); bp++; }
+    } else {
+      let bp=startBit;
+      for(let i=0;i<length;i++){ const bi=bp>>>3; const bit=(bi<dlc)?((data[base+bi]>>>(bp&7))&1):0; value+=bit*Math.pow(2,length-1-i); if((bp&7)===0)bp+=15;else bp-=1; }
+    }
+  }
+  return value;
+}
+function toPhysical(raw, sig){
+  if(sig.isSigned){
+    const signVal=Math.pow(2,sig.length-1);
+    if(raw>=signVal) raw-=Math.pow(2,sig.length);
+  }
+  return raw*sig.factor+sig.offset;
+}
+
+/* ---------- ASC parser (async chunked) ---------- */
+async function parseASC(text, onProgress){
+  const lines = text.split(/\r?\n/);
+  const total = lines.length;
+  const map = {};           // key -> {times:[], data:[], dlc, isExt, name?}
+  const idOrder = [];
+  let totalMessages=0, tMin=Infinity, tMax=-Infinity;
+  const ASC_RE = /^\s*([0-9]+\.?[0-9]*(?:e[-+]?[0-9]+)?)\s+(\d+)\s+([0-9A-Fa-f]+)(x?)\s+(Rx|Tx)\s+\S+\s+(\d+)\s*(.*)$/;
+  const CHUNK=40000;
+  let i=0;
+  return new Promise(resolve=>{
+    function step(){
+      const end=Math.min(i+CHUNK,total);
+      for(; i<end; i++){
+        const line=lines[i];
+        if(!line) continue;
+        const c=line[0];
+        if(c==='/'||c===';'||c==='#'||c===' ') {
+          // still try regex for indented lines
+        }
+        const m=line.match(ASC_RE);
+        if(!m) continue;
+        const t=parseFloat(m[1]);
+        if(!isFinite(t)) continue;
+        const realId=parseInt(m[3],16);
+        const isExt=m[4]==='x';
+        const dlc=parseInt(m[6],10);
+        if(!isFinite(realId)||dlc<=0||dlc>64) continue;
+        const key=realId+'_'+(isExt?'x':'s');
+        let entry=map[key];
+        if(!entry){
+          entry={times:[], data:[], dlc, isExt, realId};
+          map[key]=entry; idOrder.push(key);
+        }
+        const stride=entry.dlc;
+        // parse bytes
+        const rest=m[7]||'';
+        const toks=rest.split(/\s+/);
+        let bidx=0;
+        for(const tk of toks){
+          if(/^[0-9A-Fa-f]{1,2}$/.test(tk)){
+            if(bidx<stride){ entry.data.push(parseInt(tk,16)); bidx++; }
+          }
+        }
+        while(bidx<stride){ entry.data.push(0); bidx++; }
+        entry.times.push(t);
+        if(t<tMin) tMin=t;
+        if(t>tMax) tMax=t;
+        totalMessages++;
+      }
+      onProgress(i/total);
+      if(i<total){ setTimeout(step,0); }
+      else {
+        // finalize: convert to typed arrays
+        for(const k of idOrder){
+          const e=map[k];
+          e.times=new Float64Array(e.times);
+          e.data=new Uint8Array(e.data);
+          e.count=e.times.length;
+        }
+        resolve({map, totalMessages, tMin, tMax, idOrder});
+      }
+    }
+    step();
+  });
+}
+
+/* ---------- build series ---------- */
+function buildSeries(sig){
+  const md=ascData.map[sig.messageKey];
+  if(!md) return [];
+  const n=md.times.length;
+  const out=new Array(n);
+  const dlc=md.dlc;
+  for(let i=0;i<n;i++){
+    const raw=extractRawAt(md.data, i*dlc, dlc, sig);
+    out[i]=[md.times[i], toPhysical(raw,sig)];
+  }
+  return out;
+}
+
+/* ---------- stats & analysis ---------- */
+function median(arr){
+  if(!arr.length) return 0;
+  const s=arr.slice().sort((a,b)=>a-b);
+  const m=s.length>>1;
+  return s.length&1 ? s[m] : (s[m-1]+s[m])/2;
+}
+function computeStats(series, sig){
+  if(!series.length) return {count:0};
+  let min=Infinity,max=-Infinity,sum=0,outRange=0;
+  const first=series[0][1]; let allSame=true;
+  for(let k=0;k<series.length;k++){
+    const v=series[k][1];
+    if(v<min)min=v; if(v>max)max=v; sum+=v;
+    if(v!==first) allSame=false;
+    if(v<sig.min||v>sig.max) outRange++;
+  }
+  const mean=sum/series.length;
+  let sq=0; for(let k=0;k<series.length;k++){ const d=series[k][1]-mean; sq+=d*d; }
+  const std=Math.sqrt(sq/series.length);
+  return {count:series.length,min,max,mean,std,outRange,allSame,
+          t0:series[0][0],t1:series[series.length-1][0],
+          duration:series[series.length-1][0]-series[0][0]};
+}
+function analyzeGaps(md){
+  if(!md||md.times.length<4) return null;
+  const n=md.times.length; const intervals=[];
+  for(let i=1;i<n;i++) intervals.push(md.times[i]-md.times[i-1]);
+  const med=median(intervals);
+  let maxGap=0;
+  for(const g of intervals) if(g>maxGap) maxGap=g;
+  // count gaps > 3x median
+  let bigGaps=0;
+  if(med>0){ for(const g of intervals) if(g>med*3) bigGaps++; }
+  return {med, maxGap, bigGaps, n};
+}
+
+/* ---------- file loading ---------- */
+function readText(file, onProg){
+  return new Promise((resolve,reject)=>{
+    const r=new FileReader();
+    r.onload=()=>resolve(r.result);
+    r.onerror=()=>reject(r.error);
+    if(onProg) r.onprogress=e=>onProg(e.loaded/(e.total||1));
+    r.readAsText(file);
+  });
+}
+function showLoading(txt, prog){
+  $('loadingOverlay').classList.add('show');
+  if(txt) $('loadTxt').textContent=txt;
+  if(prog!=null) document.querySelector('#progressBar > div').style.width=(prog*100).toFixed(0)+'%';
+}
+function hideLoading(){ $('loadingOverlay').classList.remove('show'); document.querySelector('#progressBar > div').style.width='0'; }
+function toast(msg){
+  const t=$('toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(t._tm); t._tm=setTimeout(()=>t.classList.remove('show'),2200);
+}
+function fmtId(realId,isExt){ return '0x'+realId.toString(16).toUpperCase().padStart(isExt?7:3,'0')+(isExt?'x':''); }
+
+/* ---------- signal list UI ---------- */
+function renderSignalList(){
+  const list=$('sigList'); list.innerHTML='';
+  if(!dbcData){ list.innerHTML='<div class="empty-hint">请先加载 DBC 文件</div>'; return; }
+  const q=$('searchInput').value.trim().toLowerCase();
+  const msgs=Object.values(dbcData.messages).sort((a,b)=>a.realId-b.realId);
+  let shown=0;
+  for(const msg of msgs){
+    let sigs=msg.signals;
+    if(q){ sigs=sigs.filter(s=> (s.name+' '+msg.name+' '+fmtId(msg.realId,msg.isExt)).toLowerCase().includes(q)); }
+    if(!sigs.length) continue;
+    shown+=sigs.length;
+    const g=el('div','msg-group');
+    const mt=el('div','mtitle');
+    mt.innerHTML=`<span class="arrow">▾</span><span>${msg.name}</span><span class="id">${fmtId(msg.realId,msg.isExt)} · DLC${msg.dlc}</span><span class="cnt">${sigs.length} 信号</span>`;
+    const body=el('div');
+    for(const s of sigs){
+      const has = ascData && ascData.map[s.messageKey];
+      const it=el('div','sig-item'+(has?' hasdata':''));
+      const cb=document.createElement('input'); cb.type='checkbox'; cb.dataset.key=s.messageKey+'::'+s.name;
+      if(selectedSet.has(cb.dataset.key)) cb.checked=true;
+      cb.addEventListener('change',()=>{
+        if(cb.checked) selectedSet.add(cb.dataset.key); else selectedSet.delete(cb.dataset.key);
+        updateSelCount();
+      });
+      const span=el('span','sname',s.name);
+      const unit=el('span','sunit',s.unit?('['+s.unit+']'):'');
+      it.append(cb,span,unit);
+      it.addEventListener('click',e=>{ if(e.target!==cb){ cb.checked=!cb.checked; cb.dispatchEvent(new Event('change')); } });
+      body.appendChild(it);
+    }
+    mt.addEventListener('click',()=>{ body.style.display = body.style.display==='none'?'block':'none'; mt.querySelector('.arrow').textContent = body.style.display==='none'?'▸':'▾'; });
+    g.append(mt,body); list.appendChild(g);
+  }
+  if(!shown){ list.innerHTML='<div class="empty-hint">无匹配信号</div>'; }
+}
+const selectedSet=new Set();
+function updateSelCount(){
+  $('selCount').textContent=selectedSet.size;
+  updateStartBtn();
+}
+function updateStartBtn(){
+  $('btnStart').disabled = !(dbcData && ascData && selectedSet.size>0);
+}
+function selectedSignals(){
+  const out=[];
+  for(const k of selectedSet){
+    const [mk,sname]=k.split('::');
+    const msg=dbcData.messages[mk];
+    if(!msg) continue;
+    const s=msg.signals.find(x=>x.name===sname);
+    if(s) out.push(s);
+  }
+  return out;
+}
+
+/* ---------- chart rendering ---------- */
+function disposeCharts(){
+  charts.forEach(c=>{try{c.dispose();}catch(e){}});
+  charts=[]; $('chartArea').innerHTML='';
+}
+function buildTooltip(sig){
+  return params=>{
+    const p=params[0];
+    if(!p) return '';
+    const t=p.axisValue;
+    let v=p.value[1];
+    let extra='';
+    if(sig.valueTable){
+      const raw=Math.round((v-sig.offset)/(sig.factor||1));
+      if(sig.valueTable[raw]!=null) extra=` <span style="color:#9aa4b2">(${sig.valueTable[raw]})</span>`;
+    }
+    return `<div style="font-size:12px">t = ${t.toFixed(4)} s<br/>${sig.name} = <b>${typeof v==='number'?v.toFixed(4):v}</b> ${sig.unit}${extra}</div>`;
+  };
+}
+function makeOption(series, sig, stats){
+  const tMin=ascData.tMin, tMax=ascData.tMax;
+  return {
+    animation:false,
+    grid:{left:78,right:24,top:18,bottom:34},
+    xAxis:{type:'value',min:tMin,max:tMax,name:'时间',nameLocation:'middle',nameGap:24,
+      axisLine:{lineStyle:{color:'#3a4150'}},axisLabel:{color:'#8b93a3',formatter:v=>v.toFixed(2)},
+      splitLine:{lineStyle:{color:'#222732'}}},
+    yAxis:{type:'value',name:sig.unit||'',nameTextStyle:{color:'#8b93a3'},
+      axisLine:{lineStyle:{color:'#3a4150'}},axisLabel:{color:'#8b93a3'},
+      splitLine:{lineStyle:{color:'#222732'}}},
+    dataZoom:[
+      {id:'xZoom',type:'inside',xAxisIndex:0,zoomOnMouseWheel:true,moveOnMouseWheel:false,moveOnMouseMove:true,moveOnMouseUp:true,filterMode:'filter'},
+      {id:'yZoom',type:'inside',yAxisIndex:0,zoomOnMouseWheel:'shift',moveOnMouseWheel:false,moveOnMouseMove:false,moveOnMouseUp:false,filterMode:'filter'}
+    ],
+    tooltip:{trigger:'axis',axisPointer:{type:'line',lineStyle:{color:'#4a9eff'}},formatter:buildTooltip(sig)},
+    series:[{
+      type:'line',data:series,name:sig.name,showSymbol:false,
+      large:true,progressive:3000,sampling:'lttb',
+      lineStyle:{width:1.2,color:'#4a9eff'},itemStyle:{color:'#4a9eff'},
+      emphasis:{disabled:true}
+    }]
+  };
+}
+function renderCharts(){
+  disposeCharts();
+  const sigs=selectedSignals();
+  if(!sigs.length){ $('contentTitle').textContent='请选择至少一个信号'; return; }
+  $('contentTitle').textContent=`正在渲染 ${sigs.length} 条曲线…`;
+  // render in chunks to avoid blocking
+  let idx=0;
+  function next(){
+    if(idx>=sigs.length){
+      $('contentTitle').textContent=`已渲染 ${sigs.length} 条曲线（滚轮缩放横轴，Shift+滚轮缩放纵轴）`;
+      setupSync();
+      $('btnReset').disabled=false;
+      $('btnToggleAnalysis').disabled=false;
+      return;
+    }
+    const sig=sigs[idx]; idx++;
+    const series=buildSeries(sig);
+    const stats=computeStats(series,sig);
+    const card=el('div','chart-card');
+    const head=el('div','cc-head');
+    const has = series.length>0;
+    const md = ascData.map[sig.messageKey];
+    head.innerHTML = `
+      <span class="signame">${sig.name}</span>
+      <span class="msgtag">${sig.messageName} ${fmtId(sig.realId||ascData.map[sig.messageKey]?.realId, sig.isExt||md?.isExt)}</span>
+      <span class="stat">采样 <b>${stats.count}</b></span>
+      ${has?`<span class="stat">min <b>${stats.min.toFixed(3)}</b></span><span class="stat">max <b>${stats.max.toFixed(3)}</b></span><span class="stat">均值 <b>${stats.mean.toFixed(3)}</b></span><span class="stat">σ <b>${stats.std.toFixed(3)}</b></span>`:''}
+      <span class="spacer"></span>
+      <div class="yctrl">Y:<input type="number" class="ymin" placeholder="min"/><input type="number" class="ymax" placeholder="max"/><button class="fitY">自适应</button></div>`;
+    card.appendChild(head);
+    const cd=el('div', has?'chart':'chart empty', has?'':(md?'该信号无可解码数据（DLC不足或位域越界）':'报文在ASC中未出现'));
+    card.appendChild(cd);
+    $('chartArea').appendChild(card);
+    if(has){
+      const chart=echarts.init(cd);
+      chart.setOption(makeOption(series,sig,stats));
+      chart._series=series; chart._sig=sig; chart._stats=stats;
+      charts.push(chart);
+      head.querySelector('.fitY').addEventListener('click',()=>fitY(chart));
+      const applyBtn=()=>{ const mn=parseFloat(head.querySelector('.ymin').value); const mx=parseFloat(head.querySelector('.ymax').value);
+        const yopt={}; if(isFinite(mn))yopt.min=mn; if(isFinite(mx))yopt.max=mx;
+        chart.setOption({yAxis:yopt}); };
+      head.querySelector('.ymin').addEventListener('change',applyBtn);
+      head.querySelector('.ymax').addEventListener('change',applyBtn);
+      head.querySelector('.ymin').value=stats.min.toFixed(3);
+      head.querySelector('.ymax').value=stats.max.toFixed(3);
+    }
+    setTimeout(next,0);
+  }
+  next();
+  renderAnalysis(sigs);
+}
+
+/* y auto-fit to current visible x-range */
+function fitY(chart){
+  const opt=chart.getOption();
+  const xdz=opt.dataZoom.find(d=>d.id==='xZoom')||opt.dataZoom[0];
+  const tMin=ascData.tMin,tMax=ascData.tMax;
+  const lo=tMin+(tMax-tMin)*(xdz.start/100);
+  const hi=tMin+(tMax-tMin)*(xdz.end/100);
+  let ymin=Infinity,ymax=-Infinity;
+  const series=chart._series;
+  for(let k=0;k<series.length;k++){
+    const t=series[k][0],v=series[k][1];
+    if(t>=lo&&t<=hi){ if(v<ymin)ymin=v; if(v>ymax)ymax=v; }
+  }
+  if(ymin===Infinity) return;
+  if(ymin===ymax){ ymin-=1; ymax+=1; }
+  chart.setOption({yAxis:{min:ymin,max:ymax}});
+}
+function fitAllY(){ charts.forEach(c=>fitY(c)); }
+
+/* sync x-axis across charts */
+function setupSync(){
+  lastX={start:0,end:100};
+  charts.forEach(src=>{
+    src.on('dataZoom',()=>{
+      if(syncing) return;
+      const opt=src.getOption();
+      const xdz=opt.dataZoom.find(d=>d.id==='xZoom')||opt.dataZoom[0];
+      const s=xdz.start, e=xdz.end;
+      if(s===lastX.start && e===lastX.end) return; // x unchanged (e.g. y-only zoom)
+      lastX={start:s,end:e};
+      syncing=true;
+      charts.forEach(dst=>{
+        if(dst===src) return;
+        dst.dispatchAction({type:'dataZoom',dataZoomId:'xZoom',start:s,end:e});
+      });
+      syncing=false;
+    });
+  });
+}
+function resetZoom(){
+  syncing=true;
+  charts.forEach(c=>c.dispatchAction({type:'dataZoom',dataZoomId:'xZoom',start:0,end:100}));
+  syncing=false;
+  lastX={start:0,end:100};
+}
+
+/* ---------- analysis panel ---------- */
+function renderAnalysis(sigs){
+  const panel=$('analysisPanel');
+  const issues=[];
+  // summary
+  const dur=ascData.tMax-ascData.tMin;
+  const rate=dur>0?(ascData.totalMessages/dur):0;
+  const dbcIds=new Set(Object.keys(dbcData.messages));
+  const unknownIds=ascData.idOrder.filter(k=>!dbcIds.has(k));
+  let sumHtml=`<div class="a-summary">
+    <span class="chip">报文总数 <b>${ascData.totalMessages.toLocaleString()}</b></span>
+    <span class="chip">时间范围 <b>${ascData.tMin.toFixed(3)}–${ascData.tMax.toFixed(3)} s</b> (时长 ${dur.toFixed(3)} s)</span>
+    <span class="chip">平均报文率 <b>${rate.toFixed(1)}</b> msg/s</span>
+    <span class="chip">不同ID数 <b>${ascData.idOrder.length}</b></span>
+    <span class="chip ${unknownIds.length?'warn':''}">未知ID(DBC未定义) <b>${unknownIds.length}</b></span>
+    <span class="chip">已选信号 <b>${sigs.length}</b></span>
+  </div>`;
+  // unknown id issues
+  unknownIds.forEach(k=>{
+    const e=ascData.map[k];
+    issues.push({sev:'warn', tag:fmtId(e.realId,e.isExt), text:`未知报文出现 <b>${e.count}</b> 次（DBC 中未定义，无法解析信号）`});
+  });
+  // per-signal analysis
+  for(const sig of sigs){
+    const md=ascData.map[sig.messageKey];
+    const series = charts.find(c=>c._sig===sig)?charts.find(c=>c._sig===sig)._series : buildSeries(sig);
+    const st=computeStats(series,sig);
+    if(!md || st.count===0){
+      issues.push({sev:'err', tag:sig.name, text:`信号无数据：报文 ${sig.messageName} 在 ASC 中未出现`});
+      continue;
+    }
+    // out of range
+    if(st.outRange>0 && sig.min!==-Infinity && sig.max!==Infinity){
+      const pct=(st.outRange/st.count*100);
+      issues.push({sev: pct>5?'err':'warn', tag:sig.name, text:`${st.outRange} 个采样(${pct.toFixed(1)}%) 超出物理范围 [${sig.min}, ${sig.max}] ${sig.unit}`});
+    }
+    // constant / stuck
+    if(st.count>20 && st.allSame){
+      issues.push({sev:'err', tag:sig.name, text:`信号长时间恒定 = ${st.min} ${sig.unit}（可能传感器故障或信号未更新）`});
+    } else if(st.count>20 && st.std< (st.max-st.min)*0.0005 && st.max!==st.min){
+      issues.push({sev:'warn', tag:sig.name, text:`信号变化极小 (σ=${st.std.toFixed(4)})，近恒定状态`});
+    }
+    // gaps / dropouts
+    const g=analyzeGaps(md);
+    if(g && g.med>0 && g.maxGap>g.med*3 && g.maxGap>g.med+0.005){
+      issues.push({sev:'warn', tag:sig.name, text:`报文周期约 ${(g.med*1000).toFixed(1)} ms，检测到 ${g.bigGaps} 处丢帧，最大间隔 ${(g.maxGap*1000).toFixed(1)} ms`});
+    }
+    // extreme value near bounds (possible glitch)
+    if(st.count>20 && sig.min!==-Infinity && sig.max!==Infinity){
+      // detect single-point spikes beyond range then back
+    }
+  }
+  let html=sumHtml;
+  if(issues.length){
+    html+=`<div style="font-size:12px;color:var(--txt2);margin:6px 0;">检测到 ${issues.length} 项分析结果：</div><div class="a-issues">`;
+    for(const it of issues){
+      const icon = it.sev==='err'?'⛔':'⚠';
+      html+=`<div class="issue ${it.sev}"><span class="sev">${icon}</span><span class="tag">${it.tag}</span><span>${it.text}</span></div>`;
+    }
+    html+='</div>';
+  } else {
+    html+=`<div style="font-size:12px;color:var(--accent2);margin-top:4px;">✓ 未检测到明显异常</div>`;
+  }
+  panel.innerHTML=html;
+  panel.classList.remove('hidden');
+  $('btnToggleAnalysis').textContent='隐藏分析';
+}
+
+/* ---------- wire up UI ---------- */
+$('btnDbc').onclick=()=>$('fileDbc').click();
+$('btnAsc').onclick=()=>$('fileAsc').click();
+
+async function loadDbcText(name, txt){
+  try{
+    showLoading('解析 DBC…');
+    dbcData=parseDBC(txt);
+    $('dbcInfo').textContent=`${name} · ${Object.keys(dbcData.messages).length} 报文 / ${dbcData.signals.length} 信号`;
+    $('totalCount').textContent=dbcData.signals.length;
+    renderSignalList(); updateStartBtn();
+    toast(`DBC 已加载：${dbcData.signals.length} 个信号`);
+  }catch(err){ toast('DBC 解析失败：'+err.message); }
+  hideLoading();
+}
+async function loadAscText(name, txt){
+  try{
+    showLoading('读取 ASC…',0);
+    showLoading('解析 ASC…',0);
+    ascData=await parseASC(txt, p=>showLoading('解析 ASC… '+Math.round(p*100)+'%', p));
+    if(ascData.totalMessages===0){ toast('ASC 文件无可识别报文'); hideLoading(); return; }
+    $('ascInfo').textContent=`${name} · ${ascData.totalMessages} 帧 · ${ascData.tMin.toFixed(2)}–${ascData.tMax.toFixed(2)}s`;
+    renderSignalList(); updateSelCount(); updateStartBtn();
+    toast(`ASC 已加载：${ascData.totalMessages} 帧`);
+  }catch(err){ toast('ASC 解析失败：'+err.message); }
+  hideLoading();
+}
+$('fileDbc').onchange=async e=>{ const f=e.target.files[0]; if(!f) return; await loadDbcText(f.name, await readText(f)); e.target.value=''; };
+$('fileAsc').onchange=async e=>{ const f=e.target.files[0]; if(!f) return; await loadAscText(f.name, await readText(f, p=>showLoading('读取 ASC… '+Math.round(p*100)+'%', p))); e.target.value=''; };
+
+// expose for testing/automation
+window.__can={loadDbcText, loadAscText, renderCharts, selectedSet, get dbc(){return dbcData;}, get asc(){return ascData;}, get charts(){return charts;}};
+$('searchInput').addEventListener('input', ()=>renderSignalList());
+$('btnSelectAll').onclick=()=>{
+  if(!dbcData) return;
+  document.querySelectorAll('#sigList .sig-item input').forEach(cb=>{ cb.checked=true; selectedSet.add(cb.dataset.key); });
+  updateSelCount();
+};
+$('btnClearAll').onclick=()=>{
+  selectedSet.clear();
+  document.querySelectorAll('#sigList .sig-item input').forEach(cb=>cb.checked=false);
+  updateSelCount();
+};
+$('btnStart').onclick=()=>{ renderCharts(); $('analysisWrap').scrollTop=0; };
+$('btnReset').onclick=resetZoom;
+$('btnToggleAnalysis').onclick=()=>{
+  const p=$('analysisPanel');
+  const hidden=p.classList.toggle('hidden');
+  $('btnToggleAnalysis').textContent=hidden?'显示分析':'隐藏分析';
+};
+window.addEventListener('resize',()=>{ charts.forEach(c=>c.resize()); });
+
+// init
+renderSignalList();
+</script>
+</body>
+</html>
