@@ -26,26 +26,29 @@
   input:focus{outline:none;border-color:var(--accent);}
 
   /* layout */
-  #app{display:flex;flex-direction:column;height:100%;}
-  #toolbar{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap;}
-  #toolbar .brand{font-weight:700;font-size:15px;letter-spacing:.5px;margin-right:6px;}
-  #toolbar .brand span{color:var(--accent);}
-  #toolbar .fileinfo{font-size:12px;color:var(--txt2);max-width:230px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  #toolbar .spacer{flex:1;}
+  #app{display:flex;flex-direction:column;height:100%;overflow:hidden;}
+
+  /* header: icon + title + file rows */
+  #header{background:var(--panel);border-bottom:1px solid var(--line);padding:10px 16px;flex-shrink:0;}
+  .header-top{display:flex;align-items:center;gap:12px;margin-bottom:10px;}
+  .header-top .icon{width:42px;height:42px;border-radius:50%;object-fit:cover;background:#fff;flex-shrink:0;box-shadow:0 0 0 2px var(--line);}
+  .header-top .htitle{font-weight:700;font-size:18px;letter-spacing:1px;}
+  .file-row{display:flex;align-items:center;gap:8px;margin-bottom:7px;}
+  .file-row:last-child{margin-bottom:0;}
+  .file-row .finput{flex:1;background:var(--panel2);border:1px solid var(--line);color:var(--txt2);border-radius:6px;padding:8px 12px;font-size:13px;font-family:inherit;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .file-row .finput.loaded{color:var(--accent2);}
+  .file-row button{white-space:nowrap;padding:8px 18px;font-size:13px;}
+
+  /* row 3: signal search & selection */
+  #sigBar{background:var(--panel);border-bottom:1px solid var(--line);flex-shrink:0;}
+  .sig-bar-head{display:flex;align-items:center;gap:8px;padding:8px 16px;flex-wrap:wrap;}
+  #searchInput{flex:1;min-width:180px;}
   #help{font-size:11px;color:var(--txt2);}
   #help b{color:var(--accent);}
   #help b.g{color:var(--accent2);}
-
-  #main{flex:1;display:flex;min-height:0;}
-  /* sidebar */
-  #sidebar{width:340px;min-width:340px;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;}
-  .sb-head{padding:10px 12px;border-bottom:1px solid var(--line);}
-  .sb-head .row{display:flex;gap:8px;align-items:center;margin-bottom:8px;}
-  .sb-head .row:last-child{margin-bottom:0;}
-  #searchInput{flex:1;}
   .selstat{font-size:12px;color:var(--txt2);}
   .selstat b{color:var(--accent2);}
-  #sigList{flex:1;overflow-y:auto;padding:6px 8px;}
+  #sigList{max-height:200px;overflow-y:auto;padding:4px 16px 8px;border-top:1px solid var(--line);}
   .msg-group{margin:6px 0 10px;}
   .msg-group .mtitle{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--accent);cursor:pointer;padding:3px 4px;border-radius:4px;user-select:none;}
   .msg-group .mtitle:hover{background:var(--panel2);}
@@ -60,7 +63,7 @@
   .empty-hint{color:var(--txt2);font-size:13px;padding:20px;text-align:center;}
 
   /* content */
-  #content{flex:1;display:flex;flex-direction:column;min-width:0;}
+  #content{flex:1;display:flex;flex-direction:column;min-height:0;}
   #contentTop{padding:8px 12px;border-bottom:1px solid var(--line);background:var(--panel);display:flex;align-items:center;gap:10px;min-height:42px;}
   #contentTop .title{font-size:13px;color:var(--txt2);}
   #analysisWrap{flex:1;overflow-y:auto;}
@@ -108,48 +111,49 @@
 </head>
 <body>
 <div id="app">
-  <!-- toolbar -->
-  <div id="toolbar">
-    <div class="brand">CAN<span>·Scope</span></div>
-    <button id="btnDbc">① 加载 DBC 文件</button>
-    <div class="fileinfo" id="dbcInfo">未加载</div>
-    <button id="btnAsc">② 加载 ASC 文件</button>
-    <div class="fileinfo" id="ascInfo">未加载</div>
-    <div class="spacer"></div>
-    <div id="help">滚轮=<b>横轴缩放(同步)</b> · Shift+滚轮=<b class="g">纵轴缩放(独立)</b> · 拖拽=平移横轴</div>
-    <button id="btnReset" disabled>重置缩放</button>
-    <button id="btnStart" class="go" disabled>③ 开始分析</button>
+  <!-- header: icon + title + file load rows -->
+  <div id="header">
+    <div class="header-top">
+      <img src="icon.png" class="icon" alt="icon" />
+      <span class="htitle">CAN报文解析</span>
+    </div>
+    <div class="file-row">
+      <div class="finput" id="dbcInfo">未加载</div>
+      <button id="btnDbc">点击加载DBC文件</button>
+    </div>
+    <div class="file-row">
+      <div class="finput" id="ascInfo">未加载</div>
+      <button id="btnAsc">点击加载.asc文件</button>
+    </div>
   </div>
 
-  <div id="main">
-    <!-- sidebar: signal selection -->
-    <div id="sidebar">
-      <div class="sb-head">
-        <div class="row">
-          <input type="text" id="searchInput" placeholder="搜索信号名 / 报文名…" />
-        </div>
-        <div class="row">
-          <button id="btnSelectAll" style="flex:1">全选(筛选结果)</button>
-          <button id="btnClearAll" style="flex:1">清空</button>
-        </div>
-        <div class="row selstat">已选 <b id="selCount">0</b> 个信号 · 共 <span id="totalCount">0</span> 个 <span style="color:var(--accent2)">●</span>=有数据</div>
-      </div>
-      <div id="sigList">
-        <div class="empty-hint">请先加载 DBC 文件</div>
-      </div>
+  <!-- row 3: signal search & selection -->
+  <div id="sigBar">
+    <div class="sig-bar-head">
+      <input type="text" id="searchInput" placeholder="搜索信号名 / 报文名…" />
+      <button id="btnSelectAll">全选</button>
+      <button id="btnClearAll">清空</button>
+      <span class="selstat">已选 <b id="selCount">0</b> 个信号 · 共 <span id="totalCount">0</span> 个 <span style="color:var(--accent2)">●</span>=有数据</span>
+      <span style="flex:1"></span>
+      <span id="help">滚轮=<b>横轴缩放</b> · Shift+滚轮=<b class="g">纵轴缩放</b></span>
+      <button id="btnReset" disabled>重置缩放</button>
+      <button id="btnStart" class="go" disabled>开始分析</button>
     </div>
+    <div id="sigList">
+      <div class="empty-hint">请先加载 DBC 文件</div>
+    </div>
+  </div>
 
-    <!-- content -->
-    <div id="content">
-      <div id="contentTop">
-        <div class="title" id="contentTitle">加载 DBC 与 ASC 文件后，选择信号并开始分析</div>
-        <div class="spacer"></div>
-        <button id="btnToggleAnalysis" disabled>显示分析</button>
-      </div>
-      <div id="analysisWrap">
-        <div id="analysisPanel" class="hidden"></div>
-        <div id="chartArea"></div>
-      </div>
+  <!-- row 4: signal display area -->
+  <div id="content">
+    <div id="contentTop">
+      <div class="title" id="contentTitle">加载 DBC 与 ASC 文件后，选择信号并开始分析</div>
+      <span style="flex:1"></span>
+      <button id="btnToggleAnalysis" disabled>显示分析</button>
+    </div>
+    <div id="analysisWrap">
+      <div id="analysisPanel" class="hidden"></div>
+      <div id="chartArea"></div>
     </div>
   </div>
 </div>
@@ -699,6 +703,7 @@ async function loadDbcText(name, txt){
     showLoading('解析 DBC…');
     dbcData=parseDBC(txt);
     $('dbcInfo').textContent=`${name} · ${Object.keys(dbcData.messages).length} 报文 / ${dbcData.signals.length} 信号`;
+    $('dbcInfo').classList.add('loaded');
     $('totalCount').textContent=dbcData.signals.length;
     renderSignalList(); updateStartBtn();
     toast(`DBC 已加载：${dbcData.signals.length} 个信号`);
@@ -712,6 +717,7 @@ async function loadAscText(name, txt){
     ascData=await parseASC(txt, p=>showLoading('解析 ASC… '+Math.round(p*100)+'%', p));
     if(ascData.totalMessages===0){ toast('ASC 文件无可识别报文'); hideLoading(); return; }
     $('ascInfo').textContent=`${name} · ${ascData.totalMessages} 帧 · ${ascData.tMin.toFixed(2)}–${ascData.tMax.toFixed(2)}s`;
+    $('ascInfo').classList.add('loaded');
     renderSignalList(); updateSelCount(); updateStartBtn();
     toast(`ASC 已加载：${ascData.totalMessages} 帧`);
   }catch(err){ toast('ASC 解析失败：'+err.message); }
