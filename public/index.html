@@ -28,27 +28,35 @@
   /* layout */
   #app{display:flex;flex-direction:column;height:100%;overflow:hidden;}
 
-  /* header: icon + title + file rows */
-  #header{background:var(--panel);border-bottom:1px solid var(--line);padding:10px 16px;flex-shrink:0;}
-  .header-top{display:flex;align-items:center;gap:12px;margin-bottom:10px;}
-  .header-top .icon{width:42px;height:42px;border-radius:50%;object-fit:cover;background:#fff;flex-shrink:0;box-shadow:0 0 0 2px var(--line);}
-  .header-top .htitle{font-weight:700;font-size:18px;letter-spacing:1px;}
-  .file-row{display:flex;align-items:center;gap:8px;margin-bottom:7px;}
-  .file-row:last-child{margin-bottom:0;}
-  .file-row .finput{flex:1;background:var(--panel2);border:1px solid var(--line);color:var(--txt2);border-radius:6px;padding:8px 12px;font-size:13px;font-family:inherit;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  /* header: icon+title on left, file rows on right */
+  #header{background:var(--panel);border-bottom:1px solid var(--line);padding:8px 16px;flex-shrink:0;display:flex;align-items:center;gap:20px;}
+  .header-left{display:flex;align-items:center;gap:12px;flex-shrink:0;}
+  .header-left .icon{width:38px;height:38px;border-radius:50%;object-fit:cover;background:#fff;flex-shrink:0;box-shadow:0 0 0 2px var(--line);}
+  .header-left .htitle{font-weight:700;font-size:18px;letter-spacing:1px;white-space:nowrap;}
+  .header-right{display:flex;flex-direction:column;gap:5px;flex:1;min-width:0;}
+  .file-row{display:flex;align-items:center;gap:8px;}
+  .file-row .finput{flex:1;background:var(--panel2);border:1px solid var(--line);color:var(--txt2);border-radius:6px;padding:5px 10px;font-size:12px;font-family:inherit;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
   .file-row .finput.loaded{color:var(--accent2);}
-  .file-row button{white-space:nowrap;padding:8px 18px;font-size:13px;}
+  .file-row button{white-space:nowrap;padding:5px 14px;font-size:12px;}
 
-  /* row 3: signal search & selection */
-  #sigBar{background:var(--panel);border-bottom:1px solid var(--line);flex-shrink:0;}
-  .sig-bar-head{display:flex;align-items:center;gap:8px;padding:8px 16px;flex-wrap:wrap;}
-  #searchInput{flex:1;min-width:180px;}
+  /* row 2: signal search & selection (collapsible) */
+  #sigBar{background:var(--panel);border-bottom:1px solid var(--line);flex-shrink:0;display:flex;flex-direction:column;transition:flex .2s;}
+  #sigBar.expanded{flex:1;min-height:0;}
+  #sigBar.collapsed{flex:0 0 auto;}
+  .sig-bar-head{display:flex;align-items:center;gap:8px;padding:7px 16px;flex-wrap:wrap;flex-shrink:0;}
+  .sig-toggle{display:flex;align-items:center;gap:4px;cursor:pointer;font-size:13px;font-weight:600;color:var(--accent);user-select:none;padding:2px 6px;border-radius:4px;}
+  .sig-toggle:hover{background:var(--panel2);}
+  .sig-toggle .arrow{display:inline-block;transition:transform .2s;font-size:11px;}
+  #sigBar.collapsed .sig-toggle .arrow{transform:rotate(-90deg);}
+  .sig-list-wrap{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;}
+  #sigBar.collapsed .sig-list-wrap{display:none;}
+  #searchInput{flex:1;min-width:140px;}
   #help{font-size:11px;color:var(--txt2);}
   #help b{color:var(--accent);}
   #help b.g{color:var(--accent2);}
   .selstat{font-size:12px;color:var(--txt2);}
   .selstat b{color:var(--accent2);}
-  #sigList{max-height:200px;overflow-y:auto;padding:4px 16px 8px;border-top:1px solid var(--line);}
+  #sigList{flex:1;overflow-y:auto;padding:4px 16px 8px;border-top:1px solid var(--line);}
   .msg-group{margin:6px 0 10px;}
   .msg-group .mtitle{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--accent);cursor:pointer;padding:3px 4px;border-radius:4px;user-select:none;}
   .msg-group .mtitle:hover{background:var(--panel2);}
@@ -67,7 +75,7 @@
   #contentTop{padding:8px 12px;border-bottom:1px solid var(--line);background:var(--panel);display:flex;align-items:center;gap:10px;min-height:42px;}
   #contentTop .title{font-size:13px;color:var(--txt2);}
   #analysisWrap{flex:1;overflow-y:auto;}
-  #analysisPanel{padding:10px 14px;border-bottom:1px solid var(--line);background:#13161d;}
+  #analysisPanel{padding:10px 14px;border-top:1px solid var(--line);background:#13161d;}
   #analysisPanel.hidden{display:none;}
   .a-summary{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;}
   .chip{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:5px 10px;font-size:12px;}
@@ -111,40 +119,45 @@
 </head>
 <body>
 <div id="app">
-  <!-- header: icon + title + file load rows -->
+  <!-- header: icon+title left, file rows right -->
   <div id="header">
-    <div class="header-top">
+    <div class="header-left">
       <img src="icon.png" class="icon" alt="icon" />
       <span class="htitle">CAN报文解析</span>
     </div>
-    <div class="file-row">
-      <div class="finput" id="dbcInfo">未加载</div>
-      <button id="btnDbc">点击加载DBC文件</button>
-    </div>
-    <div class="file-row">
-      <div class="finput" id="ascInfo">未加载</div>
-      <button id="btnAsc">点击加载.asc文件</button>
+    <div class="header-right">
+      <div class="file-row">
+        <div class="finput" id="dbcInfo">未加载</div>
+        <button id="btnDbc">点击加载DBC文件</button>
+      </div>
+      <div class="file-row">
+        <div class="finput" id="ascInfo">未加载</div>
+        <button id="btnAsc">点击加载.asc文件</button>
+      </div>
     </div>
   </div>
 
-  <!-- row 3: signal search & selection -->
-  <div id="sigBar">
+  <!-- signal selection (collapsible) -->
+  <div id="sigBar" class="expanded">
     <div class="sig-bar-head">
+      <span class="sig-toggle" id="sigToggle"><span class="arrow">▼</span> 信号选择</span>
       <input type="text" id="searchInput" placeholder="搜索信号名 / 报文名…" />
       <button id="btnSelectAll">全选</button>
       <button id="btnClearAll">清空</button>
-      <span class="selstat">已选 <b id="selCount">0</b> 个信号 · 共 <span id="totalCount">0</span> 个 <span style="color:var(--accent2)">●</span>=有数据</span>
+      <span class="selstat">已选 <b id="selCount">0</b> · 共 <span id="totalCount">0</span> 个 <span style="color:var(--accent2)">●</span>=有数据</span>
       <span style="flex:1"></span>
       <span id="help">滚轮=<b>横轴缩放</b> · Shift+滚轮=<b class="g">纵轴缩放</b></span>
       <button id="btnReset" disabled>重置缩放</button>
       <button id="btnStart" class="go" disabled>开始分析</button>
     </div>
-    <div id="sigList">
-      <div class="empty-hint">请先加载 DBC 文件</div>
+    <div class="sig-list-wrap">
+      <div id="sigList">
+        <div class="empty-hint">请先加载 DBC 文件</div>
+      </div>
     </div>
   </div>
 
-  <!-- row 4: signal display area -->
+  <!-- signal display area -->
   <div id="content">
     <div id="contentTop">
       <div class="title" id="contentTitle">加载 DBC 与 ASC 文件后，选择信号并开始分析</div>
@@ -152,8 +165,8 @@
       <button id="btnToggleAnalysis" disabled>显示分析</button>
     </div>
     <div id="analysisWrap">
-      <div id="analysisPanel" class="hidden"></div>
       <div id="chartArea"></div>
+      <div id="analysisPanel" class="hidden"></div>
     </div>
   </div>
 </div>
@@ -741,6 +754,14 @@ $('btnClearAll').onclick=()=>{
 };
 $('btnStart').onclick=()=>{ renderCharts(); $('analysisWrap').scrollTop=0; };
 $('btnReset').onclick=resetZoom;
+$('sigToggle').onclick=()=>{
+  const bar=$('sigBar');
+  const expanded=bar.classList.contains('expanded');
+  bar.classList.toggle('expanded', !expanded);
+  bar.classList.toggle('collapsed', expanded);
+  // resize charts after transition
+  setTimeout(()=>{ charts.forEach(c=>c.resize()); }, 250);
+};
 $('btnToggleAnalysis').onclick=()=>{
   const p=$('analysisPanel');
   const hidden=p.classList.toggle('hidden');
