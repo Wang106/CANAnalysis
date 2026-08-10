@@ -107,20 +107,19 @@
   .issue.warn{border-color:#5a4a20;}
   .issue .tag{color:var(--accent);font-weight:600;}
 
-  #chartArea{padding:8px 12px 30px;}
-  .chart-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);margin-bottom:10px;overflow:hidden;}
-  .cc-head{display:flex;align-items:center;gap:10px;padding:7px 12px;border-bottom:1px solid var(--line);background:var(--panel2);flex-wrap:wrap;}
-  .cc-head .signame{font-weight:600;font-size:14px;}
-  .cc-head .msgtag{font-size:11px;color:var(--txt2);background:#0f1115;padding:2px 7px;border-radius:4px;}
-  .cc-head .stat{font-size:11px;color:var(--txt2);}
-  .cc-head .stat b{color:var(--txt);}
-  .cc-head .spacer{flex:1;}
-  .cc-head .yctrl{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--txt2);}
-  .cc-head .yctrl input{width:62px;padding:3px 5px;font-size:11px;}
-  .cc-head .toggleDots{padding:3px 10px;font-size:11px;}
-  .cc-head .toggleDots.active{background:var(--accent);border-color:var(--accent);color:#04121f;}
-  .chart{width:100%;height:230px;}
-  .chart.empty{height:60px;display:flex;align-items:center;justify-content:center;color:var(--err);font-size:13px;}
+  #chartArea{padding:4px 12px 8px;}
+  .chart-card{background:var(--panel);border:1px solid var(--line);border-radius:0;margin-bottom:0;overflow:hidden;display:flex;flex-direction:row;}
+  .chart-card:first-child{border-radius:var(--radius) var(--radius) 0 0;}
+  .chart-card:last-child{border-radius:0 0 var(--radius) var(--radius);}
+  .cc-side{width:130px;flex-shrink:0;padding:6px 8px;border-right:1px solid var(--line);background:var(--panel2);display:flex;flex-direction:column;gap:3px;font-size:11px;overflow:hidden;}
+  .cc-side .signame{font-weight:600;font-size:13px;color:var(--txt);word-break:break-all;}
+  .cc-side .msgtag{font-size:10px;color:var(--txt2);word-break:break-all;}
+  .cc-side .stat{color:var(--txt2);}
+  .cc-side .stat b{color:var(--txt);}
+  .cc-side .yctrl{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--txt2);margin-top:2px;}
+  .cc-side .yctrl input{width:48px;padding:2px 4px;font-size:10px;}
+  .cc-body{flex:1;min-width:0;}
+  .chart{width:100%;height:180px;}
 
   #dropZone{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:50;}
   #dropZone.show{display:flex;}
@@ -619,13 +618,14 @@ function buildTooltip(sig){
     return `<div style="font-size:12px">t = ${t.toFixed(4)} s<br/>${sig.name} = <b>${typeof v==='number'?v.toFixed(4):v}</b> ${sig.unit}${extra}</div>`;
   };
 }
-function makeOption(series, sig, stats){
+function makeOption(series, sig, stats, isLast){
   const tMin=ascData.tMin, tMax=ascData.tMax;
   return {
     animation:false,
-    grid:{left:78,right:24,top:18,bottom:34},
-    xAxis:{type:'value',min:tMin,max:tMax,name:'时间',nameLocation:'middle',nameGap:24,
-      axisLine:{lineStyle:{color:'#3a4150'}},axisLabel:{color:'#8b93a3',formatter:v=>v.toFixed(2)},
+    grid:{left:78,right:24,top:8,bottom:isLast?34:4},
+    xAxis:{type:'value',min:tMin,max:tMax,name:isLast?'时间':'',nameLocation:'middle',nameGap:24,
+      axisLine:{lineStyle:{color:'#3a4150'}},
+      axisLabel:{color:'#8b93a3',formatter:v=>v.toFixed(2),show:isLast},
       splitLine:{lineStyle:{color:'#222732'}}},
     yAxis:{type:'value',name:sig.unit||'',nameTextStyle:{color:'#8b93a3'},
       axisLine:{lineStyle:{color:'#3a4150'}},axisLabel:{color:'#8b93a3'},
@@ -644,20 +644,21 @@ function makeOption(series, sig, stats){
     }]
   };
 }
-function makeEmptyOption(sig){
+function makeEmptyOption(sig, isLast){
   const tMin=ascData.tMin, tMax=ascData.tMax;
   return {
     animation:false,
     title:{text:'无信号数据',left:'center',top:'middle',textStyle:{color:'#8b93a3',fontSize:14}},
-    grid:{left:78,right:24,top:18,bottom:34},
-    xAxis:{type:'value',min:tMin,max:tMax,name:'时间',nameLocation:'middle',nameGap:24,
-      axisLine:{lineStyle:{color:'#3a4150'}},axisLabel:{color:'#8b93a3',formatter:v=>v.toFixed(2)},
+    grid:{left:78,right:24,top:8,bottom:isLast?34:4},
+    xAxis:{type:'value',min:tMin,max:tMax,name:isLast?'时间':'',nameLocation:'middle',nameGap:24,
+      axisLine:{lineStyle:{color:'#3a4150'}},
+      axisLabel:{color:'#8b93a3',formatter:v=>v.toFixed(2),show:isLast},
       splitLine:{lineStyle:{color:'#222732'}}},
     yAxis:{type:'value',name:sig.unit||'',nameTextStyle:{color:'#8b93a3'},
       axisLine:{lineStyle:{color:'#3a4150'}},axisLabel:{color:'#8b93a3'},
       splitLine:{lineStyle:{color:'#222732'}}},
     dataZoom:[
-      {id:'xZoom',type:'inside',xAxisIndex:0,zoomOnMouseWheel:true,moveOnMouseWheel:false,moveOnMouseMove:true,moveOnMouseUp:true,filterMode:'filter'}
+      {id:'xZoom',type:'inside',xAxisIndex:0,zoomOnMouseWheel:false,moveOnMouseWheel:false,moveOnMouseMove:true,moveOnMouseUp:true,filterMode:'filter'}
     ]
   };
 }
@@ -684,38 +685,41 @@ function renderCharts(){
     const sig=sigs[idx]; idx++;
     const series=buildSeries(sig);
     const stats=computeStats(series,sig);
+    const isLast = idx===sigs.length;
     const card=el('div','chart-card');
-    const head=el('div','cc-head');
+    const side=el('div','cc-side');
     const has = series.length>0;
     const md = ascData.map[sig.messageKey];
-    head.innerHTML = `
+    const realId=sig.messageId & 0x1FFFFFFF;
+    const isExt=(sig.messageId & 0x80000000)!==0;
+    side.innerHTML = `
       <span class="signame">${sig.name}</span>
-      <span class="msgtag">${sig.messageName} ${fmtId(sig.realId||ascData.map[sig.messageKey]?.realId, sig.isExt||md?.isExt)}</span>
-      ${has?`<span class="stat">采样 <b>${stats.count}</b></span><span class="stat">min <b>${stats.min.toFixed(3)}</b></span><span class="stat">max <b>${stats.max.toFixed(3)}</b></span><span class="stat">σ <b>${stats.std.toFixed(3)}</b></span>`:'<span class="stat" style="color:var(--err)">无信号数据</span>'}
-      <span class="spacer"></span>
-      ${has?`<div class="yctrl">Y:<input type="number" class="ymin" placeholder="min"/><input type="number" class="ymax" placeholder="max"/><button class="fitY">Y轴自适应</button></div>`:''}`;
-    card.appendChild(head);
+      <span class="msgtag">${sig.messageName} ${fmtId(realId, isExt)}</span>
+      ${has?`<span class="stat">min <b>${stats.min.toFixed(3)}</b></span><span class="stat">max <b>${stats.max.toFixed(3)}</b></span>`:'<span class="stat" style="color:var(--err)">无信号数据</span>'}
+      ${has?`<div class="yctrl">Y:<input type="number" class="ymin" placeholder="min"/><input type="number" class="ymax" placeholder="max"/><button class="fitY">自适应</button></div>`:''}`;
+    const body=el('div','cc-body');
     const cd=el('div','chart');
-    card.appendChild(cd);
+    body.appendChild(cd);
+    card.append(side,body);
     $('chartArea').appendChild(card);
     if(has){
       renderCount++;
       const chart=echarts.init(cd);
-      chart.setOption(makeOption(series,sig,stats));
+      chart.setOption(makeOption(series,sig,stats,isLast));
       chart._series=series; chart._sig=sig; chart._stats=stats;
       charts.push(chart);
-      head.querySelector('.fitY').addEventListener('click',()=>fitY(chart));
-      const applyBtn=()=>{ const mn=parseFloat(head.querySelector('.ymin').value); const mx=parseFloat(head.querySelector('.ymax').value);
+      side.querySelector('.fitY').addEventListener('click',()=>fitY(chart));
+      const applyBtn=()=>{ const mn=parseFloat(side.querySelector('.ymin').value); const mx=parseFloat(side.querySelector('.ymax').value);
         const yopt={}; if(isFinite(mn))yopt.min=mn; if(isFinite(mx))yopt.max=mx;
         chart.setOption({yAxis:yopt}); };
-      head.querySelector('.ymin').addEventListener('change',applyBtn);
-      head.querySelector('.ymax').addEventListener('change',applyBtn);
-      head.querySelector('.ymin').value=stats.min.toFixed(3);
-      head.querySelector('.ymax').value=stats.max.toFixed(3);
+      side.querySelector('.ymin').addEventListener('change',applyBtn);
+      side.querySelector('.ymax').addEventListener('change',applyBtn);
+      side.querySelector('.ymin').value=stats.min.toFixed(3);
+      side.querySelector('.ymax').value=stats.max.toFixed(3);
     } else {
       emptyCount++;
       const chart=echarts.init(cd);
-      chart.setOption(makeEmptyOption(sig));
+      chart.setOption(makeEmptyOption(sig,isLast));
       chart._sig=sig; chart._stats={count:0};
       charts.push(chart);
     }
@@ -760,14 +764,18 @@ function setupSync(){
       const rect=dom.getBoundingClientRect();
       const mx=e.clientX-rect.left, my=e.clientY-rect.top;
       const w=rect.width, h=rect.height;
-      const gL=78, gR=24, gT=18, gB=34;
+      const opt=src.getOption();
+      const grid=opt.grid||{left:78,right:24,top:8,bottom:34};
+      const gL=typeof grid.left==='number'?grid.left:78;
+      const gR=typeof grid.right==='number'?grid.right:24;
+      const gT=typeof grid.top==='number'?grid.top:8;
+      const gB=typeof grid.bottom==='number'?grid.bottom:34;
       const onXAxis = my >= (h-gB) && mx >= gL && mx <= (w-gR);
       const onYAxis = mx <= gL && my >= gT && my <= (h-gB);
       if(!onXAxis && !onYAxis) return; /* let page scroll */
       e.preventDefault();
       const factor = e.deltaY > 0 ? 1.15 : 0.87;
       if(onXAxis){
-        const opt=src.getOption();
         const xdz=opt.dataZoom.find(d=>d.id==='xZoom')||opt.dataZoom[0];
         let s=xdz.start, en=xdz.end;
         const center=(s+en)/2;
@@ -777,7 +785,6 @@ function setupSync(){
         if(ne>100){ ns-=(ne-100); ne=100; }
         src.dispatchAction({type:'dataZoom',dataZoomId:'xZoom',start:ns,end:ne});
       } else {
-        const opt=src.getOption();
         const ydz=opt.dataZoom.find(d=>d.id==='yZoom');
         if(!ydz) return;
         let s=ydz.start, en=ydz.end;
