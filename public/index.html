@@ -166,7 +166,7 @@
       <button id="btnClearAll">清空</button>
       <span class="selstat">已选 <b id="selCount">0</b> · 共 <span id="totalCount">0</span> 个 <span style="color:var(--accent2)">●</span>=有数据</span>
       <span style="flex:1"></span>
-      <span id="help">滚轮=<b>横轴缩放</b> · Shift+滚轮=<b class="g">纵轴缩放</b></span>
+      <span id="help">滚轮在<b>横轴</b>=缩放横轴 · 滚轮在<b>纵轴</b>=缩放纵轴 · 滚轮在曲线区=滚动页面</span>
       <button id="btnReset" disabled>重置缩放</button>
       <button id="btnStart" class="go" disabled>开始分析</button>
     </div>
@@ -631,8 +631,8 @@ function makeOption(series, sig, stats){
       axisLine:{lineStyle:{color:'#3a4150'}},axisLabel:{color:'#8b93a3'},
       splitLine:{lineStyle:{color:'#222732'}}},
     dataZoom:[
-      {id:'xZoom',type:'inside',xAxisIndex:0,zoomOnMouseWheel:true,moveOnMouseWheel:false,moveOnMouseMove:true,moveOnMouseUp:true,filterMode:'filter'},
-      {id:'yZoom',type:'inside',yAxisIndex:0,zoomOnMouseWheel:'shift',moveOnMouseWheel:false,moveOnMouseMove:false,moveOnMouseUp:false,filterMode:'filter'}
+      {id:'xZoom',type:'inside',xAxisIndex:0,zoomOnMouseWheel:false,moveOnMouseWheel:false,moveOnMouseMove:true,moveOnMouseUp:true,filterMode:'filter'},
+      {id:'yZoom',type:'inside',yAxisIndex:0,zoomOnMouseWheel:false,moveOnMouseWheel:false,moveOnMouseMove:false,moveOnMouseUp:false,filterMode:'filter'}
     ],
     tooltip:{trigger:'axis',axisPointer:{type:'line',lineStyle:{color:'#4a9eff'}},formatter:buildTooltip(sig)},
     series:[{
@@ -666,11 +666,14 @@ function renderCharts(){
   const sigs=selectedSignals();
   if(!sigs.length){ $('contentTitle').textContent='请选择至少一个信号'; return; }
   $('contentTitle').textContent=`正在渲染 ${sigs.length} 条曲线…`;
+  let renderCount=0, emptyCount=0;
   // render in chunks to avoid blocking
   let idx=0;
   function next(){
     if(idx>=sigs.length){
-      $('contentTitle').textContent=`已渲染 ${sigs.length} 条曲线`;
+      const parts=[`已选择 ${sigs.length} 个信号，已渲染 ${renderCount} 条曲线`];
+      if(emptyCount>0) parts.push(`未渲染 ${emptyCount} 个空信号`);
+      $('contentTitle').textContent=parts.join('，');
       $('gctrls').classList.add('show');
       $('analysisBar').classList.add('show');
       setupSync();
@@ -696,6 +699,7 @@ function renderCharts(){
     card.appendChild(cd);
     $('chartArea').appendChild(card);
     if(has){
+      renderCount++;
       const chart=echarts.init(cd);
       chart.setOption(makeOption(series,sig,stats));
       chart._series=series; chart._sig=sig; chart._stats=stats;
@@ -709,6 +713,7 @@ function renderCharts(){
       head.querySelector('.ymin').value=stats.min.toFixed(3);
       head.querySelector('.ymax').value=stats.max.toFixed(3);
     } else {
+      emptyCount++;
       const chart=echarts.init(cd);
       chart.setOption(makeEmptyOption(sig));
       chart._sig=sig; chart._stats={count:0};
@@ -731,7 +736,7 @@ function fitY(chart){
 }
 function fitAllY(){ charts.forEach(c=>fitY(c)); }
 
-/* sync x-axis across charts */
+/* sync x-axis across charts + custom wheel zoom on axes */
 function setupSync(){
   lastX={start:0,end:100};
   charts.forEach(src=>{
@@ -740,7 +745,7 @@ function setupSync(){
       const opt=src.getOption();
       const xdz=opt.dataZoom.find(d=>d.id==='xZoom')||opt.dataZoom[0];
       const s=xdz.start, e=xdz.end;
-      if(s===lastX.start && e===lastX.end) return; // x unchanged (e.g. y-only zoom)
+      if(s===lastX.start && e===lastX.end) return;
       lastX={start:s,end:e};
       syncing=true;
       charts.forEach(dst=>{
@@ -749,6 +754,41 @@ function setupSync(){
       });
       syncing=false;
     });
+    /* custom wheel: X axis area → X zoom (synced), Y axis area → Y zoom (per chart), body → page scroll */
+    const dom=src.getDom();
+    dom.addEventListener('wheel',(e)=>{
+      const rect=dom.getBoundingClientRect();
+      const mx=e.clientX-rect.left, my=e.clientY-rect.top;
+      const w=rect.width, h=rect.height;
+      const gL=78, gR=24, gT=18, gB=34;
+      const onXAxis = my >= (h-gB) && mx >= gL && mx <= (w-gR);
+      const onYAxis = mx <= gL && my >= gT && my <= (h-gB);
+      if(!onXAxis && !onYAxis) return; /* let page scroll */
+      e.preventDefault();
+      const factor = e.deltaY > 0 ? 1.15 : 0.87;
+      if(onXAxis){
+        const opt=src.getOption();
+        const xdz=opt.dataZoom.find(d=>d.id==='xZoom')||opt.dataZoom[0];
+        let s=xdz.start, en=xdz.end;
+        const center=(s+en)/2;
+        let nr=Math.max(0.1, Math.min(100, (en-s)*factor));
+        let ns=center-nr/2, ne=center+nr/2;
+        if(ns<0){ ne+=-ns; ns=0; }
+        if(ne>100){ ns-=(ne-100); ne=100; }
+        src.dispatchAction({type:'dataZoom',dataZoomId:'xZoom',start:ns,end:ne});
+      } else {
+        const opt=src.getOption();
+        const ydz=opt.dataZoom.find(d=>d.id==='yZoom');
+        if(!ydz) return;
+        let s=ydz.start, en=ydz.end;
+        const center=(s+en)/2;
+        let nr=Math.max(0.1, Math.min(100, (en-s)*factor));
+        let ns=center-nr/2, ne=center+nr/2;
+        if(ns<0){ ne+=-ns; ns=0; }
+        if(ne>100){ ns-=(ne-100); ne=100; }
+        src.dispatchAction({type:'dataZoom',dataZoomId:'yZoom',start:ns,end:ne});
+      }
+    },{passive:false});
   });
 }
 function resetZoom(){
