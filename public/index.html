@@ -44,19 +44,25 @@
   #sigBar.expanded{flex:1;min-height:0;}
   #sigBar.collapsed{flex:0 0 auto;}
   .sig-bar-head{display:flex;align-items:center;gap:8px;padding:7px 16px;flex-wrap:wrap;flex-shrink:0;}
-  .sig-toggle{display:flex;align-items:center;gap:4px;cursor:pointer;font-size:13px;font-weight:600;color:var(--accent);user-select:none;padding:2px 6px;border-radius:4px;}
-  .sig-toggle:hover{background:var(--panel2);}
-  .sig-toggle .arrow{display:inline-block;transition:transform .2s;font-size:11px;}
+  .sig-toggle{display:flex;align-items:center;gap:4px;cursor:pointer;font-size:13px;font-weight:700;color:#04121f;background:var(--accent);user-select:none;padding:4px 14px;border-radius:6px;transition:filter .15s;}
+  .sig-toggle:hover{filter:brightness(1.15);}
+  .sig-toggle .arrow{display:inline-block;transition:transform .3s;font-size:11px;}
   #sigBar.collapsed .sig-toggle .arrow{transform:rotate(-90deg);}
-  .sig-list-wrap{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;}
-  #sigBar.collapsed .sig-list-wrap{display:none;}
+  .sig-list-wrap{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:row;gap:1px;background:var(--line);transition:opacity .3s ease,max-height .35s ease;}
+  #sigBar.collapsed .sig-list-wrap{opacity:0;max-height:0;transition:opacity .15s ease,max-height .35s ease;}
+  .sig-col{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden;background:var(--panel);}
+  .sig-col-head{font-size:12px;font-weight:600;color:var(--txt2);padding:6px 14px;border-bottom:1px solid var(--line);background:var(--panel2);flex-shrink:0;display:flex;align-items:center;gap:6px;}
+  .sig-col-head .cnt{margin-left:auto;font-size:11px;color:var(--accent2);}
+  .sig-col-body{flex:1;overflow-y:auto;padding:4px 10px;}
   #searchInput{flex:1;min-width:140px;}
   #help{font-size:11px;color:var(--txt2);}
   #help b{color:var(--accent);}
   #help b.g{color:var(--accent2);}
   .selstat{font-size:12px;color:var(--txt2);}
   .selstat b{color:var(--accent2);}
-  #sigList{flex:1;overflow-y:auto;padding:4px 16px 8px;border-top:1px solid var(--line);}
+  .sig-item.picked{padding-left:6px;}
+  .sig-item.picked .smsg{color:var(--txt2);font-size:10px;margin-left:4px;white-space:nowrap;}
+  .sig-item.pending-remove{opacity:.35;text-decoration:line-through;}
   .msg-group{margin:6px 0 10px;}
   .msg-group .mtitle{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--accent);cursor:pointer;padding:3px 4px;border-radius:4px;user-select:none;}
   .msg-group .mtitle:hover{background:var(--panel2);}
@@ -151,8 +157,17 @@
       <button id="btnStart" class="go" disabled>开始分析</button>
     </div>
     <div class="sig-list-wrap">
-      <div id="sigList">
-        <div class="empty-hint">请先加载 DBC 文件</div>
+      <div class="sig-col">
+        <div class="sig-col-head">可选信号<span class="cnt" id="availCount">0</span></div>
+        <div class="sig-col-body" id="sigList">
+          <div class="empty-hint">请先加载 DBC 文件</div>
+        </div>
+      </div>
+      <div class="sig-col">
+        <div class="sig-col-head">已选信号<span class="cnt" id="pickedCount">0</span></div>
+        <div class="sig-col-body" id="sigPicked">
+          <div class="empty-hint">勾选左侧信号后自动出现在此</div>
+        </div>
       </div>
     </div>
   </div>
@@ -444,7 +459,7 @@ function fmtId(realId,isExt){ return '0x'+realId.toString(16).toUpperCase().padS
 /* ---------- signal list UI ---------- */
 function renderSignalList(){
   const list=$('sigList'); list.innerHTML='';
-  if(!dbcData){ list.innerHTML='<div class="empty-hint">请先加载 DBC 文件</div>'; return; }
+  if(!dbcData){ list.innerHTML='<div class="empty-hint">请先加载 DBC 文件</div>'; $('availCount').textContent='0'; return; }
   const q=$('searchInput').value.trim().toLowerCase();
   const msgs=Object.values(dbcData.messages).sort((a,b)=>a.realId-b.realId);
   let shown=0;
@@ -465,6 +480,7 @@ function renderSignalList(){
       cb.addEventListener('change',()=>{
         if(cb.checked) selectedSet.add(cb.dataset.key); else selectedSet.delete(cb.dataset.key);
         updateSelCount();
+        renderPickedList();
       });
       const span=el('span','sname',s.name);
       const unit=el('span','sunit',s.unit?('['+s.unit+']'):'');
@@ -476,10 +492,50 @@ function renderSignalList(){
     g.append(mt,body); list.appendChild(g);
   }
   if(!shown){ list.innerHTML='<div class="empty-hint">无匹配信号</div>'; }
+  $('availCount').textContent=shown;
+}
+function renderPickedList(){
+  const picked=$('sigPicked'); picked.innerHTML='';
+  if(!dbcData){ picked.innerHTML='<div class="empty-hint">请先加载 DBC 文件</div>'; $('pickedCount').textContent='0'; return; }
+  const sigs=selectedSignals();
+  $('pickedCount').textContent=selectedSet.size;
+  if(!sigs.length){ picked.innerHTML='<div class="empty-hint">勾选左侧信号后自动出现在此</div>'; return; }
+  for(const s of sigs){
+    const has = ascData && ascData.map[s.messageKey];
+    const it=el('div','sig-item picked'+(has?' hasdata':''));
+    const cb=document.createElement('input'); cb.type='checkbox'; cb.dataset.key=s.messageKey+'::'+s.name;
+    cb.checked=true;
+    cb.addEventListener('change',()=>{
+      if(!cb.checked){
+        it.classList.add('pending-remove');
+        selectedSet.delete(cb.dataset.key);
+        const leftCb=findLeftCb(cb.dataset.key);
+        if(leftCb) leftCb.checked=false;
+      } else {
+        it.classList.remove('pending-remove');
+        selectedSet.add(cb.dataset.key);
+        const leftCb=findLeftCb(cb.dataset.key);
+        if(leftCb) leftCb.checked=true;
+      }
+      updateSelCount();
+    });
+    const span=el('span','sname',s.name);
+    const unit=el('span','sunit',s.unit?('['+s.unit+']'):'');
+    const msgInfo=el('span','smsg',s.messageName);
+    it.append(cb,span,unit,msgInfo);
+    it.addEventListener('click',e=>{ if(e.target!==cb){ cb.checked=!cb.checked; cb.dispatchEvent(new Event('change')); } });
+    picked.appendChild(it);
+  }
+}
+function findLeftCb(key){
+  const cbs=document.querySelectorAll('#sigList input[type=checkbox]');
+  for(const c of cbs){ if(c.dataset.key===key) return c; }
+  return null;
 }
 const selectedSet=new Set();
 function updateSelCount(){
   $('selCount').textContent=selectedSet.size;
+  $('pickedCount').textContent=selectedSet.size;
   updateStartBtn();
 }
 function updateStartBtn(){
@@ -718,7 +774,8 @@ async function loadDbcText(name, txt){
     $('dbcInfo').textContent=`${name} · ${Object.keys(dbcData.messages).length} 报文 / ${dbcData.signals.length} 信号`;
     $('dbcInfo').classList.add('loaded');
     $('totalCount').textContent=dbcData.signals.length;
-    renderSignalList(); updateStartBtn();
+    selectedSet.clear();
+    renderSignalList(); renderPickedList(); updateSelCount(); updateStartBtn();
     toast(`DBC 已加载：${dbcData.signals.length} 个信号`);
   }catch(err){ toast('DBC 解析失败：'+err.message); }
   hideLoading();
@@ -731,7 +788,7 @@ async function loadAscText(name, txt){
     if(ascData.totalMessages===0){ toast('ASC 文件无可识别报文'); hideLoading(); return; }
     $('ascInfo').textContent=`${name} · ${ascData.totalMessages} 帧 · ${ascData.tMin.toFixed(2)}–${ascData.tMax.toFixed(2)}s`;
     $('ascInfo').classList.add('loaded');
-    renderSignalList(); updateSelCount(); updateStartBtn();
+    renderSignalList(); renderPickedList(); updateSelCount(); updateStartBtn();
     toast(`ASC 已加载：${ascData.totalMessages} 帧`);
   }catch(err){ toast('ASC 解析失败：'+err.message); }
   hideLoading();
@@ -746,13 +803,23 @@ $('btnSelectAll').onclick=()=>{
   if(!dbcData) return;
   document.querySelectorAll('#sigList .sig-item input').forEach(cb=>{ cb.checked=true; selectedSet.add(cb.dataset.key); });
   updateSelCount();
+  renderPickedList();
 };
 $('btnClearAll').onclick=()=>{
   selectedSet.clear();
   document.querySelectorAll('#sigList .sig-item input').forEach(cb=>cb.checked=false);
   updateSelCount();
+  renderPickedList();
 };
-$('btnStart').onclick=()=>{ renderCharts(); $('analysisWrap').scrollTop=0; };
+$('btnStart').onclick=()=>{
+  renderPickedList();
+  renderCharts();
+  $('analysisWrap').scrollTop=0;
+  const bar=$('sigBar');
+  bar.classList.remove('expanded');
+  bar.classList.add('collapsed');
+  setTimeout(()=>{ charts.forEach(c=>c.resize()); }, 400);
+};
 $('btnReset').onclick=resetZoom;
 $('sigToggle').onclick=()=>{
   const bar=$('sigBar');
@@ -771,6 +838,7 @@ window.addEventListener('resize',()=>{ charts.forEach(c=>c.resize()); });
 
 // init
 renderSignalList();
+renderPickedList();
 </script>
 </body>
 </html>
