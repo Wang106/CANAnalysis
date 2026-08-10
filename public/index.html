@@ -630,13 +630,14 @@ function makeOption(series, sig, stats, isLast){
       axisLine:{lineStyle:{color:'#3a4150'}},axisLabel:{color:'#8b93a3'},
       splitLine:{lineStyle:{color:'#222732'}}},
     dataZoom:[
-      {id:'xZoom',type:'inside',xAxisIndex:0,zoomOnMouseWheel:false,moveOnMouseWheel:false,moveOnMouseMove:true,moveOnMouseUp:true,filterMode:'filter'},
-      {id:'yZoom',type:'inside',yAxisIndex:0,zoomOnMouseWheel:false,moveOnMouseWheel:false,moveOnMouseMove:false,moveOnMouseUp:false,filterMode:'filter'}
+      {id:'xZoom',type:'inside',xAxisIndex:0,zoomOnMouseWheel:false,moveOnMouseWheel:false,moveOnMouseMove:true,moveOnMouseUp:true,filterMode:'none'},
+      {id:'yZoom',type:'inside',yAxisIndex:0,zoomOnMouseWheel:false,moveOnMouseWheel:false,moveOnMouseMove:false,moveOnMouseUp:false,filterMode:'none'}
     ],
     tooltip:{trigger:'axis',axisPointer:{type:'line',lineStyle:{color:'#4a9eff'}},formatter:buildTooltip(sig)},
     series:[{
       type:'line',data:series,name:sig.name,showSymbol:false,symbol:'circle',symbolSize:4,
-      large:true,progressive:3000,sampling:'lttb',
+      clip:true, connectNulls:false,
+      large:true,progressive:3000,
       lineStyle:{width:1.2,color:'#4a9eff'},
       itemStyle:{color:'#4a9eff',borderColor:'#4a9eff'},
       emphasis:{disabled:true}
@@ -719,6 +720,30 @@ function renderCharts(){
   renderAnalysis(sigs);
 }
 
+/* Replace out-of-bounds y-values with null so the line breaks into separate segments.
+   This ensures the out-of-range portion is truly empty (no line along the boundary)
+   while keeping every visible point at its exact coordinate. */
+function clipSeriesY(chart, lo, hi){
+  const orig = chart._series;
+  if(!orig || orig.length === 0) return;
+  if(lo == null || hi == null){
+    chart.setOption({series:[{data:orig}]});
+    return;
+  }
+  const n = orig.length;
+  const newData = new Array(n);
+  for(let i = 0; i < n; i++){
+    const p = orig[i];
+    const v = p[1];
+    if(v != null && (v < lo || v > hi)){
+      newData[i] = [p[0], null];
+    } else {
+      newData[i] = p;
+    }
+  }
+  chart.setOption({series:[{data:newData}]});
+}
+
 /* y auto-fit: 使用信号的全局最大最小值 */
 function fitY(chart){
   const stats=chart._stats;
@@ -726,6 +751,7 @@ function fitY(chart){
   let ymin=stats.min, ymax=stats.max;
   if(ymin===ymax){ ymin-=1; ymax+=1; }
   chart.setOption({yAxis:{min:ymin,max:ymax}});
+  clipSeriesY(chart, ymin, ymax);
 }
 function fitAllY(){ charts.forEach(c=>fitY(c)); }
 
@@ -775,6 +801,7 @@ function setupSync(){
         const nLo=anchor-(anchor-lo)*factor;
         const nHi=anchor+(hi-anchor)*factor;
         src.setOption({yAxis:{min:nLo,max:nHi}});
+        clipSeriesY(src, nLo, nHi);
       }
     },{passive:false});
   });
