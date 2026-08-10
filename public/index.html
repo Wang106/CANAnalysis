@@ -162,14 +162,13 @@
       <button id="btnSelectAll">全选</button>
       <button id="btnClearAll">清空</button>
       <span class="selstat">已选 <b id="selCount">0</b> · 共 <span id="totalCount">0</span> 个 <span style="color:var(--accent2)">●</span>=有数据</span>
-      <span class="renderstat" id="renderStat" style="font-size:12px;color:var(--accent2);display:none;"></span>
       <span class="gctrls" id="gctrls">
         <span class="glbl">Y:</span>
         <input type="number" id="gYmin" placeholder="min"/>
         <input type="number" id="gYmax" placeholder="max"/>
         <button id="gFitY">Y轴自适应</button>
         <button id="gFitX">X轴自适应</button>
-        <button id="gDots" class="active">圆点</button>
+        <button id="gDots">圆点</button>
       </span>
       <span style="flex:1"></span>
       <span id="help">滚轮=<b>横轴缩放</b> · Shift+滚轮=<b class="g">纵轴缩放</b></span>
@@ -629,7 +628,7 @@ function makeOption(series, sig, stats){
     ],
     tooltip:{trigger:'axis',axisPointer:{type:'line',lineStyle:{color:'#4a9eff'}},formatter:buildTooltip(sig)},
     series:[{
-      type:'line',data:series,name:sig.name,showSymbol:true,symbol:'circle',symbolSize:4,
+      type:'line',data:series,name:sig.name,showSymbol:false,symbol:'circle',symbolSize:4,
       large:true,progressive:3000,sampling:'lttb',
       lineStyle:{width:1.2,color:'#4a9eff'},
       itemStyle:{color:'#4a9eff',borderColor:'#4a9eff'},
@@ -642,15 +641,11 @@ function renderCharts(){
   const sigs=selectedSignals();
   if(!sigs.length){ $('contentTitle').textContent='请选择至少一个信号'; return; }
   $('contentTitle').textContent=`正在渲染 ${sigs.length} 条曲线…`;
-  $('renderStat').style.display='none';
   // render in chunks to avoid blocking
   let idx=0;
   function next(){
     if(idx>=sigs.length){
       $('contentTitle').textContent=`已渲染 ${sigs.length} 条曲线`;
-      const rs=$('renderStat');
-      rs.textContent=`已渲染 ${sigs.length} 条曲线`;
-      rs.style.display='inline';
       $('gctrls').classList.add('show');
       $('analysisBar').classList.add('show');
       setupSync();
@@ -672,7 +667,7 @@ function renderCharts(){
       ${has?`<span class="stat">min <b>${stats.min.toFixed(3)}</b></span><span class="stat">max <b>${stats.max.toFixed(3)}</b></span><span class="stat">均值 <b>${stats.mean.toFixed(3)}</b></span><span class="stat">σ <b>${stats.std.toFixed(3)}</b></span>`:''}
       <span class="spacer"></span>
       <div class="yctrl">Y:<input type="number" class="ymin" placeholder="min"/><input type="number" class="ymax" placeholder="max"/><button class="fitY">自适应</button></div>
-      <button class="toggleDots active">圆点</button>`;
+      <button class="toggleDots">圆点</button>`;
     card.appendChild(head);
     const cd=el('div', has?'chart':'chart empty', has?'':(md?'该信号无可解码数据（DLC不足或位域越界）':'报文在ASC中未出现'));
     card.appendChild(cd);
