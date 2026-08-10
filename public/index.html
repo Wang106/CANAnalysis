@@ -62,6 +62,8 @@
   .selstat b{color:var(--accent2);}
   .sig-item.picked{padding-left:6px;}
   .sig-item.picked .smsg{color:var(--txt2);font-size:10px;margin-left:4px;white-space:nowrap;}
+  .sig-item .sid{color:var(--txt2);font-size:10px;margin-left:3px;white-space:nowrap;}
+  .sig-item .nodata{color:var(--err);font-size:10px;margin-left:3px;}
   .sig-item.pending-remove{opacity:.35;text-decoration:line-through;}
   .msg-group{margin:6px 0 10px;}
   .msg-group .mtitle{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--accent);cursor:pointer;padding:3px 4px;border-radius:4px;user-select:none;}
@@ -557,7 +559,11 @@ function renderPickedList(){
       }
       updateSelCount();
     });
+    const realId=s.messageId & 0x1FFFFFFF;
+    const isExt=(s.messageId & 0x80000000)!==0;
     const span=el('span','sname',s.name);
+    if(!has) span.appendChild(el('span','nodata','[无信号]'));
+    span.appendChild(el('span','sid',fmtId(realId,isExt)));
     const unit=el('span','sunit',s.unit?('['+s.unit+']'):'');
     const msgInfo=el('span','smsg',s.messageName);
     it.append(cb,span,unit,msgInfo);
@@ -638,6 +644,23 @@ function makeOption(series, sig, stats){
     }]
   };
 }
+function makeEmptyOption(sig){
+  const tMin=ascData.tMin, tMax=ascData.tMax;
+  return {
+    animation:false,
+    title:{text:'无信号数据',left:'center',top:'middle',textStyle:{color:'#8b93a3',fontSize:14}},
+    grid:{left:78,right:24,top:18,bottom:34},
+    xAxis:{type:'value',min:tMin,max:tMax,name:'时间',nameLocation:'middle',nameGap:24,
+      axisLine:{lineStyle:{color:'#3a4150'}},axisLabel:{color:'#8b93a3',formatter:v=>v.toFixed(2)},
+      splitLine:{lineStyle:{color:'#222732'}}},
+    yAxis:{type:'value',name:sig.unit||'',nameTextStyle:{color:'#8b93a3'},
+      axisLine:{lineStyle:{color:'#3a4150'}},axisLabel:{color:'#8b93a3'},
+      splitLine:{lineStyle:{color:'#222732'}}},
+    dataZoom:[
+      {id:'xZoom',type:'inside',xAxisIndex:0,zoomOnMouseWheel:true,moveOnMouseWheel:false,moveOnMouseMove:true,moveOnMouseUp:true,filterMode:'filter'}
+    ]
+  };
+}
 function renderCharts(){
   disposeCharts();
   const sigs=selectedSignals();
@@ -665,12 +688,11 @@ function renderCharts(){
     head.innerHTML = `
       <span class="signame">${sig.name}</span>
       <span class="msgtag">${sig.messageName} ${fmtId(sig.realId||ascData.map[sig.messageKey]?.realId, sig.isExt||md?.isExt)}</span>
-      <span class="stat">采样 <b>${stats.count}</b></span>
-      ${has?`<span class="stat">min <b>${stats.min.toFixed(3)}</b></span><span class="stat">max <b>${stats.max.toFixed(3)}</b></span><span class="stat">σ <b>${stats.std.toFixed(3)}</b></span>`:''}
+      ${has?`<span class="stat">采样 <b>${stats.count}</b></span><span class="stat">min <b>${stats.min.toFixed(3)}</b></span><span class="stat">max <b>${stats.max.toFixed(3)}</b></span><span class="stat">σ <b>${stats.std.toFixed(3)}</b></span>`:'<span class="stat" style="color:var(--err)">无信号数据</span>'}
       <span class="spacer"></span>
-      <div class="yctrl">Y:<input type="number" class="ymin" placeholder="min"/><input type="number" class="ymax" placeholder="max"/><button class="fitY">Y轴自适应</button></div>`;
+      ${has?`<div class="yctrl">Y:<input type="number" class="ymin" placeholder="min"/><input type="number" class="ymax" placeholder="max"/><button class="fitY">Y轴自适应</button></div>`:''}`;
     card.appendChild(head);
-    const cd=el('div', has?'chart':'chart empty', has?'':(md?'该信号无可解码数据（DLC不足或位域越界）':'报文在ASC中未出现'));
+    const cd=el('div','chart');
     card.appendChild(cd);
     $('chartArea').appendChild(card);
     if(has){
@@ -686,6 +708,11 @@ function renderCharts(){
       head.querySelector('.ymax').addEventListener('change',applyBtn);
       head.querySelector('.ymin').value=stats.min.toFixed(3);
       head.querySelector('.ymax').value=stats.max.toFixed(3);
+    } else {
+      const chart=echarts.init(cd);
+      chart.setOption(makeEmptyOption(sig));
+      chart._sig=sig; chart._stats={count:0};
+      charts.push(chart);
     }
     setTimeout(next,0);
   }
