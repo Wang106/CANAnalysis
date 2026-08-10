@@ -86,6 +86,8 @@
   #contentTop .title{font-size:13px;color:var(--txt2);}
   #contentTop .spacer{flex:1;}
   #analysisWrap{flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden;}
+  #xaxisContainer{flex-shrink:0;padding:0 12px;margin-bottom:0;}
+  #xaxisContainer:empty{display:none;}
   #analysisBar{display:none;justify-content:flex-end;padding:4px 12px;border-top:1px solid var(--line);background:var(--panel);flex-shrink:0;}
   #analysisBar.show{display:flex;}
   #analysisPanel{padding:10px 14px;border-top:1px solid var(--line);background:#13161d;flex-shrink:0;max-height:30%;overflow-y:auto;}
@@ -109,8 +111,8 @@
   .issue.warn{border-color:#5a4a20;}
   .issue .tag{color:var(--accent);font-weight:600;}
 
-  #chartArea{padding:4px 12px 8px;flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;}
-  .chart-card{background:var(--panel);border:1px solid var(--line);border-top:none;border-radius:0;margin-bottom:0;overflow:hidden;display:flex;flex-direction:row;flex:1;min-height:0;}
+  #chartArea{padding:4px 12px 0;flex:1;min-height:0;display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;}
+  .chart-card{background:var(--panel);border:1px solid var(--line);border-top:none;border-radius:0;margin-bottom:0;overflow:hidden;display:flex;flex-direction:row;flex:1 1 130px;min-height:130px;}
   .chart-card:first-child{border-top:1px solid var(--line);border-radius:var(--radius) var(--radius) 0 0;}
   .chart-card:last-child{border-radius:0;}
   .xaxis-row{display:flex;flex-direction:row;background:var(--panel);border:1px solid var(--line);border-top:none;border-radius:0 0 var(--radius) var(--radius);overflow:hidden;flex-shrink:0;}
@@ -123,7 +125,7 @@
   .cc-side .stat{color:var(--txt2);font-size:10px;}
   .cc-side .stat b{color:var(--txt);}
   .cc-body{flex:1;min-width:0;display:flex;flex-direction:column;}
-  .chart{width:100%;flex:1;min-height:0;}
+  .chart{width:100%;height:100%;flex:1;min-height:0;}
   /* flash animation for valid clicks */
   @keyframes flash{0%{background:var(--accent);color:#04121f;}100%{}}
   .flash{animation:flash .35s ease;}
@@ -151,7 +153,7 @@
       <img src="icon.png" class="icon" alt="icon" />
       <div class="htitle-wrap">
         <span class="htitle">CAN报文解析</span>
-        <span class="hmodtime">修改于2026-8-10 08:22:48</span>
+        <span class="hmodtime">修改于2026-8-10 08:58:09</span>
       </div>
     </div>
     <div class="header-right">
@@ -175,7 +177,7 @@
       <button id="btnClearAll">清空</button>
       <span class="selstat">已选 <b id="selCount">0</b> · 共 <span id="totalCount">0</span> 个 <span style="color:var(--accent2)">●</span>=有数据</span>
       <span style="flex:1"></span>
-      <span id="help">滚轮在<b>底部横轴</b>=缩放横轴 · 滚轮在<b>纵轴</b>=缩放纵轴 · 滚轮在曲线区=滚动页面</span>
+      <span id="help">滚轮在<b>底部横轴</b>=缩放横轴 · 滚轮在<b>纵轴</b>=缩放纵轴 · 滚轮在曲线区=上下滚动</span>
       <button id="btnReset" disabled>重置缩放</button>
       <button id="btnStart" class="go" disabled>开始分析</button>
     </div>
@@ -208,6 +210,7 @@
     </div>
     <div id="analysisWrap">
       <div id="chartArea"></div>
+      <div id="xaxisContainer"></div>
       <div id="analysisBar"><button id="btnToggleAnalysis" disabled>隐藏分析</button></div>
       <div id="analysisPanel" class="hidden"></div>
     </div>
@@ -609,6 +612,7 @@ function disposeCharts(){
   if(xAxisChart){try{xAxisChart.dispose();}catch(e){} xAxisChart=null;}
   charts.forEach(c=>{try{c.dispose();}catch(e){}});
   charts=[]; $('chartArea').innerHTML='';
+  $('xaxisContainer').innerHTML='';
   $('gctrls').classList.remove('show');
   $('analysisBar').classList.remove('show');
   $('analysisPanel').classList.add('hidden');
@@ -631,7 +635,7 @@ function makeOption(series, sig, stats){
   const tMin=ascData.tMin, tMax=ascData.tMax;
   return {
     animation:false,
-    grid:{left:78,right:24,top:1,bottom:1},
+    grid:{left:78,right:8,top:0,bottom:0,containLabel:false},
     xAxis:{type:'value',min:tMin,max:tMax,
       axisLine:{show:false},
       axisLabel:{show:false},
@@ -660,7 +664,7 @@ function makeEmptyOption(sig){
   return {
     animation:false,
     title:{text:'无信号数据',left:'center',top:'middle',textStyle:{color:'#8b93a3',fontSize:14}},
-    grid:{left:78,right:24,top:1,bottom:1},
+    grid:{left:78,right:8,top:0,bottom:0,containLabel:false},
     xAxis:{type:'value',min:tMin,max:tMax,
       axisLine:{show:false},
       axisLabel:{show:false},
@@ -678,7 +682,7 @@ function makeXAxisOption(){
   const tMin=ascData.tMin, tMax=ascData.tMax;
   return {
     animation:false,
-    grid:{left:78,right:24,top:0,bottom:18},
+    grid:{left:78,right:8,top:0,bottom:18},
     xAxis:{type:'value',min:tMin,max:tMax,name:'时间',nameLocation:'middle',nameGap:12,
       axisLine:{lineStyle:{color:'#3a4150'}},
       axisLabel:{color:'#8b93a3',formatter:v=>v.toFixed(2)},
@@ -705,12 +709,12 @@ function renderCharts(){
       $('contentTitle').textContent=parts.join('，');
       $('gctrls').classList.add('show');
       $('analysisBar').classList.add('show');
-      // add shared x-axis row at bottom
+      // add shared x-axis row at bottom (outside scrollable chartArea)
       const xRow=el('div','xaxis-row');
       xRow.appendChild(el('div','xaxis-spacer'));
       const xCd=el('div','xaxis-chart');
       xRow.appendChild(xCd);
-      $('chartArea').appendChild(xRow);
+      $('xaxisContainer').appendChild(xRow);
       xAxisChart=echarts.init(xCd);
       xAxisChart.setOption(makeXAxisOption());
       setupSync();
@@ -804,11 +808,11 @@ function setupSync(){
       const mx=e.clientX-rect.left, my=e.clientY-rect.top;
       const w=rect.width, h=rect.height;
       const opt=src.getOption();
-      const grid=opt.grid||{left:78,right:24,top:1,bottom:1};
+      const grid=opt.grid||{left:78,right:8,top:0,bottom:0};
       const gL=typeof grid.left==='number'?grid.left:78;
-      const gR=typeof grid.right==='number'?grid.right:24;
-      const gT=typeof grid.top==='number'?grid.top:1;
-      const gB=typeof grid.bottom==='number'?grid.bottom:1;
+      const gR=typeof grid.right==='number'?grid.right:8;
+      const gT=typeof grid.top==='number'?grid.top:0;
+      const gB=typeof grid.bottom==='number'?grid.bottom:0;
       const onYAxis = mx <= gL && my >= gT && my <= (h-gB);
       if(!onYAxis) return; /* let page scroll */
       e.preventDefault();
@@ -839,9 +843,9 @@ function setupSync(){
       const mx=e.clientX-rect.left;
       const w=rect.width;
       const opt=xAxisChart.getOption();
-      const grid=opt.grid||{left:78,right:24};
+      const grid=opt.grid||{left:78,right:8};
       const gL=typeof grid.left==='number'?grid.left:78;
-      const gR=typeof grid.right==='number'?grid.right:24;
+      const gR=typeof grid.right==='number'?grid.right:8;
       const xAx=opt.xAxis[0];
       let lo=xAx.min, hi=xAx.max;
       if(lo==null||hi==null){ lo=ascData.tMin; hi=ascData.tMax; }
