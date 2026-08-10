@@ -81,8 +81,9 @@
   #contentTop{padding:8px 12px;border-bottom:1px solid var(--line);background:var(--panel);display:flex;align-items:center;gap:10px;min-height:42px;}
   #contentTop .title{font-size:13px;color:var(--txt2);}
   #analysisWrap{flex:1;overflow-y:auto;}
-  #analysisPanel{padding:10px 14px;border-top:1px solid var(--line);background:#13161d;}
+  #analysisPanel{padding:10px 14px;border-top:1px solid var(--line);background:#13161d;position:relative;}
   #analysisPanel.hidden{display:none;}
+  #analysisPanel .panel-toggle{position:absolute;top:6px;right:10px;font-size:12px;}
   .a-summary{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;}
   .chip{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:5px 10px;font-size:12px;}
   .chip b{color:var(--accent);font-weight:600;}
@@ -153,6 +154,7 @@
       <button id="btnSelectAll">全选</button>
       <button id="btnClearAll">清空</button>
       <span class="selstat">已选 <b id="selCount">0</b> · 共 <span id="totalCount">0</span> 个 <span style="color:var(--accent2)">●</span>=有数据</span>
+      <span class="renderstat" id="renderStat" style="font-size:12px;color:var(--accent2);display:none;"></span>
       <span style="flex:1"></span>
       <span id="help">滚轮=<b>横轴缩放</b> · Shift+滚轮=<b class="g">纵轴缩放</b></span>
       <button id="btnReset" disabled>重置缩放</button>
@@ -178,12 +180,10 @@
   <div id="content">
     <div id="contentTop">
       <div class="title" id="contentTitle">加载 DBC 与 ASC 文件后，选择信号并开始分析</div>
-      <span style="flex:1"></span>
-      <button id="btnToggleAnalysis" disabled>显示分析</button>
     </div>
     <div id="analysisWrap">
       <div id="chartArea"></div>
-      <div id="analysisPanel" class="hidden"></div>
+      <div id="analysisPanel" class="hidden"><button class="panel-toggle" id="btnToggleAnalysis" disabled>隐藏分析</button></div>
     </div>
   </div>
 </div>
@@ -622,11 +622,15 @@ function renderCharts(){
   const sigs=selectedSignals();
   if(!sigs.length){ $('contentTitle').textContent='请选择至少一个信号'; return; }
   $('contentTitle').textContent=`正在渲染 ${sigs.length} 条曲线…`;
+  $('renderStat').style.display='none';
   // render in chunks to avoid blocking
   let idx=0;
   function next(){
     if(idx>=sigs.length){
-      $('contentTitle').textContent=`已渲染 ${sigs.length} 条曲线（滚轮缩放横轴，Shift+滚轮缩放纵轴）`;
+      $('contentTitle').textContent=`已渲染 ${sigs.length} 条曲线`;
+      const rs=$('renderStat');
+      rs.textContent=`已渲染 ${sigs.length} 条曲线`;
+      rs.style.display='inline';
       setupSync();
       $('btnReset').disabled=false;
       $('btnToggleAnalysis').disabled=false;
@@ -786,8 +790,16 @@ function renderAnalysis(sigs){
     html+=`<div style="font-size:12px;color:var(--accent2);margin-top:4px;">✓ 未检测到明显异常</div>`;
   }
   panel.innerHTML=html;
+  /* 重新插入右上角切换按钮（innerHTML 覆盖了静态按钮） */
+  const tg=document.createElement('button');
+  tg.className='panel-toggle'; tg.id='btnToggleAnalysis'; tg.textContent='隐藏分析';
+  tg.addEventListener('click',()=>{
+    const p=$('analysisPanel');
+    const hidden=p.classList.toggle('hidden');
+    tg.textContent=hidden?'显示分析':'隐藏分析';
+  });
+  panel.appendChild(tg);
   panel.classList.remove('hidden');
-  $('btnToggleAnalysis').textContent='隐藏分析';
 }
 
 /* ---------- wire up UI ---------- */
@@ -848,18 +860,18 @@ $('btnStart').onclick=()=>{
   setTimeout(()=>{ charts.forEach(c=>c.resize()); }, 400);
 };
 $('btnReset').onclick=resetZoom;
+/* 信号选择按钮：1s 节流，防止连续点击卡顿 */
+let sigToggleLast=0;
 $('sigToggle').onclick=()=>{
+  const now=Date.now();
+  if(now - sigToggleLast < 1000) return;
+  sigToggleLast=now;
   const bar=$('sigBar');
   const expanded=bar.classList.contains('expanded');
   bar.classList.toggle('expanded', !expanded);
   bar.classList.toggle('collapsed', expanded);
   // resize charts after transition
   setTimeout(()=>{ charts.forEach(c=>c.resize()); }, 250);
-};
-$('btnToggleAnalysis').onclick=()=>{
-  const p=$('analysisPanel');
-  const hidden=p.classList.toggle('hidden');
-  $('btnToggleAnalysis').textContent=hidden?'显示分析':'隐藏分析';
 };
 window.addEventListener('resize',()=>{ charts.forEach(c=>c.resize()); });
 
