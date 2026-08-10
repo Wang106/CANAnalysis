@@ -86,7 +86,7 @@
   #analysisWrap{flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden;}
   #analysisBar{display:none;justify-content:flex-end;padding:4px 12px;border-top:1px solid var(--line);background:var(--panel);flex-shrink:0;}
   #analysisBar.show{display:flex;}
-  #analysisPanel{padding:10px 14px;border-top:1px solid var(--line);background:#13161d;}
+  #analysisPanel{padding:10px 14px;border-top:1px solid var(--line);background:#13161d;flex-shrink:0;max-height:30%;overflow-y:auto;}
   #analysisPanel.hidden{display:none;}
   /* global chart controls in sig-bar-head */
   .gctrls{display:none;align-items:center;gap:5px;font-size:11px;}
@@ -117,8 +117,8 @@
   .cc-side:hover .msgtip{display:block;}
   .cc-side .stat{color:var(--txt2);font-size:10px;}
   .cc-side .stat b{color:var(--txt);}
-  .cc-body{flex:1;min-width:0;display:flex;}
-  .chart{width:100%;flex:1;}
+  .cc-body{flex:1;min-width:0;display:flex;flex-direction:column;}
+  .chart{width:100%;flex:1;min-height:0;}
   /* flash animation for valid clicks */
   @keyframes flash{0%{background:var(--accent);color:#04121f;}100%{}}
   .flash{animation:flash .35s ease;}
@@ -679,7 +679,8 @@ function renderCharts(){
       setupSync();
       $('btnReset').disabled=false;
       $('btnToggleAnalysis').disabled=false;
-      setTimeout(()=>{ charts.forEach(c=>c.resize()); }, 50);
+      setTimeout(()=>{ charts.forEach(c=>c.resize()); }, 100);
+      setTimeout(()=>{ charts.forEach(c=>c.resize()); }, 300);
       return;
     }
     const sig=sigs[idx]; idx++;
