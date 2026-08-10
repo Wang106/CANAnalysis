@@ -83,7 +83,7 @@
   #contentTop{padding:8px 12px;border-bottom:1px solid var(--line);background:var(--panel);display:flex;align-items:center;gap:10px;min-height:42px;}
   #contentTop .title{font-size:13px;color:var(--txt2);}
   #contentTop .spacer{flex:1;}
-  #analysisWrap{flex:1;overflow-y:auto;}
+  #analysisWrap{flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden;}
   #analysisBar{display:none;justify-content:flex-end;padding:4px 12px;border-top:1px solid var(--line);background:var(--panel);flex-shrink:0;}
   #analysisBar.show{display:flex;}
   #analysisPanel{padding:10px 14px;border-top:1px solid var(--line);background:#13161d;}
@@ -107,19 +107,21 @@
   .issue.warn{border-color:#5a4a20;}
   .issue .tag{color:var(--accent);font-weight:600;}
 
-  #chartArea{padding:4px 12px 8px;}
-  .chart-card{background:var(--panel);border:1px solid var(--line);border-radius:0;margin-bottom:0;overflow:hidden;display:flex;flex-direction:row;}
-  .chart-card:first-child{border-radius:var(--radius) var(--radius) 0 0;}
+  #chartArea{padding:4px 12px 8px;flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;}
+  .chart-card{background:var(--panel);border:1px solid var(--line);border-top:none;border-radius:0;margin-bottom:0;overflow:hidden;display:flex;flex-direction:row;flex:1;min-height:0;}
+  .chart-card:first-child{border-top:1px solid var(--line);border-radius:var(--radius) var(--radius) 0 0;}
   .chart-card:last-child{border-radius:0 0 var(--radius) var(--radius);}
-  .cc-side{width:130px;flex-shrink:0;padding:6px 8px;border-right:1px solid var(--line);background:var(--panel2);display:flex;flex-direction:column;gap:3px;font-size:11px;overflow:hidden;}
-  .cc-side .signame{font-weight:600;font-size:13px;color:var(--txt);word-break:break-all;}
-  .cc-side .msgtag{font-size:10px;color:var(--txt2);word-break:break-all;}
-  .cc-side .stat{color:var(--txt2);}
+  .cc-side{width:120px;flex-shrink:0;padding:4px 6px;border-right:1px solid var(--line);background:var(--panel2);display:flex;flex-direction:column;gap:2px;font-size:11px;overflow:hidden;justify-content:center;position:relative;}
+  .cc-side .signame{font-weight:600;font-size:12px;color:var(--txt);word-break:break-all;cursor:help;}
+  .cc-side .msgtip{display:none;position:absolute;left:100%;top:0;z-index:20;background:#0f1115;border:1px solid var(--accent);border-radius:4px;padding:5px 8px;font-size:11px;color:var(--txt2);white-space:nowrap;pointer-events:none;}
+  .cc-side:hover .msgtip{display:block;}
+  .cc-side .stat{color:var(--txt2);font-size:10px;}
   .cc-side .stat b{color:var(--txt);}
-  .cc-side .yctrl{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--txt2);margin-top:2px;}
-  .cc-side .yctrl input{width:48px;padding:2px 4px;font-size:10px;}
-  .cc-body{flex:1;min-width:0;}
-  .chart{width:100%;height:180px;}
+  .cc-body{flex:1;min-width:0;display:flex;}
+  .chart{width:100%;flex:1;}
+  /* flash animation for valid clicks */
+  @keyframes flash{0%{background:var(--accent);color:#04121f;}100%{}}
+  .flash{animation:flash .35s ease;}
 
   #dropZone{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:50;}
   #dropZone.show{display:flex;}
@@ -191,9 +193,6 @@
       <div class="title" id="contentTitle">加载 DBC 与 ASC 文件后，选择信号并开始分析</div>
       <span class="spacer"></span>
       <span class="gctrls" id="gctrls">
-        <span class="glbl">X:</span>
-        <input type="number" id="gXmin" placeholder="min"/>
-        <input type="number" id="gXmax" placeholder="max"/>
         <button id="gFitX">X轴自适应</button>
         <button id="gFitY">Y轴自适应</button>
         <button id="gDots">圆点</button>
@@ -622,11 +621,11 @@ function makeOption(series, sig, stats, isLast){
   const tMin=ascData.tMin, tMax=ascData.tMax;
   return {
     animation:false,
-    grid:{left:78,right:24,top:8,bottom:isLast?34:4},
+    grid:{left:78,right:24,top:8,bottom:34},
     xAxis:{type:'value',min:tMin,max:tMax,name:isLast?'时间':'',nameLocation:'middle',nameGap:24,
       axisLine:{lineStyle:{color:'#3a4150'}},
       axisLabel:{color:'#8b93a3',formatter:v=>v.toFixed(2),show:isLast},
-      splitLine:{lineStyle:{color:'#222732'}}},
+      splitLine:{lineStyle:{color:'#222732',show:isLast}}},
     yAxis:{type:'value',name:sig.unit||'',nameTextStyle:{color:'#8b93a3'},
       axisLine:{lineStyle:{color:'#3a4150'}},axisLabel:{color:'#8b93a3'},
       splitLine:{lineStyle:{color:'#222732'}}},
@@ -649,11 +648,11 @@ function makeEmptyOption(sig, isLast){
   return {
     animation:false,
     title:{text:'无信号数据',left:'center',top:'middle',textStyle:{color:'#8b93a3',fontSize:14}},
-    grid:{left:78,right:24,top:8,bottom:isLast?34:4},
+    grid:{left:78,right:24,top:8,bottom:34},
     xAxis:{type:'value',min:tMin,max:tMax,name:isLast?'时间':'',nameLocation:'middle',nameGap:24,
       axisLine:{lineStyle:{color:'#3a4150'}},
       axisLabel:{color:'#8b93a3',formatter:v=>v.toFixed(2),show:isLast},
-      splitLine:{lineStyle:{color:'#222732'}}},
+      splitLine:{lineStyle:{color:'#222732',show:isLast}}},
     yAxis:{type:'value',name:sig.unit||'',nameTextStyle:{color:'#8b93a3'},
       axisLine:{lineStyle:{color:'#3a4150'}},axisLabel:{color:'#8b93a3'},
       splitLine:{lineStyle:{color:'#222732'}}},
@@ -680,6 +679,7 @@ function renderCharts(){
       setupSync();
       $('btnReset').disabled=false;
       $('btnToggleAnalysis').disabled=false;
+      setTimeout(()=>{ charts.forEach(c=>c.resize()); }, 50);
       return;
     }
     const sig=sigs[idx]; idx++;
@@ -689,14 +689,11 @@ function renderCharts(){
     const card=el('div','chart-card');
     const side=el('div','cc-side');
     const has = series.length>0;
-    const md = ascData.map[sig.messageKey];
     const realId=sig.messageId & 0x1FFFFFFF;
     const isExt=(sig.messageId & 0x80000000)!==0;
     side.innerHTML = `
-      <span class="signame">${sig.name}</span>
-      <span class="msgtag">${sig.messageName} ${fmtId(realId, isExt)}</span>
-      ${has?`<span class="stat">min <b>${stats.min.toFixed(3)}</b></span><span class="stat">max <b>${stats.max.toFixed(3)}</b></span>`:'<span class="stat" style="color:var(--err)">无信号数据</span>'}
-      ${has?`<div class="yctrl">Y:<input type="number" class="ymin" placeholder="min"/><input type="number" class="ymax" placeholder="max"/><button class="fitY">自适应</button></div>`:''}`;
+      <span class="signame">${sig.name}<span class="msgtip">${sig.messageName} ${fmtId(realId, isExt)}</span></span>
+      ${has?`<span class="stat">min <b>${stats.min.toFixed(3)}</b></span><span class="stat">max <b>${stats.max.toFixed(3)}</b></span>`:'<span class="stat" style="color:var(--err)">无信号数据</span>'}`;
     const body=el('div','cc-body');
     const cd=el('div','chart');
     body.appendChild(cd);
@@ -708,14 +705,6 @@ function renderCharts(){
       chart.setOption(makeOption(series,sig,stats,isLast));
       chart._series=series; chart._sig=sig; chart._stats=stats;
       charts.push(chart);
-      side.querySelector('.fitY').addEventListener('click',()=>fitY(chart));
-      const applyBtn=()=>{ const mn=parseFloat(side.querySelector('.ymin').value); const mx=parseFloat(side.querySelector('.ymax').value);
-        const yopt={}; if(isFinite(mn))yopt.min=mn; if(isFinite(mx))yopt.max=mx;
-        chart.setOption({yAxis:yopt}); };
-      side.querySelector('.ymin').addEventListener('change',applyBtn);
-      side.querySelector('.ymax').addEventListener('change',applyBtn);
-      side.querySelector('.ymin').value=stats.min.toFixed(3);
-      side.querySelector('.ymax').value=stats.max.toFixed(3);
     } else {
       emptyCount++;
       const chart=echarts.init(cd);
@@ -729,35 +718,19 @@ function renderCharts(){
   renderAnalysis(sigs);
 }
 
-/* y auto-fit: 使用信号的全局最大最小值，并重置yZoom */
+/* y auto-fit: 使用信号的全局最大最小值 */
 function fitY(chart){
   const stats=chart._stats;
   if(!stats || stats.count===0) return;
   let ymin=stats.min, ymax=stats.max;
   if(ymin===ymax){ ymin-=1; ymax+=1; }
   chart.setOption({yAxis:{min:ymin,max:ymax}});
-  chart.dispatchAction({type:'dataZoom',dataZoomId:'yZoom',start:0,end:100});
 }
 function fitAllY(){ charts.forEach(c=>fitY(c)); }
 
 /* sync x-axis across charts + custom wheel zoom on axes */
 function setupSync(){
-  lastX={start:0,end:100};
   charts.forEach(src=>{
-    src.on('dataZoom',()=>{
-      if(syncing) return;
-      const opt=src.getOption();
-      const xdz=opt.dataZoom.find(d=>d.id==='xZoom')||opt.dataZoom[0];
-      const s=xdz.start, e=xdz.end;
-      if(s===lastX.start && e===lastX.end) return;
-      lastX={start:s,end:e};
-      syncing=true;
-      charts.forEach(dst=>{
-        if(dst===src) return;
-        dst.dispatchAction({type:'dataZoom',dataZoomId:'xZoom',start:s,end:e});
-      });
-      syncing=false;
-    });
     /* custom wheel: X axis area → X zoom (synced), Y axis area → Y zoom (per chart), body → page scroll */
     const dom=src.getDom();
     dom.addEventListener('wheel',(e)=>{
@@ -774,35 +747,34 @@ function setupSync(){
       const onYAxis = mx <= gL && my >= gT && my <= (h-gB);
       if(!onXAxis && !onYAxis) return; /* let page scroll */
       e.preventDefault();
-      const factor = e.deltaY > 0 ? 1.15 : 0.87;
+      const factor = e.deltaY > 0 ? 1.2 : 0.83;
       if(onXAxis){
-        const xdz=opt.dataZoom.find(d=>d.id==='xZoom')||opt.dataZoom[0];
-        let s=xdz.start, en=xdz.end;
-        const center=(s+en)/2;
-        let nr=Math.max(0.1, Math.min(100, (en-s)*factor));
-        let ns=center-nr/2, ne=center+nr/2;
-        if(ns<0){ ne+=-ns; ns=0; }
-        if(ne>100){ ns-=(ne-100); ne=100; }
-        src.dispatchAction({type:'dataZoom',dataZoomId:'xZoom',start:ns,end:ne});
+        const xAx=opt.xAxis[0];
+        let lo=xAx.min, hi=xAx.max;
+        if(lo==null||hi==null){ lo=ascData.tMin; hi=ascData.tMax; }
+        const center=(lo+hi)/2;
+        const range=(hi-lo)*factor;
+        const nLo=center-range/2, nHi=center+range/2;
+        charts.forEach(c=>c.setOption({xAxis:{min:nLo,max:nHi}}));
       } else {
-        const ydz=opt.dataZoom.find(d=>d.id==='yZoom');
-        if(!ydz) return;
-        let s=ydz.start, en=ydz.end;
-        const center=(s+en)/2;
-        let nr=Math.max(0.1, Math.min(100, (en-s)*factor));
-        let ns=center-nr/2, ne=center+nr/2;
-        if(ns<0){ ne+=-ns; ns=0; }
-        if(ne>100){ ns-=(ne-100); ne=100; }
-        src.dispatchAction({type:'dataZoom',dataZoomId:'yZoom',start:ns,end:ne});
+        const yAx=opt.yAxis[0];
+        let lo=yAx.min, hi=yAx.max;
+        if(lo==null||hi==null){
+          const st=src._stats;
+          if(st&&st.count>0){ lo=st.min; hi=st.max; } else { lo=-1; hi=1; }
+        }
+        if(lo===hi){ lo-=1; hi+=1; }
+        const center=(lo+hi)/2;
+        const range=(hi-lo)*factor;
+        const nLo=center-range/2, nHi=center+range/2;
+        src.setOption({yAxis:{min:nLo,max:nHi}});
       }
     },{passive:false});
   });
 }
 function resetZoom(){
-  syncing=true;
-  charts.forEach(c=>c.dispatchAction({type:'dataZoom',dataZoomId:'xZoom',start:0,end:100}));
-  syncing=false;
-  lastX={start:0,end:100};
+  const tMin=ascData.tMin, tMax=ascData.tMax;
+  charts.forEach(c=>c.setOption({xAxis:{min:tMin,max:tMax}}));
 }
 
 /* ---------- analysis panel ---------- */
@@ -931,17 +903,22 @@ $('btnStart').onclick=()=>{
   setTimeout(()=>{ charts.forEach(c=>c.resize()); }, 400);
 };
 $('btnReset').onclick=resetZoom;
-/* 信号选择按钮：1s 节流，防止连续点击卡顿 */
+/* 信号选择按钮：1s 节流 + 闪烁提示 */
 let sigToggleLast=0;
+function flashEl(el){
+  el.classList.remove('flash');
+  void el.offsetWidth;
+  el.classList.add('flash');
+}
 $('sigToggle').onclick=()=>{
   const now=Date.now();
   if(now - sigToggleLast < 1000) return;
   sigToggleLast=now;
+  flashEl($('sigToggle'));
   const bar=$('sigBar');
   const expanded=bar.classList.contains('expanded');
   bar.classList.toggle('expanded', !expanded);
   bar.classList.toggle('collapsed', expanded);
-  // resize charts after transition
   setTimeout(()=>{ charts.forEach(c=>c.resize()); }, 250);
 };
 /* 分析面板显示/隐藏切换 */
@@ -950,9 +927,14 @@ $('btnToggleAnalysis').onclick=()=>{
   const hidden=p.classList.toggle('hidden');
   $('btnToggleAnalysis').textContent=hidden?'显示分析':'隐藏分析';
 };
-/* 全局控制：圆点切换 */
+/* 全局控制：圆点切换（1s 节流 + 闪烁） */
+let gDotsLast=0;
 $('gDots').onclick=()=>{
+  const now=Date.now();
+  if(now - gDotsLast < 1000) return;
+  gDotsLast=now;
   const btn=$('gDots');
+  flashEl(btn);
   const on=btn.classList.toggle('active');
   charts.forEach(c=>c.setOption({series:[{showSymbol:on,symbolSize:on?4:0}]}));
 };
@@ -960,15 +942,6 @@ $('gDots').onclick=()=>{
 $('gFitX').onclick=resetZoom;
 /* 全局控制：Y轴自适应 */
 $('gFitY').onclick=fitAllY;
-/* 全局控制：X范围统一设置 */
-const applyGlobalX=()=>{
-  const mn=parseFloat($('gXmin').value);
-  const mx=parseFloat($('gXmax').value);
-  const xopt={}; if(isFinite(mn))xopt.min=mn; if(isFinite(mx))xopt.max=mx;
-  charts.forEach(c=>c.setOption({xAxis:xopt}));
-};
-$('gXmin').addEventListener('change',applyGlobalX);
-$('gXmax').addEventListener('change',applyGlobalX);
 window.addEventListener('resize',()=>{ charts.forEach(c=>c.resize()); });
 
 // init
