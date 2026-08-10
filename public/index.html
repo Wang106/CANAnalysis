@@ -105,6 +105,8 @@
   .cc-head .spacer{flex:1;}
   .cc-head .yctrl{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--txt2);}
   .cc-head .yctrl input{width:62px;padding:3px 5px;font-size:11px;}
+  .cc-head .toggleDots{padding:3px 10px;font-size:11px;}
+  .cc-head .toggleDots.active{background:var(--accent);border-color:var(--accent);color:#04121f;}
   .chart{width:100%;height:230px;}
   .chart.empty{height:60px;display:flex;align-items:center;justify-content:center;color:var(--err);font-size:13px;}
 
@@ -594,9 +596,10 @@ function makeOption(series, sig, stats){
     ],
     tooltip:{trigger:'axis',axisPointer:{type:'line',lineStyle:{color:'#4a9eff'}},formatter:buildTooltip(sig)},
     series:[{
-      type:'line',data:series,name:sig.name,showSymbol:false,
+      type:'line',data:series,name:sig.name,showSymbol:true,symbol:'circle',symbolSize:4,
       large:true,progressive:3000,sampling:'lttb',
-      lineStyle:{width:1.2,color:'#4a9eff'},itemStyle:{color:'#4a9eff'},
+      lineStyle:{width:1.2,color:'#4a9eff'},
+      itemStyle:{color:'#4a9eff',borderColor:'#4a9eff'},
       emphasis:{disabled:true}
     }]
   };
@@ -629,7 +632,8 @@ function renderCharts(){
       <span class="stat">采样 <b>${stats.count}</b></span>
       ${has?`<span class="stat">min <b>${stats.min.toFixed(3)}</b></span><span class="stat">max <b>${stats.max.toFixed(3)}</b></span><span class="stat">均值 <b>${stats.mean.toFixed(3)}</b></span><span class="stat">σ <b>${stats.std.toFixed(3)}</b></span>`:''}
       <span class="spacer"></span>
-      <div class="yctrl">Y:<input type="number" class="ymin" placeholder="min"/><input type="number" class="ymax" placeholder="max"/><button class="fitY">自适应</button></div>`;
+      <div class="yctrl">Y:<input type="number" class="ymin" placeholder="min"/><input type="number" class="ymax" placeholder="max"/><button class="fitY">自适应</button></div>
+      <button class="toggleDots active">圆点</button>`;
     card.appendChild(head);
     const cd=el('div', has?'chart':'chart empty', has?'':(md?'该信号无可解码数据（DLC不足或位域越界）':'报文在ASC中未出现'));
     card.appendChild(cd);
@@ -647,6 +651,11 @@ function renderCharts(){
       head.querySelector('.ymax').addEventListener('change',applyBtn);
       head.querySelector('.ymin').value=stats.min.toFixed(3);
       head.querySelector('.ymax').value=stats.max.toFixed(3);
+      head.querySelector('.toggleDots').addEventListener('click',e=>{
+        const btn=e.target;
+        const on=btn.classList.toggle('active');
+        chart.setOption({series:[{showSymbol:on,symbolSize:on?4:0}]});
+      });
     }
     setTimeout(next,0);
   }
