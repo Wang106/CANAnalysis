@@ -32,7 +32,9 @@
   #header{background:var(--panel);border-bottom:1px solid var(--line);padding:8px 16px;flex-shrink:0;display:flex;align-items:center;gap:20px;}
   .header-left{display:flex;align-items:center;gap:12px;flex-shrink:0;}
   .header-left .icon{width:38px;height:38px;border-radius:50%;object-fit:cover;background:#fff;flex-shrink:0;box-shadow:0 0 0 2px var(--line);}
-  .header-left .htitle{font-weight:700;font-size:18px;letter-spacing:1px;white-space:nowrap;}
+  .header-left .htitle-wrap{display:flex;flex-direction:column;gap:1px;}
+  .header-left .htitle{font-weight:700;font-size:18px;letter-spacing:1px;white-space:nowrap;line-height:1.2;}
+  .header-left .hmodtime{font-size:10px;color:var(--txt2);white-space:nowrap;line-height:1.1;}
   .header-right{display:flex;flex-direction:column;gap:5px;flex:1;min-width:0;}
   .file-row{display:flex;align-items:center;gap:8px;}
   .file-row .finput{flex:1;background:var(--panel2);border:1px solid var(--line);color:var(--txt2);border-radius:6px;padding:5px 10px;font-size:12px;font-family:inherit;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
@@ -110,7 +112,10 @@
   #chartArea{padding:4px 12px 8px;flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;}
   .chart-card{background:var(--panel);border:1px solid var(--line);border-top:none;border-radius:0;margin-bottom:0;overflow:hidden;display:flex;flex-direction:row;flex:1;min-height:0;}
   .chart-card:first-child{border-top:1px solid var(--line);border-radius:var(--radius) var(--radius) 0 0;}
-  .chart-card:last-child{border-radius:0 0 var(--radius) var(--radius);}
+  .chart-card:last-child{border-radius:0;}
+  .xaxis-row{display:flex;flex-direction:row;background:var(--panel);border:1px solid var(--line);border-top:none;border-radius:0 0 var(--radius) var(--radius);overflow:hidden;flex-shrink:0;}
+  .xaxis-row .xaxis-spacer{width:120px;flex-shrink:0;background:var(--panel2);border-right:1px solid var(--line);}
+  .xaxis-row .xaxis-chart{flex:1;min-width:0;height:28px;}
   .cc-side{width:120px;flex-shrink:0;padding:4px 6px;border-right:1px solid var(--line);background:var(--panel2);display:flex;flex-direction:column;gap:2px;font-size:11px;overflow:hidden;justify-content:center;position:relative;}
   .cc-side .signame{font-weight:600;font-size:12px;color:var(--txt);word-break:break-all;cursor:help;}
   .cc-side .msgtip{display:none;position:absolute;left:100%;top:0;z-index:20;background:#0f1115;border:1px solid var(--accent);border-radius:4px;padding:5px 8px;font-size:11px;color:var(--txt2);white-space:nowrap;pointer-events:none;}
@@ -144,7 +149,10 @@
   <div id="header">
     <div class="header-left">
       <img src="icon.png" class="icon" alt="icon" />
-      <span class="htitle">CAN报文解析</span>
+      <div class="htitle-wrap">
+        <span class="htitle">CAN报文解析</span>
+        <span class="hmodtime">修改于2026-8-10 08:22:48</span>
+      </div>
     </div>
     <div class="header-right">
       <div class="file-row">
@@ -167,7 +175,7 @@
       <button id="btnClearAll">清空</button>
       <span class="selstat">已选 <b id="selCount">0</b> · 共 <span id="totalCount">0</span> 个 <span style="color:var(--accent2)">●</span>=有数据</span>
       <span style="flex:1"></span>
-      <span id="help">滚轮在<b>横轴</b>=缩放横轴 · 滚轮在<b>纵轴</b>=缩放纵轴 · 滚轮在曲线区=滚动页面</span>
+      <span id="help">滚轮在<b>底部横轴</b>=缩放横轴 · 滚轮在<b>纵轴</b>=缩放纵轴 · 滚轮在曲线区=滚动页面</span>
       <button id="btnReset" disabled>重置缩放</button>
       <button id="btnStart" class="go" disabled>开始分析</button>
     </div>
@@ -230,6 +238,7 @@ const el = (tag, cls, html) => { const e=document.createElement(tag); if(cls)e.c
 let dbcData = null;     // {messages, signals}
 let ascData = null;     // {map, totalMessages, tMin, tMax, unknownIds, idOrder}
 let charts = [];        // echarts instances
+let xAxisChart = null;  // shared x-axis chart at bottom
 let syncing = false;
 let lastX = {start:0, end:100};
 
@@ -597,6 +606,7 @@ function selectedSignals(){
 
 /* ---------- chart rendering ---------- */
 function disposeCharts(){
+  if(xAxisChart){try{xAxisChart.dispose();}catch(e){} xAxisChart=null;}
   charts.forEach(c=>{try{c.dispose();}catch(e){}});
   charts=[]; $('chartArea').innerHTML='';
   $('gctrls').classList.remove('show');
@@ -617,15 +627,16 @@ function buildTooltip(sig){
     return `<div style="font-size:12px">t = ${t.toFixed(4)} s<br/>${sig.name} = <b>${typeof v==='number'?v.toFixed(4):v}</b> ${sig.unit}${extra}</div>`;
   };
 }
-function makeOption(series, sig, stats, isLast){
+function makeOption(series, sig, stats){
   const tMin=ascData.tMin, tMax=ascData.tMax;
   return {
     animation:false,
-    grid:{left:78,right:24,top:8,bottom:34},
-    xAxis:{type:'value',min:tMin,max:tMax,name:isLast?'时间':'',nameLocation:'middle',nameGap:24,
-      axisLine:{lineStyle:{color:'#3a4150'}},
-      axisLabel:{color:'#8b93a3',formatter:v=>v.toFixed(2),show:isLast},
-      splitLine:{lineStyle:{color:'#222732',show:isLast}}},
+    grid:{left:78,right:24,top:1,bottom:1},
+    xAxis:{type:'value',min:tMin,max:tMax,
+      axisLine:{show:false},
+      axisLabel:{show:false},
+      axisTick:{show:false},
+      splitLine:{show:false}},
     yAxis:{type:'value',name:sig.unit||'',nameTextStyle:{color:'#8b93a3'},
       axisLine:{lineStyle:{color:'#3a4150'}},axisLabel:{color:'#8b93a3'},
       splitLine:{lineStyle:{color:'#222732'}}},
@@ -644,21 +655,38 @@ function makeOption(series, sig, stats, isLast){
     }]
   };
 }
-function makeEmptyOption(sig, isLast){
+function makeEmptyOption(sig){
   const tMin=ascData.tMin, tMax=ascData.tMax;
   return {
     animation:false,
     title:{text:'无信号数据',left:'center',top:'middle',textStyle:{color:'#8b93a3',fontSize:14}},
-    grid:{left:78,right:24,top:8,bottom:34},
-    xAxis:{type:'value',min:tMin,max:tMax,name:isLast?'时间':'',nameLocation:'middle',nameGap:24,
-      axisLine:{lineStyle:{color:'#3a4150'}},
-      axisLabel:{color:'#8b93a3',formatter:v=>v.toFixed(2),show:isLast},
-      splitLine:{lineStyle:{color:'#222732',show:isLast}}},
+    grid:{left:78,right:24,top:1,bottom:1},
+    xAxis:{type:'value',min:tMin,max:tMax,
+      axisLine:{show:false},
+      axisLabel:{show:false},
+      axisTick:{show:false},
+      splitLine:{show:false}},
     yAxis:{type:'value',name:sig.unit||'',nameTextStyle:{color:'#8b93a3'},
       axisLine:{lineStyle:{color:'#3a4150'}},axisLabel:{color:'#8b93a3'},
       splitLine:{lineStyle:{color:'#222732'}}},
     dataZoom:[
       {id:'xZoom',type:'inside',xAxisIndex:0,zoomOnMouseWheel:false,moveOnMouseWheel:false,moveOnMouseMove:true,moveOnMouseUp:true,filterMode:'filter'}
+    ]
+  };
+}
+function makeXAxisOption(){
+  const tMin=ascData.tMin, tMax=ascData.tMax;
+  return {
+    animation:false,
+    grid:{left:78,right:24,top:0,bottom:18},
+    xAxis:{type:'value',min:tMin,max:tMax,name:'时间',nameLocation:'middle',nameGap:12,
+      axisLine:{lineStyle:{color:'#3a4150'}},
+      axisLabel:{color:'#8b93a3',formatter:v=>v.toFixed(2)},
+      axisTick:{lineStyle:{color:'#3a4150'}},
+      splitLine:{show:false}},
+    yAxis:{type:'value',show:false,min:0,max:1},
+    dataZoom:[
+      {id:'xZoom',type:'inside',xAxisIndex:0,zoomOnMouseWheel:false,moveOnMouseWheel:false,moveOnMouseMove:true,moveOnMouseUp:true,filterMode:'none'}
     ]
   };
 }
@@ -677,17 +705,24 @@ function renderCharts(){
       $('contentTitle').textContent=parts.join('，');
       $('gctrls').classList.add('show');
       $('analysisBar').classList.add('show');
+      // add shared x-axis row at bottom
+      const xRow=el('div','xaxis-row');
+      xRow.appendChild(el('div','xaxis-spacer'));
+      const xCd=el('div','xaxis-chart');
+      xRow.appendChild(xCd);
+      $('chartArea').appendChild(xRow);
+      xAxisChart=echarts.init(xCd);
+      xAxisChart.setOption(makeXAxisOption());
       setupSync();
       $('btnReset').disabled=false;
       $('btnToggleAnalysis').disabled=false;
-      setTimeout(()=>{ charts.forEach(c=>c.resize()); }, 100);
-      setTimeout(()=>{ charts.forEach(c=>c.resize()); }, 300);
+      setTimeout(()=>{ charts.forEach(c=>c.resize()); if(xAxisChart)xAxisChart.resize(); }, 100);
+      setTimeout(()=>{ charts.forEach(c=>c.resize()); if(xAxisChart)xAxisChart.resize(); }, 300);
       return;
     }
     const sig=sigs[idx]; idx++;
     const series=buildSeries(sig);
     const stats=computeStats(series,sig);
-    const isLast = idx===sigs.length;
     const card=el('div','chart-card');
     const side=el('div','cc-side');
     const has = series.length>0;
@@ -704,13 +739,13 @@ function renderCharts(){
     if(has){
       renderCount++;
       const chart=echarts.init(cd);
-      chart.setOption(makeOption(series,sig,stats,isLast));
+      chart.setOption(makeOption(series,sig,stats));
       chart._series=series; chart._sig=sig; chart._stats=stats;
       charts.push(chart);
     } else {
       emptyCount++;
       const chart=echarts.init(cd);
-      chart.setOption(makeEmptyOption(sig,isLast));
+      chart.setOption(makeEmptyOption(sig));
       chart._sig=sig; chart._stats={count:0};
       charts.push(chart);
     }
@@ -756,59 +791,73 @@ function fitY(chart){
 function fitAllY(){ charts.forEach(c=>fitY(c)); }
 
 /* sync x-axis across charts + custom wheel zoom on axes */
+function syncXAxis(nLo, nHi){
+  charts.forEach(c=>c.setOption({xAxis:{min:nLo,max:nHi}}));
+  if(xAxisChart) xAxisChart.setOption({xAxis:{min:nLo,max:nHi}});
+}
 function setupSync(){
   charts.forEach(src=>{
-    /* custom wheel: X axis area → X zoom (synced, anchored at mouse), Y axis area → Y zoom (per chart, anchored at mouse), body → page scroll */
+    /* custom wheel: Y axis area → Y zoom (per chart, anchored at mouse), body → page scroll */
     const dom=src.getDom();
     dom.addEventListener('wheel',(e)=>{
       const rect=dom.getBoundingClientRect();
       const mx=e.clientX-rect.left, my=e.clientY-rect.top;
       const w=rect.width, h=rect.height;
       const opt=src.getOption();
-      const grid=opt.grid||{left:78,right:24,top:8,bottom:34};
+      const grid=opt.grid||{left:78,right:24,top:1,bottom:1};
       const gL=typeof grid.left==='number'?grid.left:78;
       const gR=typeof grid.right==='number'?grid.right:24;
-      const gT=typeof grid.top==='number'?grid.top:8;
-      const gB=typeof grid.bottom==='number'?grid.bottom:34;
-      const onXAxis = my >= (h-gB) && mx >= gL && mx <= (w-gR);
+      const gT=typeof grid.top==='number'?grid.top:1;
+      const gB=typeof grid.bottom==='number'?grid.bottom:1;
       const onYAxis = mx <= gL && my >= gT && my <= (h-gB);
-      if(!onXAxis && !onYAxis) return; /* let page scroll */
+      if(!onYAxis) return; /* let page scroll */
       e.preventDefault();
       const factor = e.deltaY > 0 ? 1.2 : 0.83;
-      if(onXAxis){
-        const xAx=opt.xAxis[0];
-        let lo=xAx.min, hi=xAx.max;
-        if(lo==null||hi==null){ lo=ascData.tMin; hi=ascData.tMax; }
-        /* convert mouse X pixel to data value */
-        const plotW=w-gL-gR;
-        const px=Math.max(0,Math.min(plotW, mx-gL));
-        const anchor=lo+(hi-lo)*(px/plotW);
-        const nLo=anchor-(anchor-lo)*factor;
-        const nHi=anchor+(hi-anchor)*factor;
-        charts.forEach(c=>c.setOption({xAxis:{min:nLo,max:nHi}}));
-      } else {
-        const yAx=opt.yAxis[0];
-        let lo=yAx.min, hi=yAx.max;
-        if(lo==null||hi==null){
-          const st=src._stats;
-          if(st&&st.count>0){ lo=st.min; hi=st.max; } else { lo=-1; hi=1; }
-        }
-        if(lo===hi){ lo-=1; hi+=1; }
-        /* convert mouse Y pixel to data value (Y axis is bottom-to-top) */
-        const plotH=h-gT-gB;
-        const py=Math.max(0,Math.min(plotH, my-gT));
-        const anchor=hi-(hi-lo)*(py/plotH);
-        const nLo=anchor-(anchor-lo)*factor;
-        const nHi=anchor+(hi-anchor)*factor;
-        src.setOption({yAxis:{min:nLo,max:nHi}});
-        clipSeriesY(src, nLo, nHi);
+      const yAx=opt.yAxis[0];
+      let lo=yAx.min, hi=yAx.max;
+      if(lo==null||hi==null){
+        const st=src._stats;
+        if(st&&st.count>0){ lo=st.min; hi=st.max; } else { lo=-1; hi=1; }
       }
+      if(lo===hi){ lo-=1; hi+=1; }
+      /* convert mouse Y pixel to data value (Y axis is bottom-to-top) */
+      const plotH=h-gT-gB;
+      const py=Math.max(0,Math.min(plotH, my-gT));
+      const anchor=hi-(hi-lo)*(py/plotH);
+      const nLo=anchor-(anchor-lo)*factor;
+      const nHi=anchor+(hi-anchor)*factor;
+      src.setOption({yAxis:{min:nLo,max:nHi}});
+      clipSeriesY(src, nLo, nHi);
     },{passive:false});
   });
+  /* x-axis chart: scroll anywhere → X zoom (synced, anchored at mouse) */
+  if(xAxisChart){
+    const dom=xAxisChart.getDom();
+    dom.addEventListener('wheel',(e)=>{
+      e.preventDefault();
+      const rect=dom.getBoundingClientRect();
+      const mx=e.clientX-rect.left;
+      const w=rect.width;
+      const opt=xAxisChart.getOption();
+      const grid=opt.grid||{left:78,right:24};
+      const gL=typeof grid.left==='number'?grid.left:78;
+      const gR=typeof grid.right==='number'?grid.right:24;
+      const xAx=opt.xAxis[0];
+      let lo=xAx.min, hi=xAx.max;
+      if(lo==null||hi==null){ lo=ascData.tMin; hi=ascData.tMax; }
+      const plotW=w-gL-gR;
+      const px=Math.max(0,Math.min(plotW, mx-gL));
+      const anchor=lo+(hi-lo)*(px/plotW);
+      const factor = e.deltaY > 0 ? 1.2 : 0.83;
+      const nLo=anchor-(anchor-lo)*factor;
+      const nHi=anchor+(hi-anchor)*factor;
+      syncXAxis(nLo, nHi);
+    },{passive:false});
+  }
 }
 function resetZoom(){
   const tMin=ascData.tMin, tMax=ascData.tMax;
-  charts.forEach(c=>c.setOption({xAxis:{min:tMin,max:tMax}}));
+  syncXAxis(tMin, tMax);
 }
 
 /* ---------- analysis panel ---------- */
@@ -934,7 +983,7 @@ $('btnStart').onclick=()=>{
   const bar=$('sigBar');
   bar.classList.remove('expanded');
   bar.classList.add('collapsed');
-  setTimeout(()=>{ charts.forEach(c=>c.resize()); }, 400);
+  setTimeout(()=>{ charts.forEach(c=>c.resize()); if(xAxisChart)xAxisChart.resize(); }, 400);
 };
 $('btnReset').onclick=resetZoom;
 /* 信号选择按钮：1s 节流 + 闪烁提示 */
@@ -976,7 +1025,7 @@ $('gDots').onclick=()=>{
 $('gFitX').onclick=resetZoom;
 /* 全局控制：Y轴自适应 */
 $('gFitY').onclick=fitAllY;
-window.addEventListener('resize',()=>{ charts.forEach(c=>c.resize()); });
+window.addEventListener('resize',()=>{ charts.forEach(c=>c.resize()); if(xAxisChart)xAxisChart.resize(); });
 
 // init
 renderSignalList();
