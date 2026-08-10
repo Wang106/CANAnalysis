@@ -80,6 +80,7 @@
   #content{flex:1;display:flex;flex-direction:column;min-height:0;}
   #contentTop{padding:8px 12px;border-bottom:1px solid var(--line);background:var(--panel);display:flex;align-items:center;gap:10px;min-height:42px;}
   #contentTop .title{font-size:13px;color:var(--txt2);}
+  #contentTop .spacer{flex:1;}
   #analysisWrap{flex:1;overflow-y:auto;}
   #analysisBar{display:none;justify-content:flex-end;padding:4px 12px;border-top:1px solid var(--line);background:var(--panel);flex-shrink:0;}
   #analysisBar.show{display:flex;}
@@ -162,14 +163,6 @@
       <button id="btnSelectAll">全选</button>
       <button id="btnClearAll">清空</button>
       <span class="selstat">已选 <b id="selCount">0</b> · 共 <span id="totalCount">0</span> 个 <span style="color:var(--accent2)">●</span>=有数据</span>
-      <span class="gctrls" id="gctrls">
-        <span class="glbl">Y:</span>
-        <input type="number" id="gYmin" placeholder="min"/>
-        <input type="number" id="gYmax" placeholder="max"/>
-        <button id="gFitY">Y轴自适应</button>
-        <button id="gFitX">X轴自适应</button>
-        <button id="gDots">圆点</button>
-      </span>
       <span style="flex:1"></span>
       <span id="help">滚轮=<b>横轴缩放</b> · Shift+滚轮=<b class="g">纵轴缩放</b></span>
       <button id="btnReset" disabled>重置缩放</button>
@@ -195,6 +188,15 @@
   <div id="content">
     <div id="contentTop">
       <div class="title" id="contentTitle">加载 DBC 与 ASC 文件后，选择信号并开始分析</div>
+      <span class="spacer"></span>
+      <span class="gctrls" id="gctrls">
+        <span class="glbl">Y:</span>
+        <input type="number" id="gYmin" placeholder="min"/>
+        <input type="number" id="gYmax" placeholder="max"/>
+        <button id="gFitY">Y轴自适应</button>
+        <button id="gFitX">X轴自适应</button>
+        <button id="gDots">圆点</button>
+      </span>
     </div>
     <div id="analysisWrap">
       <div id="chartArea"></div>
@@ -664,10 +666,9 @@ function renderCharts(){
       <span class="signame">${sig.name}</span>
       <span class="msgtag">${sig.messageName} ${fmtId(sig.realId||ascData.map[sig.messageKey]?.realId, sig.isExt||md?.isExt)}</span>
       <span class="stat">采样 <b>${stats.count}</b></span>
-      ${has?`<span class="stat">min <b>${stats.min.toFixed(3)}</b></span><span class="stat">max <b>${stats.max.toFixed(3)}</b></span><span class="stat">均值 <b>${stats.mean.toFixed(3)}</b></span><span class="stat">σ <b>${stats.std.toFixed(3)}</b></span>`:''}
+      ${has?`<span class="stat">min <b>${stats.min.toFixed(3)}</b></span><span class="stat">max <b>${stats.max.toFixed(3)}</b></span><span class="stat">σ <b>${stats.std.toFixed(3)}</b></span>`:''}
       <span class="spacer"></span>
-      <div class="yctrl">Y:<input type="number" class="ymin" placeholder="min"/><input type="number" class="ymax" placeholder="max"/><button class="fitY">自适应</button></div>
-      <button class="toggleDots">圆点</button>`;
+      <div class="yctrl">Y:<input type="number" class="ymin" placeholder="min"/><input type="number" class="ymax" placeholder="max"/><button class="fitY">Y轴自适应</button></div>`;
     card.appendChild(head);
     const cd=el('div', has?'chart':'chart empty', has?'':(md?'该信号无可解码数据（DLC不足或位域越界）':'报文在ASC中未出现'));
     card.appendChild(cd);
@@ -685,11 +686,6 @@ function renderCharts(){
       head.querySelector('.ymax').addEventListener('change',applyBtn);
       head.querySelector('.ymin').value=stats.min.toFixed(3);
       head.querySelector('.ymax').value=stats.max.toFixed(3);
-      head.querySelector('.toggleDots').addEventListener('click',e=>{
-        const btn=e.target;
-        const on=btn.classList.toggle('active');
-        chart.setOption({series:[{showSymbol:on,symbolSize:on?4:0}]});
-      });
     }
     setTimeout(next,0);
   }
@@ -697,20 +693,11 @@ function renderCharts(){
   renderAnalysis(sigs);
 }
 
-/* y auto-fit to current visible x-range */
+/* y auto-fit: 使用信号的全局最大最小值 */
 function fitY(chart){
-  const opt=chart.getOption();
-  const xdz=opt.dataZoom.find(d=>d.id==='xZoom')||opt.dataZoom[0];
-  const tMin=ascData.tMin,tMax=ascData.tMax;
-  const lo=tMin+(tMax-tMin)*(xdz.start/100);
-  const hi=tMin+(tMax-tMin)*(xdz.end/100);
-  let ymin=Infinity,ymax=-Infinity;
-  const series=chart._series;
-  for(let k=0;k<series.length;k++){
-    const t=series[k][0],v=series[k][1];
-    if(t>=lo&&t<=hi){ if(v<ymin)ymin=v; if(v>ymax)ymax=v; }
-  }
-  if(ymin===Infinity) return;
+  const stats=chart._stats;
+  if(!stats || stats.count===0) return;
+  let ymin=stats.min, ymax=stats.max;
   if(ymin===ymax){ ymin-=1; ymax+=1; }
   chart.setOption({yAxis:{min:ymin,max:ymax}});
 }
