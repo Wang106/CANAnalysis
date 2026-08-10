@@ -732,7 +732,7 @@ function fitAllY(){ charts.forEach(c=>fitY(c)); }
 /* sync x-axis across charts + custom wheel zoom on axes */
 function setupSync(){
   charts.forEach(src=>{
-    /* custom wheel: X axis area → X zoom (synced), Y axis area → Y zoom (per chart), body → page scroll */
+    /* custom wheel: X axis area → X zoom (synced, anchored at mouse), Y axis area → Y zoom (per chart, anchored at mouse), body → page scroll */
     const dom=src.getDom();
     dom.addEventListener('wheel',(e)=>{
       const rect=dom.getBoundingClientRect();
@@ -753,9 +753,12 @@ function setupSync(){
         const xAx=opt.xAxis[0];
         let lo=xAx.min, hi=xAx.max;
         if(lo==null||hi==null){ lo=ascData.tMin; hi=ascData.tMax; }
-        const center=(lo+hi)/2;
-        const range=(hi-lo)*factor;
-        const nLo=center-range/2, nHi=center+range/2;
+        /* convert mouse X pixel to data value */
+        const plotW=w-gL-gR;
+        const px=Math.max(0,Math.min(plotW, mx-gL));
+        const anchor=lo+(hi-lo)*(px/plotW);
+        const nLo=anchor-(anchor-lo)*factor;
+        const nHi=anchor+(hi-anchor)*factor;
         charts.forEach(c=>c.setOption({xAxis:{min:nLo,max:nHi}}));
       } else {
         const yAx=opt.yAxis[0];
@@ -765,9 +768,12 @@ function setupSync(){
           if(st&&st.count>0){ lo=st.min; hi=st.max; } else { lo=-1; hi=1; }
         }
         if(lo===hi){ lo-=1; hi+=1; }
-        const center=(lo+hi)/2;
-        const range=(hi-lo)*factor;
-        const nLo=center-range/2, nHi=center+range/2;
+        /* convert mouse Y pixel to data value (Y axis is bottom-to-top) */
+        const plotH=h-gT-gB;
+        const py=Math.max(0,Math.min(plotH, my-gT));
+        const anchor=hi-(hi-lo)*(py/plotH);
+        const nLo=anchor-(anchor-lo)*factor;
+        const nHi=anchor+(hi-anchor)*factor;
         src.setOption({yAxis:{min:nLo,max:nHi}});
       }
     },{passive:false});
