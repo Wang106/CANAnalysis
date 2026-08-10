@@ -190,11 +190,11 @@
       <div class="title" id="contentTitle">加载 DBC 与 ASC 文件后，选择信号并开始分析</div>
       <span class="spacer"></span>
       <span class="gctrls" id="gctrls">
-        <span class="glbl">Y:</span>
-        <input type="number" id="gYmin" placeholder="min"/>
-        <input type="number" id="gYmax" placeholder="max"/>
-        <button id="gFitY">Y轴自适应</button>
+        <span class="glbl">X:</span>
+        <input type="number" id="gXmin" placeholder="min"/>
+        <input type="number" id="gXmax" placeholder="max"/>
         <button id="gFitX">X轴自适应</button>
+        <button id="gFitY">Y轴自适应</button>
         <button id="gDots">圆点</button>
       </span>
     </div>
@@ -693,13 +693,14 @@ function renderCharts(){
   renderAnalysis(sigs);
 }
 
-/* y auto-fit: 使用信号的全局最大最小值 */
+/* y auto-fit: 使用信号的全局最大最小值，并重置yZoom */
 function fitY(chart){
   const stats=chart._stats;
   if(!stats || stats.count===0) return;
   let ymin=stats.min, ymax=stats.max;
   if(ymin===ymax){ ymin-=1; ymax+=1; }
   chart.setOption({yAxis:{min:ymin,max:ymax}});
+  chart.dispatchAction({type:'dataZoom',dataZoomId:'yZoom',start:0,end:100});
 }
 function fitAllY(){ charts.forEach(c=>fitY(c)); }
 
@@ -885,15 +886,15 @@ $('gDots').onclick=()=>{
 $('gFitX').onclick=resetZoom;
 /* 全局控制：Y轴自适应 */
 $('gFitY').onclick=fitAllY;
-/* 全局控制：Y范围统一设置 */
-const applyGlobalY=()=>{
-  const mn=parseFloat($('gYmin').value);
-  const mx=parseFloat($('gYmax').value);
-  const yopt={}; if(isFinite(mn))yopt.min=mn; if(isFinite(mx))yopt.max=mx;
-  charts.forEach(c=>c.setOption({yAxis:yopt}));
+/* 全局控制：X范围统一设置 */
+const applyGlobalX=()=>{
+  const mn=parseFloat($('gXmin').value);
+  const mx=parseFloat($('gXmax').value);
+  const xopt={}; if(isFinite(mn))xopt.min=mn; if(isFinite(mx))xopt.max=mx;
+  charts.forEach(c=>c.setOption({xAxis:xopt}));
 };
-$('gYmin').addEventListener('change',applyGlobalY);
-$('gYmax').addEventListener('change',applyGlobalY);
+$('gXmin').addEventListener('change',applyGlobalX);
+$('gXmax').addEventListener('change',applyGlobalX);
 window.addEventListener('resize',()=>{ charts.forEach(c=>c.resize()); });
 
 // init
