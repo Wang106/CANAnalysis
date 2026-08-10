@@ -35,15 +35,15 @@ BS_:
 BU_: Vector__XXX
 
 BO_ 512 EngineData: 8 Vector__XXX
- SG_ EngineRpm : 0|16@0+ (0.125,0) [0|8000] "rpm" Vector__XXX
- SG_ EngineTemp : 23|8@1+ (1,-40) [0|120] "degC" Vector__XXX
- SG_ EngineStatus : 24|4@0+ (1,0) [0|15] "" Vector__XXX
+ SG_ EngineRpm : 0|16@1+ (0.125,0) [0|8000] "rpm" Vector__XXX
+ SG_ EngineTemp : 23|8@0+ (1,-40) [0|120] "degC" Vector__XXX
+ SG_ EngineStatus : 24|4@1+ (1,0) [0|15] "" Vector__XXX
 BO_ 513 BrakeData: 8 Vector__XXX
- SG_ BrakePressure : 0|16@0+ (0.1,0) [0|6553] "bar" Vector__XXX
- SG_ BrakeApplied : 31|1@0+ (1,0) [0|1] "" Vector__XXX
+ SG_ BrakePressure : 0|16@1+ (0.1,0) [0|6553] "bar" Vector__XXX
+ SG_ BrakeApplied : 31|1@1+ (1,0) [0|1] "" Vector__XXX
 BO_ 514 SteeringData: 4 Vector__XXX
- SG_ SteeringAngle : 7|16@1- (0.1,0) [-780|780] "deg" Vector__XXX
+ SG_ SteeringAngle : 7|16@0- (0.1,0) [-780|780] "deg" Vector__XXX
 BO_ 515 FaultSignal: 8 Vector__XXX
- SG_ SensorStuck : 0|8@0+ (1,0) [0|255] "" Vector__XXX
+ SG_ SensorStuck : 0|8@1+ (1,0) [0|255] "" Vector__XXX
 
 VAL_ 512 EngineStatus 0 "Off" 1 "Idle" 2 "Run" 3 "Crank" 4 "Fault" ;

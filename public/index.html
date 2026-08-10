@@ -274,12 +274,17 @@ function parseDBC(text){
   return {messages, signals};
 }
 
-/* ---------- raw value extraction ---------- */
+/* ---------- raw value extraction ----------
+ * DBC standard: byteOrder 0 = Motorola (big-endian), 1 = Intel (little-endian)
+ * Intel: startBit = LSB position, bits go startBit, startBit+1, ...
+ * Motorola: startBit = MSB position, bits go in decreasing order within byte,
+ *           wrapping from bit 0 of byte N to bit 7 of byte N+1
+ */
 function extractRawAt(data, base, dlc, sig){
   const {startBit, length, byteOrder} = sig;
   let value=0;
   if(length<=32){
-    if(byteOrder===0){ // Intel LE
+    if(byteOrder===1){ // Intel LE (DBC @1)
       let bp=startBit;
       for(let i=0;i<length;i++){
         const bi=bp>>>3;
@@ -287,7 +292,7 @@ function extractRawAt(data, base, dlc, sig){
         value |= bit<<i;
         bp++;
       }
-    } else { // Motorola BE
+    } else { // Motorola BE (DBC @0)
       let bp=startBit;
       for(let i=0;i<length;i++){
         const bi=bp>>>3;
@@ -298,10 +303,10 @@ function extractRawAt(data, base, dlc, sig){
     }
     value = value>>>0;
   } else {
-    if(byteOrder===0){
+    if(byteOrder===1){ // Intel LE
       let bp=startBit;
       for(let i=0;i<length;i++){ const bi=bp>>>3; const bit=(bi<dlc)?((data[base+bi]>>>(bp&7))&1):0; value+=bit*Math.pow(2,i); bp++; }
-    } else {
+    } else { // Motorola BE
       let bp=startBit;
       for(let i=0;i<length;i++){ const bi=bp>>>3; const bit=(bi<dlc)?((data[base+bi]>>>(bp&7))&1):0; value+=bit*Math.pow(2,length-1-i); if((bp&7)===0)bp+=15;else bp-=1; }
     }
