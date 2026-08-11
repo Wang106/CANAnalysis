@@ -153,7 +153,7 @@
       <img src="icon.png" class="icon" alt="icon" />
       <div class="htitle-wrap">
         <span class="htitle">CAN报文解析</span>
-        <span class="hmodtime">修改于2026-8-10 08:58:09</span>
+        <span class="hmodtime">修改于2026-8-11 01:11:30</span>
       </div>
     </div>
     <div class="header-right">
@@ -203,6 +203,9 @@
       <div class="title" id="contentTitle">加载 DBC 与 ASC 文件后，选择信号并开始分析</div>
       <span class="spacer"></span>
       <span class="gctrls" id="gctrls">
+        <span class="glbl">X:</span>
+        <input type="number" id="gXmin" placeholder="min" step="any" />
+        <input type="number" id="gXmax" placeholder="max" step="any" />
         <button id="gFitX">X轴自适应</button>
         <button id="gFitY">Y轴自适应</button>
         <button id="gDots">圆点</button>
@@ -718,6 +721,7 @@ function renderCharts(){
       xAxisChart=echarts.init(xCd);
       xAxisChart.setOption(makeXAxisOption());
       setupSync();
+      updateXInputs(ascData.tMin, ascData.tMax);
       $('btnReset').disabled=false;
       $('btnToggleAnalysis').disabled=false;
       setTimeout(()=>{ charts.forEach(c=>c.resize()); if(xAxisChart)xAxisChart.resize(); }, 100);
@@ -798,10 +802,41 @@ function fitAllY(){ charts.forEach(c=>fitY(c)); }
 function syncXAxis(nLo, nHi){
   charts.forEach(c=>c.setOption({xAxis:{min:nLo,max:nHi}}));
   if(xAxisChart) xAxisChart.setOption({xAxis:{min:nLo,max:nHi}});
+  updateXInputs(nLo, nHi);
+}
+function updateXInputs(lo, hi){
+  const minEl=$('gXmin'), maxEl=$('gXmax');
+  if(!minEl||!maxEl) return;
+  if(lo!=null) minEl.value=lo.toFixed(3);
+  if(hi!=null) maxEl.value=hi.toFixed(3);
 }
 function setupSync(){
+  /* capture-phase wheel on chartArea: if not on Y axis → scroll, else let chart handle Y zoom */
+  const chartAreaEl=$('chartArea');
+  chartAreaEl.addEventListener('wheel',(e)=>{
+    /* check if mouse is on Y axis of the chart that received the event */
+    let onYAxis=false;
+    for(const c of charts){
+      const dom=c.getDom();
+      if(!dom.contains(e.target)) continue;
+      const rect=dom.getBoundingClientRect();
+      const mx=e.clientX-rect.left, my=e.clientY-rect.top;
+      const h=rect.height;
+      const opt=c.getOption();
+      const grid=opt.grid||{left:78,top:0,bottom:0};
+      const gL=typeof grid.left==='number'?grid.left:78;
+      const gT=typeof grid.top==='number'?grid.top:0;
+      const gB=typeof grid.bottom==='number'?grid.bottom:0;
+      if(mx<=gL && my>=gT && my<=(h-gB)){ onYAxis=true; break; }
+    }
+    if(onYAxis) return; /* let chart's Y zoom handler work */
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    chartAreaEl.scrollTop += e.deltaY;
+  },{passive:false,capture:true});
+
   charts.forEach(src=>{
-    /* custom wheel: Y axis area → Y zoom (per chart, anchored at mouse), body → page scroll */
+    /* custom wheel: Y axis area → Y zoom (per chart, anchored at mouse) */
     const dom=src.getDom();
     dom.addEventListener('wheel',(e)=>{
       const rect=dom.getBoundingClientRect();
@@ -1029,6 +1064,15 @@ $('gDots').onclick=()=>{
 $('gFitX').onclick=resetZoom;
 /* 全局控制：Y轴自适应 */
 $('gFitY').onclick=fitAllY;
+/* 全局控制：X min/max 输入 */
+function applyXRange(){
+  const lo=parseFloat($('gXmin').value);
+  const hi=parseFloat($('gXmax').value);
+  if(isNaN(lo)||isNaN(hi)||lo>=hi) return;
+  syncXAxis(lo, hi);
+}
+$('gXmin').addEventListener('change', applyXRange);
+$('gXmax').addEventListener('change', applyXRange);
 window.addEventListener('resize',()=>{ charts.forEach(c=>c.resize()); if(xAxisChart)xAxisChart.resize(); });
 
 // init
