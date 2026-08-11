@@ -55,6 +55,7 @@
   .sig-col{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden;background:var(--panel);}
   .sig-col-head{font-size:12px;font-weight:600;color:var(--txt2);padding:6px 14px;border-bottom:1px solid var(--line);background:var(--panel2);flex-shrink:0;display:flex;align-items:center;gap:6px;}
   .sig-col-head .cnt{margin-left:auto;font-size:11px;color:var(--accent2);}
+  .sig-col-head .col-btn{padding:2px 8px;font-size:11px;margin-left:6px;}
   .sig-col-body{flex:1;overflow-y:auto;padding:4px 10px;}
   #searchInput{flex:1;min-width:140px;}
   #help{font-size:11px;color:var(--txt2);}
@@ -88,10 +89,12 @@
   #analysisWrap{flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden;}
   #xaxisContainer{flex-shrink:0;padding:0 12px;margin-bottom:0;}
   #xaxisContainer:empty{display:none;}
-  #analysisBar{display:none;justify-content:flex-end;padding:4px 12px;border-top:1px solid var(--line);background:var(--panel);flex-shrink:0;}
-  #analysisBar.show{display:flex;}
-  #analysisPanel{padding:10px 14px;border-top:1px solid var(--line);background:#13161d;flex-shrink:0;max-height:30%;overflow-y:auto;}
+  #analysisDivider{display:none;height:5px;flex-shrink:0;background:var(--line);cursor:row-resize;border-top:1px solid var(--accent);border-bottom:1px solid var(--accent);z-index:5;}
+  #analysisDivider.show{display:block;}
+  #analysisPanel{padding:10px 14px;border-top:1px solid var(--line);background:#13161d;flex:1;min-height:0;overflow-y:auto;}
   #analysisPanel.hidden{display:none;}
+  .ana-btn{display:none;padding:3px 10px;font-size:11px;}
+  .ana-btn:not(.hidden){display:inline-block;}
   /* global chart controls in sig-bar-head */
   .gctrls{display:none;align-items:center;gap:5px;font-size:11px;}
   .gctrls.show{display:flex;}
@@ -117,7 +120,7 @@
   .chart-card:last-child{border-radius:0;}
   .xaxis-row{display:flex;flex-direction:row;background:var(--panel);border:1px solid var(--line);border-top:none;border-radius:0 0 var(--radius) var(--radius);overflow:hidden;flex-shrink:0;}
   .xaxis-row .xaxis-spacer{width:120px;flex-shrink:0;background:var(--panel2);border-right:1px solid var(--line);}
-  .xaxis-row .xaxis-chart{flex:1;min-width:0;height:28px;}
+  .xaxis-row .xaxis-chart{flex:1;min-width:0;height:22px;}
   .cc-side{width:120px;flex-shrink:0;padding:4px 6px;border-right:1px solid var(--line);background:var(--panel2);display:flex;flex-direction:column;gap:2px;font-size:11px;overflow:hidden;justify-content:center;position:relative;}
   .cc-side .signame{font-weight:600;font-size:12px;color:var(--txt);word-break:break-all;cursor:help;}
   .cc-side .msgtip{display:none;position:absolute;left:100%;top:0;z-index:20;background:#0f1115;border:1px solid var(--accent);border-radius:4px;padding:5px 8px;font-size:11px;color:var(--txt2);white-space:nowrap;pointer-events:none;}
@@ -153,7 +156,7 @@
       <img src="icon.png" class="icon" alt="icon" />
       <div class="htitle-wrap">
         <span class="htitle">CAN报文解析</span>
-        <span class="hmodtime">修改于2026-8-11 01:11:30</span>
+        <span class="hmodtime">修改于2026-8-11 02:14:44</span>
       </div>
     </div>
     <div class="header-right">
@@ -173,23 +176,20 @@
     <div class="sig-bar-head">
       <span class="sig-toggle" id="sigToggle"><span class="arrow">▼</span> 信号选择</span>
       <input type="text" id="searchInput" placeholder="搜索信号名 / 报文名…" />
-      <button id="btnSelectAll">全选</button>
-      <button id="btnClearAll">清空</button>
       <span class="selstat">已选 <b id="selCount">0</b> · 共 <span id="totalCount">0</span> 个 <span style="color:var(--accent2)">●</span>=有数据</span>
       <span style="flex:1"></span>
       <span id="help">滚轮在<b>底部横轴</b>=缩放横轴 · 滚轮在<b>纵轴</b>=缩放纵轴 · 滚轮在曲线区=上下滚动</span>
-      <button id="btnReset" disabled>重置缩放</button>
       <button id="btnStart" class="go" disabled>开始分析</button>
     </div>
     <div class="sig-list-wrap">
       <div class="sig-col">
-        <div class="sig-col-head">可选信号<span class="cnt" id="availCount">0</span></div>
+        <div class="sig-col-head">可选信号<span class="cnt" id="availCount">0</span><button id="btnSelectAll" class="col-btn">全选</button></div>
         <div class="sig-col-body" id="sigList">
           <div class="empty-hint">请先加载 DBC 文件</div>
         </div>
       </div>
       <div class="sig-col">
-        <div class="sig-col-head">已选信号<span class="cnt" id="pickedCount">0</span></div>
+        <div class="sig-col-head">已选信号<span class="cnt" id="pickedCount">0</span><button id="btnClearAll" class="col-btn">清空</button></div>
         <div class="sig-col-body" id="sigPicked">
           <div class="empty-hint">勾选左侧信号后自动出现在此</div>
         </div>
@@ -210,11 +210,12 @@
         <button id="gFitY">Y轴自适应</button>
         <button id="gDots">圆点</button>
       </span>
+      <button id="btnToggleAnalysis" class="ana-btn hidden" disabled>显示分析</button>
     </div>
     <div id="analysisWrap">
       <div id="chartArea"></div>
       <div id="xaxisContainer"></div>
-      <div id="analysisBar"><button id="btnToggleAnalysis" disabled>隐藏分析</button></div>
+      <div id="analysisDivider"></div>
       <div id="analysisPanel" class="hidden"></div>
     </div>
   </div>
@@ -617,7 +618,9 @@ function disposeCharts(){
   charts=[]; $('chartArea').innerHTML='';
   $('xaxisContainer').innerHTML='';
   $('gctrls').classList.remove('show');
-  $('analysisBar').classList.remove('show');
+  $('btnToggleAnalysis').classList.add('hidden');
+  $('btnToggleAnalysis').disabled=true;
+  $('analysisDivider').classList.remove('show');
   $('analysisPanel').classList.add('hidden');
 }
 function buildTooltip(sig){
@@ -685,7 +688,7 @@ function makeXAxisOption(){
   const tMin=ascData.tMin, tMax=ascData.tMax;
   return {
     animation:false,
-    grid:{left:78,right:8,top:0,bottom:18},
+    grid:{left:78,right:8,top:0,bottom:14},
     xAxis:{type:'value',min:tMin,max:tMax,name:'时间',nameLocation:'middle',nameGap:12,
       axisLine:{lineStyle:{color:'#3a4150'}},
       axisLabel:{color:'#8b93a3',formatter:v=>v.toFixed(2)},
@@ -711,7 +714,8 @@ function renderCharts(){
       if(emptyCount>0) parts.push(`未渲染 ${emptyCount} 个空信号`);
       $('contentTitle').textContent=parts.join('，');
       $('gctrls').classList.add('show');
-      $('analysisBar').classList.add('show');
+      $('btnToggleAnalysis').classList.remove('hidden');
+      $('btnToggleAnalysis').disabled=false;
       // add shared x-axis row at bottom (outside scrollable chartArea)
       const xRow=el('div','xaxis-row');
       xRow.appendChild(el('div','xaxis-spacer'));
@@ -722,8 +726,6 @@ function renderCharts(){
       xAxisChart.setOption(makeXAxisOption());
       setupSync();
       updateXInputs(ascData.tMin, ascData.tMax);
-      $('btnReset').disabled=false;
-      $('btnToggleAnalysis').disabled=false;
       setTimeout(()=>{ charts.forEach(c=>c.resize()); if(xAxisChart)xAxisChart.resize(); }, 100);
       setTimeout(()=>{ charts.forEach(c=>c.resize()); if(xAxisChart)xAxisChart.resize(); }, 300);
       return;
@@ -963,8 +965,9 @@ function renderAnalysis(sigs){
     html+=`<div style="font-size:12px;color:var(--accent2);margin-top:4px;">✓ 未检测到明显异常</div>`;
   }
   panel.innerHTML=html;
-  panel.classList.remove('hidden');
-  $('btnToggleAnalysis').textContent='隐藏分析';
+  panel.classList.add('hidden');
+  $('analysisDivider').classList.remove('show');
+  $('btnToggleAnalysis').textContent='显示分析';
 }
 
 /* ---------- wire up UI ---------- */
@@ -1017,14 +1020,13 @@ $('btnClearAll').onclick=()=>{
 };
 $('btnStart').onclick=()=>{
   renderPickedList();
-  renderCharts();
-  $('analysisWrap').scrollTop=0;
   const bar=$('sigBar');
   bar.classList.remove('expanded');
   bar.classList.add('collapsed');
+  renderCharts();
+  $('analysisWrap').scrollTop=0;
   setTimeout(()=>{ charts.forEach(c=>c.resize()); if(xAxisChart)xAxisChart.resize(); }, 400);
 };
-$('btnReset').onclick=resetZoom;
 /* 信号选择按钮：1s 节流 + 闪烁提示 */
 let sigToggleLast=0;
 function flashEl(el){
@@ -1043,12 +1045,65 @@ $('sigToggle').onclick=()=>{
   bar.classList.toggle('collapsed', expanded);
   setTimeout(()=>{ charts.forEach(c=>c.resize()); }, 250);
 };
-/* 分析面板显示/隐藏切换 */
+/* 分析面板显示/隐藏切换 + 可拖拽分界线 */
 $('btnToggleAnalysis').onclick=()=>{
   const p=$('analysisPanel');
+  const div=$('analysisDivider');
   const hidden=p.classList.toggle('hidden');
+  div.classList.toggle('show', !hidden);
   $('btnToggleAnalysis').textContent=hidden?'显示分析':'隐藏分析';
+  if(!hidden){
+    // split 50/50 on first show
+    const wrap=$('analysisWrap');
+    const h=wrap.clientHeight;
+    const half=Math.floor(h/2);
+    $('chartArea').style.flex='none';
+    $('chartArea').style.height=(half-2)+'px';
+    $('analysisPanel').style.flex='none';
+    $('analysisPanel').style.height=(half-2)+'px';
+    setTimeout(()=>{ charts.forEach(c=>c.resize()); if(xAxisChart)xAxisChart.resize(); }, 50);
+  } else {
+    $('chartArea').style.flex='';
+    $('chartArea').style.height='';
+    $('analysisPanel').style.flex='';
+    $('analysisPanel').style.height='';
+    setTimeout(()=>{ charts.forEach(c=>c.resize()); if(xAxisChart)xAxisChart.resize(); }, 50);
+  }
 };
+/* draggable divider */
+(function(){
+  const div=$('analysisDivider');
+  let dragging=false, startY=0, startChartH=0, startPanelH=0, wrapH=0;
+  div.addEventListener('mousedown',(e)=>{
+    dragging=true;
+    startY=e.clientY;
+    const wrap=$('analysisWrap');
+    wrapH=wrap.clientHeight;
+    startChartH=$('chartArea').offsetHeight;
+    startPanelH=$('analysisPanel').offsetHeight;
+    document.body.style.cursor='row-resize';
+    document.body.style.userSelect='none';
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove',(e)=>{
+    if(!dragging) return;
+    const dy=e.clientY-startY;
+    let newChartH=startChartH+dy;
+    let newPanelH=startPanelH-dy;
+    if(newChartH<40) newChartH=40;
+    if(newPanelH<40) newPanelH=40;
+    $('chartArea').style.height=newChartH+'px';
+    $('analysisPanel').style.height=newPanelH+'px';
+    charts.forEach(c=>c.resize());
+    if(xAxisChart) xAxisChart.resize();
+  });
+  document.addEventListener('mouseup',()=>{
+    if(!dragging) return;
+    dragging=false;
+    document.body.style.cursor='';
+    document.body.style.userSelect='';
+  });
+})();
 /* 全局控制：圆点切换（1s 节流 + 闪烁） */
 let gDotsLast=0;
 $('gDots').onclick=()=>{
