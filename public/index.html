@@ -195,7 +195,7 @@
       <img src="icon.png" class="icon" alt="icon" />
       <div class="htitle-wrap">
         <span class="htitle">CAN报文解析</span>
-        <span class="hmodtime">修改于2026-8-12 13:59:37</span>
+        <span class="hmodtime">修改于2026-8-12 14:15:19</span>
       </div>
     </div>
     <div class="header-right">
@@ -569,48 +569,77 @@ function toast(msg){
   const t=$('toast'); t.textContent=msg; t.classList.add('show');
   clearTimeout(t._tm); t._tm=setTimeout(()=>t.classList.remove('show'),2200);
 }
-/* ---------- 长任务管理：输入拦截 + 500ms后标灰显示动画 + 计时 + 取消 + 30s超时 ---------- */
+/* ---------- 长任务管理：输入拦截 + 动画 + 计时 + 取消 + 30s超时 ----------
+ * opts.immediate=true 时立即显示动画（不等待500ms）
+ * opts.minMs        最短显示时长（毫秒），避免快速动作动画一闪而过 */
 let busyState = null;
-function startBusy(text, cancelFn){
-  if(busyState) finishBusy();
+let busyGen = 0;
+function startBusy(text, cancelFn, opts){
+  opts = opts || {};
+  if(busyState) cleanupBusy();
+  const gen = ++busyGen;
   const token = {cancelled:false};
   const ov = $('busyOverlay');
   busyState = {
-    token,
+    gen, token,
     startTime: Date.now(),
     cancelFn,
-    showTimer: setTimeout(()=>{
-      $('busyText').textContent = text;
-      $('busyTimer').textContent = '0 s';
-      ov.classList.add('show');
+    minMs: opts.minMs || 0,
+    showTimer: opts.immediate ? null : setTimeout(()=>{
+      if(busyState && busyState.gen===gen){
+        $('busyText').textContent = text;
+        $('busyTimer').textContent = '0 s';
+        ov.classList.add('show');
+      }
     }, 500),
     watchdog: setTimeout(()=>{
-      token.cancelled = true;
-      const fn = busyState ? busyState.cancelFn : null;
-      finishBusy();
-      if(fn) fn('timeout');
-      toast('动作执行超过 30 秒，已自动停止');
+      if(busyState && busyState.gen===gen){
+        token.cancelled = true;
+        const fn = busyState.cancelFn;
+        cleanupBusy();
+        if(fn) fn('timeout');
+        toast('动作执行超过 30 秒，已自动停止');
+      }
     }, 30000),
     clock: setInterval(()=>{
-      if(busyState) $('busyTimer').textContent = Math.floor((Date.now()-busyState.startTime)/1000)+' s';
+      if(busyState && busyState.gen===gen) $('busyTimer').textContent = Math.floor((Date.now()-busyState.startTime)/1000)+' s';
     }, 250)
   };
   ov.classList.add('blocking');   // 立即拦截鼠标/滚轮输入
+  if(opts.immediate){
+    $('busyText').textContent = text;
+    $('busyTimer').textContent = '0 s';
+    ov.classList.add('show');
+  }
   return token;
 }
-function finishBusy(){
+function cleanupBusy(){
   if(!busyState) return;
   clearTimeout(busyState.showTimer);
   clearTimeout(busyState.watchdog);
+  clearTimeout(busyState.hideTimer);
   clearInterval(busyState.clock);
   $('busyOverlay').classList.remove('blocking','show');
   busyState = null;
+}
+function finishBusy(){
+  if(!busyState) return;
+  const remain = busyState.minMs - (Date.now() - busyState.startTime);
+  const gen = busyState.gen;
+  if(remain > 0){
+    clearTimeout(busyState.hideTimer);
+    busyState.hideTimer = setTimeout(()=>{
+      if(busyState && busyState.gen===gen) cleanupBusy();
+    }, remain);
+  } else {
+    cleanupBusy();
+  }
 }
 $('busyCancel').onclick=()=>{
   if(!busyState) return;
   busyState.token.cancelled = true;
   const fn = busyState.cancelFn;
-  finishBusy();
+  cleanupBusy();
   if(fn) fn('cancel');
   toast('已取消当前动作');
 };
@@ -836,7 +865,7 @@ function renderCharts(){
   if(!sigs.length){ $('contentTitle').textContent='请选择至少一个信号'; return; }
   $('contentTitle').textContent=`正在渲染 ${sigs.length} 条曲线…`;
   let renderCount=0, emptyCount=0;
-  const token = startBusy('正在渲染曲线…', ()=>{ token.cancelled=true; });
+  const token = startBusy('正在渲染曲线…', ()=>{ token.cancelled=true; }, {immediate:true});
   // render in chunks to avoid blocking
   let idx=0;
   function next(){
@@ -1171,11 +1200,19 @@ function renderAnalysis(sigs){
 }
 
 /* ---------- wire up UI ---------- */
-$('btnDbc').onclick=()=>$('fileDbc').click();
-$('btnAsc').onclick=()=>$('fileAsc').click();
+$('btnDbc').onclick=()=>{
+  startBusy('等待选择 DBC 文件…', null, {immediate:true});
+  $('fileDbc').click();
+};
+$('btnAsc').onclick=()=>{
+  startBusy('等待选择 ASC 文件…', null, {immediate:true});
+  $('fileAsc').click();
+};
+$('fileDbc').addEventListener('cancel',()=>cleanupBusy());
+$('fileAsc').addEventListener('cancel',()=>cleanupBusy());
 
 async function loadDbcText(name, txt){
-  const token = startBusy('解析 DBC 文件…', ()=>{ token.cancelled=true; });
+  const token = startBusy('解析 DBC 文件…', ()=>{ token.cancelled=true; }, {immediate:true});
   try{
     dbcData = await parseDBC(txt, ()=>token.cancelled);
     if(token.cancelled || !dbcData || dbcData.cancelled){ dbcData=null; toast('已取消 DBC 解析'); return; }
@@ -1190,7 +1227,7 @@ async function loadDbcText(name, txt){
 }
 async function loadAscText(name, txt){
   hideLoading();
-  const token = startBusy('解析 ASC 文件…', ()=>{ token.cancelled=true; });
+  const token = startBusy('解析 ASC 文件…', ()=>{ token.cancelled=true; }, {immediate:true});
   try{
     ascData = await parseASC(txt, null, ()=>token.cancelled);
     if(token.cancelled || !ascData || ascData.cancelled){ ascData=null; toast('已取消 ASC 解析'); return; }
@@ -1307,8 +1344,13 @@ function hideAnalysisPanel(){
 function runAnalysis(){
   const sigs=selectedSignals();
   if(!sigs.length) return;
-  renderAnalysis(sigs);
-  analysisReady=true;
+  startBusy('正在分析报文…', null, {immediate:true, minMs:400});
+  try{
+    renderAnalysis(sigs);
+    analysisReady=true;
+  } finally {
+    finishBusy();
+  }
   showAnalysisPanel();
 }
 $('btnAnalyze').onclick=()=>{
@@ -1494,8 +1536,10 @@ $('gDots').onclick=()=>{
   gDotsLast=now;
   const btn=$('gDots');
   flashEl(btn);
+  startBusy('切换圆点显示…', null, {immediate:true, minMs:400});
   const on=btn.classList.toggle('active');
   charts.forEach(c=>c.setOption({series:[{showSymbol:on,symbolSize:on?4:0}]}));
+  finishBusy();
 };
 /* 全局控制：X轴自适应（重置缩放） */
 $('gFitX').onclick=resetZoom;
