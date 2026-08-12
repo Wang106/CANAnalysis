@@ -45,7 +45,11 @@
   /* row 2: signal search & selection (collapsible) */
   #sigBar{background:var(--panel);border-bottom:1px solid var(--line);flex-shrink:0;display:flex;flex-direction:column;transition:flex .2s;}
   #sigBar.expanded{flex:1;min-height:0;}
+  #sigBar.expanded.resized{flex:none;}
   #sigBar.collapsed{flex:0 0 auto;}
+  #sigResizeHandle{height:5px;flex-shrink:0;background:var(--line);cursor:row-resize;border-top:1px solid var(--line);transition:background .15s;}
+  #sigResizeHandle:hover{background:var(--accent);}
+  #sigBar.collapsed #sigResizeHandle{display:none;}
   .sig-bar-head{display:flex;align-items:center;gap:8px;padding:7px 16px;flex-wrap:wrap;flex-shrink:0;}
   .sig-toggle{display:flex;align-items:center;gap:4px;cursor:pointer;font-size:13px;font-weight:700;color:#04121f;background:var(--accent);user-select:none;padding:4px 14px;border-radius:6px;transition:filter .15s;}
   .sig-toggle:hover{filter:brightness(1.15);}
@@ -105,7 +109,7 @@
   .gctrls{display:none;align-items:center;gap:5px;font-size:11px;}
   .gctrls.show{display:flex;}
   .gctrls .glbl{font-size:11px;color:var(--txt2);}
-  .gctrls input[type=number]{width:48px;padding:2px 4px;font-size:11px;}
+  .gctrls input[type=number]{width:96px;padding:2px 4px;font-size:11px;}
   .gctrls button{padding:3px 8px;font-size:11px;}
   .gctrls button.active{background:var(--accent);border-color:var(--accent);color:#04121f;}
   .a-summary{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;}
@@ -162,7 +166,7 @@
       <img src="icon.png" class="icon" alt="icon" />
       <div class="htitle-wrap">
         <span class="htitle">CAN报文解析</span>
-        <span class="hmodtime">修改于2026-8-11 02:14:44</span>
+        <span class="hmodtime">修改于2026-8-12 10:45:00</span>
       </div>
     </div>
     <div class="header-right">
@@ -201,9 +205,8 @@
         </div>
       </div>
     </div>
+    <div id="sigResizeHandle"></div>
   </div>
-
-  <!-- signal display area -->
   <div id="content">
     <div id="contentTop">
       <div class="title" id="contentTitle">加载 DBC 与 ASC 文件后，选择信号并开始分析</div>
@@ -810,12 +813,17 @@ function clipSeriesY(chart, lo, hi){
   chart.setOption({series:[{data:newData}]});
 }
 
-/* y auto-fit: 使用信号的全局最大最小值 */
+/* y auto-fit: 使用信号的全局最大最小值，并模拟鼠标在Y轴中心处进行一格滚轮缩放（放大范围，留出空间） */
 function fitY(chart){
   const stats=chart._stats;
   if(!stats || stats.count===0) return;
   let ymin=stats.min, ymax=stats.max;
   if(ymin===ymax){ ymin-=1; ymax+=1; }
+  /* 模拟鼠标在Y轴中心处进行一格滚轮缩放（zoom out, factor=1.2） */
+  const center=(ymin+ymax)/2;
+  const halfRange=(ymax-ymin)/2;
+  ymin=center-halfRange*1.2;
+  ymax=center+halfRange*1.2;
   chart.setOption({yAxis:{min:ymin,max:ymax}});
   clipSeriesY(chart, ymin, ymax);
 }
@@ -1070,6 +1078,11 @@ $('sigToggle').onclick=()=>{
   const expanded=bar.classList.contains('expanded');
   bar.classList.toggle('expanded', !expanded);
   bar.classList.toggle('collapsed', expanded);
+  /* 收起或展开均清除用户拖动设置的固定高度：展开后恢复默认高度，直到再次拖动 */
+  bar.classList.remove('resized');
+  bar.style.height='';
+  bar.style.flex='';
+  bar.style.transition='';
   setTimeout(()=>{ charts.forEach(c=>c.resize()); }, 250);
 };
 /* 分析面板显示/隐藏切换 + 可拖拽分界线 */
@@ -1121,6 +1134,38 @@ $('btnToggleAnalysis').onclick=()=>{
     if(newPanelH<40) newPanelH=40;
     $('chartArea').style.height=newChartH+'px';
     $('analysisPanel').style.height=newPanelH+'px';
+    charts.forEach(c=>c.resize());
+    if(xAxisChart) xAxisChart.resize();
+  });
+  document.addEventListener('mouseup',()=>{
+    if(!dragging) return;
+    dragging=false;
+    document.body.style.cursor='';
+    document.body.style.userSelect='';
+  });
+})();
+/* sigBar 底部可拖动调整高度 */
+(function(){
+  const handle=$('sigResizeHandle');
+  const bar=$('sigBar');
+  let dragging=false, startY=0, startH=0;
+  handle.addEventListener('mousedown',(e)=>{
+    dragging=true;
+    startY=e.clientY;
+    startH=bar.offsetHeight;
+    bar.style.transition='none';
+    document.body.style.cursor='row-resize';
+    document.body.style.userSelect='none';
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove',(e)=>{
+    if(!dragging) return;
+    const dy=e.clientY-startY;
+    let newH=startH+dy;
+    if(newH<100) newH=100;
+    bar.classList.add('resized');
+    bar.style.height=newH+'px';
+    bar.style.flex='none';
     charts.forEach(c=>c.resize());
     if(xAxisChart) xAxisChart.resize();
   });
