@@ -211,7 +211,7 @@
       </div>
       <div class="file-row">
         <div class="finput" id="ascInfo">未加载</div>
-        <button id="btnAsc">加载.asc文件</button>
+        <button id="btnAsc">加载ASC文件</button>
       </div>
     </div>
   </div>
@@ -1066,49 +1066,60 @@ let crosshairPending = null;
 function setupCrosshair(){
   const allTargets = ()=>{ const a = charts.slice(); if(xAxisChart) a.push(xAxisChart); return a; };
   const resetCrosshair = ()=>{
-    charts.forEach(c=>{ if(c._liveEl) c._liveEl.textContent='Real '; try{c.dispatchAction({type:'hideTip'});}catch(e){} });
-    if(xAxisChart){ try{xAxisChart.dispatchAction({type:'hideTip'});}catch(e){} }
+    try{
+      charts.forEach(c=>{ if(c._liveEl) c._liveEl.textContent='Real '; c.dispatchAction({type:'hideTip'}); });
+      if(xAxisChart) xAxisChart.dispatchAction({type:'hideTip'});
+    }catch(e){}
   };
   const flushCrosshair = ()=>{
     crosshairRaf = 0;
     const p = crosshairPending;
     crosshairPending = null;
     if(!p) return;
-    const {src, mx, my} = p;
-    const opt = src.getOption();
-    let grid = opt.grid;
-    if(Array.isArray(grid)) grid = grid[0];
-    grid = grid || {left:78, right:8};
-    const gL = typeof grid.left==='number' ? grid.left : 78;
-    const gR = typeof grid.right==='number' ? grid.right : 8;
-    const w = src.getDom().clientWidth;
-    if(mx<=gL || mx>=w-gR){ resetCrosshair(); return; }
-    let t = src.convertFromPixel({xAxisIndex:0}, [mx, my]);
-    t = Array.isArray(t) ? t[0] : t;
-    if(!isFinite(t)){ resetCrosshair(); return; }
-    charts.forEach(c=>setLiveReal(c, t));
-    allTargets().forEach(c=>{
-      if(c===src) return;                       // 悬停图表由原生 tooltip 显示
-      try{
+    try{
+      const {src, mx, my} = p;
+      if(!(mx>0) || !(my>=0)){ resetCrosshair(); return; }
+      const opt = src.getOption();
+      let grid = opt.grid;
+      if(Array.isArray(grid)) grid = grid[0];
+      grid = grid || {left:78, right:8};
+      const gL = typeof grid.left==='number' ? grid.left : 78;
+      const gR = typeof grid.right==='number' ? grid.right : 8;
+      const w = src.getDom().clientWidth;
+      if(mx<=gL || mx>=w-gR){ resetCrosshair(); return; }
+      let t = src.convertFromPixel({xAxisIndex:0}, [mx, my]);
+      t = Array.isArray(t) ? t[0] : t;
+      if(!isFinite(t)){ resetCrosshair(); return; }
+      charts.forEach(c=>setLiveReal(c, t));
+      allTargets().forEach(c=>{
+        if(c===src) return;                       // 悬停图表由原生 tooltip 显示
         const px = c.convertToPixel({xAxisIndex:0}, t);
         if(px != null) c.dispatchAction({type:'updateAxisPointer', x:px, y:0});
-      }catch(e){}
-    });
+      });
+    }catch(e){}
   };
   const onMove = (src)=>(e)=>{
-    crosshairPending = {src, mx: e.offsetX, my: e.offsetY};
+    // 兼容 zrender 事件(zrX/zrY)与原生事件(offsetX/clientX)
+    let mx = e.zrX, my = e.zrY;
+    if(mx == null && e.offsetX != null){ mx = e.offsetX; my = e.offsetY; }
+    if(mx == null && e.event && e.event.offsetX != null){ mx = e.event.offsetX; my = e.event.offsetY; }
+    if(mx == null && e.clientX != null){
+      const r = src.getDom().getBoundingClientRect();
+      mx = e.clientX - r.left; my = e.clientY - r.top;
+    }
+    crosshairPending = {src, mx, my};
     if(!crosshairRaf) crosshairRaf = requestAnimationFrame(flushCrosshair);
   };
-  charts.forEach(chart=>{
+  const attach = (chart)=>{
     const zr = chart.getZr();
+    const dom = chart.getDom();
     zr.on('mousemove', onMove(chart));
-    zr.on('mouseout', resetCrosshair);
-  });
-  if(xAxisChart){
-    const zr = xAxisChart.getZr();
-    zr.on('mousemove', onMove(xAxisChart));
-    zr.on('mouseout', resetCrosshair);
-  }
+    zr.on('globalout', resetCrosshair);
+    dom.addEventListener('mousemove', onMove(chart));
+    dom.addEventListener('mouseleave', resetCrosshair);
+  };
+  charts.forEach(attach);
+  if(xAxisChart) attach(xAxisChart);
 }
 
 /* Replace out-of-bounds y-values with null so the line breaks into separate segments.
@@ -1693,20 +1704,15 @@ $('gXmin').addEventListener('change', applyXRange);
 $('gXmax').addEventListener('change', applyXRange);
 window.addEventListener('resize',()=>{ charts.forEach(c=>c.resize()); if(xAxisChart)xAxisChart.resize(); });
 
-/* 修改时间显示：按设备/浏览器所在时区显示对应时间，前缀为时区偏移（如 UTC+8_2026-08-12 15:01:52） */
+/* 升级时间显示：按设备/浏览器所在时区显示对应时间（如 升级于2026-08-12 15:21:00） */
 (function(){
   // 修改时间（UTC），每次更新页面时由开发者同步修改
-  const MOD_UTC = Date.UTC(2026, 7, 12, 7, 21, 0);
+  const MOD_UTC = Date.UTC(2026, 7, 12, 7, 33, 52);
   const d = new Date(MOD_UTC);
-  const off = -d.getTimezoneOffset();
-  const sign = off >= 0 ? '+' : '-';
-  const abs = Math.abs(off);
-  let offStr = sign + Math.floor(abs/60);
-  if(abs%60) offStr += ':' + String(abs%60).padStart(2,'0');
   const pad = n => String(n).padStart(2,'0');
   const dateStr = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
   const timeStr = pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
-  $('hmodtime').textContent = 'UTC' + offStr + '_' + dateStr + ' ' + timeStr;
+  $('hmodtime').textContent = '升级于' + dateStr + ' ' + timeStr;
 })();
 
 // init
