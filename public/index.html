@@ -44,7 +44,8 @@
 
   /* row 2: signal search & selection (collapsible) */
   #sigBar{background:var(--panel);border-bottom:1px solid var(--line);flex-shrink:0;display:flex;flex-direction:column;transition:flex .2s;}
-  #sigBar.expanded{flex:1;min-height:0;}
+  /* 展开默认高度：sigBar:content = 3:1，即面板高度为原来的 1.5 倍 */
+  #sigBar.expanded{flex:3;min-height:0;}
   #sigBar.expanded.resized{flex:none;}
   #sigBar.collapsed{flex:0 0 auto;}
   #sigResizeHandle{height:5px;flex-shrink:0;background:var(--line);cursor:row-resize;border-top:1px solid var(--line);transition:background .15s;}
@@ -132,7 +133,7 @@
   .xaxis-row .xaxis-spacer{width:120px;flex-shrink:0;background:var(--panel2);border-right:1px solid var(--line);}
   .xaxis-row .xaxis-chart{flex:1;min-width:0;height:34px;}
   .cc-side{width:120px;flex-shrink:0;padding:4px 6px;border-right:1px solid var(--line);background:var(--panel2);display:flex;flex-direction:column;gap:2px;font-size:11px;overflow:hidden;justify-content:center;position:relative;}
-  .cc-side .signame{font-weight:600;font-size:12px;color:var(--txt);word-break:break-all;cursor:default;}
+  .cc-side .signame{font-weight:400;font-size:12px;color:var(--txt);word-break:break-all;cursor:default;}
   .cc-side .msgtip{display:none;position:absolute;left:100%;top:0;z-index:20;background:#0f1115;border:1px solid var(--accent);border-radius:4px;padding:5px 8px;font-size:11px;color:var(--txt2);white-space:nowrap;pointer-events:none;}
   .cc-side:hover .msgtip{display:block;}
   .cc-side .stat{color:var(--txt2);font-size:10px;}
@@ -156,6 +157,17 @@
   #loadingOverlay .txt{color:var(--txt);font-size:14px;}
   #progressBar{width:280px;height:6px;background:var(--line);border-radius:4px;overflow:hidden;}
   #progressBar > div{height:100%;width:0;background:var(--accent);transition:.1s;}
+  /* 长任务执行遮罩：blocking=透明拦截输入，show=标灰+动画+计时+取消 */
+  #busyOverlay{position:fixed;inset:0;z-index:80;display:none;align-items:center;justify-content:center;background:rgba(8,10,14,0);}
+  #busyOverlay.blocking{display:flex;}
+  #busyOverlay.blocking .box{visibility:hidden;}
+  #busyOverlay.show{background:rgba(8,10,14,.68);}
+  #busyOverlay.show .box{visibility:visible;}
+  #busyOverlay .box{background:var(--panel);border:1px solid var(--accent);border-radius:12px;padding:26px 46px;display:flex;flex-direction:column;align-items:center;gap:14px;box-shadow:0 8px 30px rgba(0,0,0,.5);}
+  #busyOverlay .bspin{width:40px;height:40px;border:3px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:sp 1s linear infinite;}
+  #busyOverlay .btxt{font-size:14px;color:var(--txt);}
+  #busyOverlay .btimer{font-size:13px;color:var(--accent2);font-variant-numeric:tabular-nums;}
+  #busyOverlay button{padding:5px 22px;}
 </style>
 </head>
 <body>
@@ -166,7 +178,7 @@
       <img src="icon.png" class="icon" alt="icon" />
       <div class="htitle-wrap">
         <span class="htitle">CAN报文解析</span>
-        <span class="hmodtime">修改于2026-8-12 10:45:00</span>
+        <span class="hmodtime">修改于2026-8-12 11:55:51</span>
       </div>
     </div>
     <div class="header-right">
@@ -193,13 +205,13 @@
     </div>
     <div class="sig-list-wrap">
       <div class="sig-col">
-        <div class="sig-col-head">可选信号<button id="btnFilterEmpty" class="col-btn">筛除空信号</button><button id="btnSelectAll" class="col-btn">全选</button><span class="cnt" id="availCount">0</span></div>
+        <div class="sig-col-head">可选信号<button id="btnFilterEmpty" class="col-btn">筛除空数据信号</button><button id="btnSelectAll" class="col-btn">全选</button><span class="cnt" id="availCount">0</span></div>
         <div class="sig-col-body" id="sigList">
           <div class="empty-hint">请先加载 DBC 文件</div>
         </div>
       </div>
       <div class="sig-col">
-        <div class="sig-col-head">已选信号<button id="btnClearAll" class="col-btn">清空</button><span class="cnt" id="pickedCount">0</span></div>
+        <div class="sig-col-head">已选信号<button id="btnClearNoData" class="col-btn">清空无数据信号</button><button id="btnClearAll" class="col-btn">清空</button><span class="cnt" id="pickedCount">0</span></div>
         <div class="sig-col-body" id="sigPicked">
           <div class="empty-hint">勾选左侧信号后自动出现在此</div>
         </div>
@@ -234,6 +246,14 @@
 <input type="file" id="fileAsc" accept=".asc" style="display:none" />
 <div id="toast"></div>
 <div id="loadingOverlay"><div class="spin"></div><div class="txt" id="loadTxt">解析中…</div><div id="progressBar"><div></div></div></div>
+<div id="busyOverlay">
+  <div class="box">
+    <div class="bspin"></div>
+    <div class="btxt" id="busyText">处理中…</div>
+    <div class="btimer" id="busyTimer">0 s</div>
+    <button id="busyCancel">取消</button>
+  </div>
+</div>
 
 <script src="echarts.min.js"></script>
 <script>if(typeof echarts==='undefined'){document.write('<'+'script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"><'+'/script>');}</script>
@@ -258,65 +278,77 @@ let xAxisChart = null;  // shared x-axis chart at bottom
 let syncing = false;
 let lastX = {start:0, end:100};
 
-/* ---------- DBC parser ---------- */
-function parseDBC(text){
+/* ---------- DBC parser (async chunked, 可取消) ---------- */
+function parseDBC(text, isCancelled){
   const messages = {};
   const lines = text.split(/\r?\n/);
   let cur = null;
-  for(const raw of lines){
-    const line = raw.trim();
-    if(line.startsWith('BO_ ')){
-      const m = line.match(/^BO_\s+(\d+)\s+(\S+)\s*:\s*(\d+)\s*(\S+)/);
-      if(m){
-        const id = parseInt(m[1],10);
-        const isExt = (id & 0x80000000)!==0;
-        const realId = id & 0x1FFFFFFF;
-        cur = { id, realId, isExt, key: realId+'_'+(isExt?'x':'s'),
-                name:m[2], dlc:parseInt(m[3],10), sender:m[4], signals:[] };
-        messages[cur.key]=cur;
-      }
-    } else if(line.startsWith('SG_ ')){
-      const m = line.match(/^SG_\s+(\w+)\s*(?:(M|m\d+)\s*)?:\s*(\d+)\|(\d+)@(\d)([+-])\s*\(([^,]+),([^)]+)\)\s*\[([^|]+)\|([^\]]+)\]\s*"([^"]*)"\s*(.*)$/);
-      if(m && cur){
-        const sig = {
-          name:m[1], mux:m[2]||null,
-          startBit:parseInt(m[3],10), length:parseInt(m[4],10),
-          byteOrder:parseInt(m[5],10), isSigned:m[6]==='-',
-          factor:parseFloat(m[7]), offset:parseFloat(m[8]),
-          min:parseFloat(m[9]), max:parseFloat(m[10]),
-          unit:m[11]||'', receivers:(m[12]||'').trim(),
-          messageName:cur.name, messageId:cur.id, messageKey:cur.key,
-          valueTable:null
-        };
-        if(!isFinite(sig.factor)||sig.factor===0) sig.factor=1;
-        if(!isFinite(sig.offset)) sig.offset=0;
-        if(!isFinite(sig.min)) sig.min=-Infinity;
-        if(!isFinite(sig.max)) sig.max=Infinity;
-        cur.signals.push(sig);
-      }
-    } else if(line.startsWith('VAL_ ')){
-      const m = line.match(/^VAL_\s+(\d+)\s+(\w+)\s+(.*);$/);
-      if(m){
-        const id=parseInt(m[1],10);
-        const isExt=(id&0x80000000)!==0;
-        const realId=id&0x1FFFFFFF;
-        const key=realId+'_'+(isExt?'x':'s');
-        const msg=messages[key];
-        if(msg){
-          const sig=msg.signals.find(s=>s.name===m[2]);
-          if(sig){
-            const table={};
-            const re=/(-?\d+)\s+"([^"]*)"/g; let pm;
-            while((pm=re.exec(m[3]))!==null) table[parseInt(pm[1],10)]=pm[2];
-            sig.valueTable=table;
+  const CHUNK = 50000;
+  let i = 0;
+  return new Promise(resolve=>{
+    function step(){
+      const end = Math.min(i+CHUNK, lines.length);
+      for(; i<end; i++){
+        const line = lines[i].trim();
+        if(line.startsWith('BO_ ')){
+          const m = line.match(/^BO_\s+(\d+)\s+(\S+)\s*:\s*(\d+)\s*(\S+)/);
+          if(m){
+            const id = parseInt(m[1],10);
+            const isExt = (id & 0x80000000)!==0;
+            const realId = id & 0x1FFFFFFF;
+            cur = { id, realId, isExt, key: realId+'_'+(isExt?'x':'s'),
+                    name:m[2], dlc:parseInt(m[3],10), sender:m[4], signals:[] };
+            messages[cur.key]=cur;
+          }
+        } else if(line.startsWith('SG_ ')){
+          const m = line.match(/^SG_\s+(\w+)\s*(?:(M|m\d+)\s*)?:\s*(\d+)\|(\d+)@(\d)([+-])\s*\(([^,]+),([^)]+)\)\s*\[([^|]+)\|([^\]]+)\]\s*"([^"]*)"\s*(.*)$/);
+          if(m && cur){
+            const sig = {
+              name:m[1], mux:m[2]||null,
+              startBit:parseInt(m[3],10), length:parseInt(m[4],10),
+              byteOrder:parseInt(m[5],10), isSigned:m[6]==='-',
+              factor:parseFloat(m[7]), offset:parseFloat(m[8]),
+              min:parseFloat(m[9]), max:parseFloat(m[10]),
+              unit:m[11]||'', receivers:(m[12]||'').trim(),
+              messageName:cur.name, messageId:cur.id, messageKey:cur.key,
+              valueTable:null
+            };
+            if(!isFinite(sig.factor)||sig.factor===0) sig.factor=1;
+            if(!isFinite(sig.offset)) sig.offset=0;
+            if(!isFinite(sig.min)) sig.min=-Infinity;
+            if(!isFinite(sig.max)) sig.max=Infinity;
+            cur.signals.push(sig);
+          }
+        } else if(line.startsWith('VAL_ ')){
+          const m = line.match(/^VAL_\s+(\d+)\s+(\w+)\s+(.*);$/);
+          if(m){
+            const id=parseInt(m[1],10);
+            const isExt=(id&0x80000000)!==0;
+            const realId=id&0x1FFFFFFF;
+            const key=realId+'_'+(isExt?'x':'s');
+            const msg=messages[key];
+            if(msg){
+              const sig=msg.signals.find(s=>s.name===m[2]);
+              if(sig){
+                const table={};
+                const re=/(-?\d+)\s+"([^"]*)"/g; let pm;
+                while((pm=re.exec(m[3]))!==null) table[parseInt(pm[1],10)]=pm[2];
+                sig.valueTable=table;
+              }
+            }
           }
         }
       }
+      if(isCancelled && isCancelled()){ resolve({cancelled:true}); return; }
+      if(i<lines.length){ setTimeout(step,0); }
+      else{
+        const signals=[];
+        Object.values(messages).forEach(msg=>msg.signals.forEach(s=>signals.push(s)));
+        resolve({messages, signals});
+      }
     }
-  }
-  const signals=[];
-  Object.values(messages).forEach(msg=>msg.signals.forEach(s=>signals.push(s)));
-  return {messages, signals};
+    step();
+  });
 }
 
 /* ---------- raw value extraction ----------
@@ -366,8 +398,8 @@ function toPhysical(raw, sig){
   return raw*sig.factor+sig.offset;
 }
 
-/* ---------- ASC parser (async chunked) ---------- */
-async function parseASC(text, onProgress){
+/* ---------- ASC parser (async chunked, 可取消) ---------- */
+async function parseASC(text, onProgress, isCancelled){
   const lines = text.split(/\r?\n/);
   const total = lines.length;
   const map = {};           // key -> {times:[], data:[], dlc, isExt, name?}
@@ -378,6 +410,7 @@ async function parseASC(text, onProgress){
   let i=0;
   return new Promise(resolve=>{
     function step(){
+      if(isCancelled && isCancelled()){ resolve({cancelled:true}); return; }
       const end=Math.min(i+CHUNK,total);
       for(; i<end; i++){
         const line=lines[i];
@@ -517,6 +550,55 @@ function toast(msg){
   const t=$('toast'); t.textContent=msg; t.classList.add('show');
   clearTimeout(t._tm); t._tm=setTimeout(()=>t.classList.remove('show'),2200);
 }
+/* ---------- 长任务管理：输入拦截 + 500ms后标灰显示动画 + 计时 + 取消 + 30s超时 ---------- */
+let busyState = null;
+function startBusy(text, cancelFn){
+  if(busyState) finishBusy();
+  const token = {cancelled:false};
+  const ov = $('busyOverlay');
+  busyState = {
+    token,
+    startTime: Date.now(),
+    cancelFn,
+    showTimer: setTimeout(()=>{
+      $('busyText').textContent = text;
+      $('busyTimer').textContent = '0 s';
+      ov.classList.add('show');
+    }, 500),
+    watchdog: setTimeout(()=>{
+      token.cancelled = true;
+      const fn = busyState ? busyState.cancelFn : null;
+      finishBusy();
+      if(fn) fn('timeout');
+      toast('动作执行超过 30 秒，已自动停止');
+    }, 30000),
+    clock: setInterval(()=>{
+      if(busyState) $('busyTimer').textContent = Math.floor((Date.now()-busyState.startTime)/1000)+' s';
+    }, 250)
+  };
+  ov.classList.add('blocking');   // 立即拦截鼠标/滚轮输入
+  return token;
+}
+function finishBusy(){
+  if(!busyState) return;
+  clearTimeout(busyState.showTimer);
+  clearTimeout(busyState.watchdog);
+  clearInterval(busyState.clock);
+  $('busyOverlay').classList.remove('blocking','show');
+  busyState = null;
+}
+$('busyCancel').onclick=()=>{
+  if(!busyState) return;
+  busyState.token.cancelled = true;
+  const fn = busyState.cancelFn;
+  finishBusy();
+  if(fn) fn('cancel');
+  toast('已取消当前动作');
+};
+/* 执行期间拦截键盘输入（取消按钮所在遮罩内的按键除外） */
+document.addEventListener('keydown',(e)=>{
+  if(busyState && !$('busyOverlay').contains(e.target)){ e.preventDefault(); e.stopPropagation(); }
+}, true);
 function fmtId(realId,isExt){ return '0x'+realId.toString(16).toUpperCase().padStart(isExt?7:3,'0')+(isExt?'x':''); }
 
 /* ---------- signal list UI ---------- */
@@ -547,6 +629,7 @@ function renderSignalList(){
         renderPickedList();
       });
       const span=el('span','sname',s.name);
+      if(!has) span.appendChild(el('span','nodata','[无数据]'));
       const unit=el('span','sunit',s.unit?('['+s.unit+']'):'');
       it.append(cb,span,unit);
       it.addEventListener('click',e=>{ if(e.target!==cb){ cb.checked=!cb.checked; cb.dispatchEvent(new Event('change')); } });
@@ -594,7 +677,7 @@ function renderPickedList(){
     const isExt=(s.messageId & 0x80000000)!==0;
     const span=el('span','sname',s.name);
     span.style.minWidth=nameMinW;
-    if(!has) span.appendChild(el('span','nodata','[无信号]'));
+    if(!has) span.appendChild(el('span','nodata','[无数据]'));
     const sid=el('span','sid',fmtId(realId,isExt));
     const sright=el('span','sright');
     const unit=el('span','sunit',s.unit?('['+s.unit+']'):'');
@@ -728,9 +811,16 @@ function renderCharts(){
   if(!sigs.length){ $('contentTitle').textContent='请选择至少一个信号'; return; }
   $('contentTitle').textContent=`正在渲染 ${sigs.length} 条曲线…`;
   let renderCount=0, emptyCount=0;
+  const token = startBusy('正在渲染曲线…', ()=>{ token.cancelled=true; });
   // render in chunks to avoid blocking
   let idx=0;
   function next(){
+    if(token.cancelled){
+      finishBusy();
+      disposeCharts();
+      $('contentTitle').textContent='渲染已取消';
+      return;
+    }
     if(idx>=sigs.length){
       const parts=[`已选择 ${sigs.length} 个信号，已渲染 ${renderCount} 条曲线`];
       if(emptyCount>0) parts.push(`未渲染 ${emptyCount} 个空信号`);
@@ -752,6 +842,7 @@ function renderCharts(){
       fitAllY();
       setTimeout(()=>{ charts.forEach(c=>c.resize()); if(xAxisChart)xAxisChart.resize(); }, 100);
       setTimeout(()=>{ charts.forEach(c=>c.resize()); if(xAxisChart)xAxisChart.resize(); }, 300);
+      finishBusy();
       return;
     }
     const sig=sigs[idx]; idx++;
@@ -1005,9 +1096,10 @@ $('btnDbc').onclick=()=>$('fileDbc').click();
 $('btnAsc').onclick=()=>$('fileAsc').click();
 
 async function loadDbcText(name, txt){
+  const token = startBusy('解析 DBC 文件…', ()=>{ token.cancelled=true; });
   try{
-    showLoading('解析 DBC…');
-    dbcData=parseDBC(txt);
+    dbcData = await parseDBC(txt, ()=>token.cancelled);
+    if(token.cancelled || !dbcData || dbcData.cancelled){ dbcData=null; toast('已取消 DBC 解析'); return; }
     $('dbcInfo').textContent=`${name} · ${Object.keys(dbcData.messages).length} 报文 / ${dbcData.signals.length} 信号`;
     $('dbcInfo').classList.add('loaded');
     $('totalCount').textContent=dbcData.signals.length;
@@ -1015,20 +1107,21 @@ async function loadDbcText(name, txt){
     renderSignalList(); renderPickedList(); updateSelCount(); updateStartBtn();
     toast(`DBC 已加载：${dbcData.signals.length} 个信号`);
   }catch(err){ toast('DBC 解析失败：'+err.message); }
-  hideLoading();
+  finally{ finishBusy(); }
 }
 async function loadAscText(name, txt){
+  hideLoading();
+  const token = startBusy('解析 ASC 文件…', ()=>{ token.cancelled=true; });
   try{
-    showLoading('读取 ASC…',0);
-    showLoading('解析 ASC…',0);
-    ascData=await parseASC(txt, p=>showLoading('解析 ASC… '+Math.round(p*100)+'%', p));
-    if(ascData.totalMessages===0){ toast('ASC 文件无可识别报文'); hideLoading(); return; }
+    ascData = await parseASC(txt, null, ()=>token.cancelled);
+    if(token.cancelled || !ascData || ascData.cancelled){ ascData=null; toast('已取消 ASC 解析'); return; }
+    if(ascData.totalMessages===0){ toast('ASC 文件无可识别报文'); return; }
     $('ascInfo').textContent=`${name} · ${ascData.totalMessages} 帧 · ${ascData.tMin.toFixed(2)}–${ascData.tMax.toFixed(2)}s`;
     $('ascInfo').classList.add('loaded');
     renderSignalList(); renderPickedList(); updateSelCount(); updateStartBtn();
     toast(`ASC 已加载：${ascData.totalMessages} 帧`);
   }catch(err){ toast('ASC 解析失败：'+err.message); }
-  hideLoading();
+  finally{ finishBusy(); }
 }
 $('fileDbc').onchange=async e=>{ const f=e.target.files[0]; if(!f) return; await loadDbcText(f.name, await readText(f)); e.target.value=''; };
 $('fileAsc').onchange=async e=>{ const f=e.target.files[0]; if(!f) return; await loadAscText(f.name, await readText(f, p=>showLoading('读取 ASC… '+Math.round(p*100)+'%', p))); e.target.value=''; };
@@ -1047,6 +1140,25 @@ $('btnClearAll').onclick=()=>{
   document.querySelectorAll('#sigList .sig-item input').forEach(cb=>cb.checked=false);
   updateSelCount();
   renderPickedList();
+};
+$('btnClearNoData').onclick=()=>{
+  if(!selectedSet.size) return;
+  let removed=0;
+  for(const k of Array.from(selectedSet)){
+    const [mk,sname]=k.split('::');
+    const msg=dbcData && dbcData.messages[mk];
+    if(!msg) continue;
+    const s=msg.signals.find(x=>x.name===sname);
+    if(s && !(ascData && ascData.map[s.messageKey])){ selectedSet.delete(k); removed++; }
+  }
+  if(removed>0){
+    document.querySelectorAll('#sigList .sig-item input').forEach(cb=>{ if(!selectedSet.has(cb.dataset.key)) cb.checked=false; });
+    updateSelCount();
+    renderPickedList();
+    toast(`已清除 ${removed} 个无数据信号`);
+  } else {
+    toast('没有无数据信号');
+  }
 };
 $('btnFilterEmpty').onclick=()=>{
   filterEmpty=!filterEmpty;
