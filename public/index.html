@@ -1043,30 +1043,34 @@ function renderCharts(){
 }
 
 /* 跨图表十字线 + Real 实时值：
-   鼠标在任一曲线区域移动时，竖线通过 updateAxisPointer 同步到所有曲线与底部横轴，
-   各信号侧栏 Real 值按同一时间点实时更新 */
-function setLiveReal(c, t){
-  const lv = c._liveEl;
-  if(!lv) return;
-  const series = c._series;
-  if(!series || !series.length){ lv.textContent='Real '; return; }
+   鼠标在任一曲线区域移动时，通过 showTip(seriesIndex,dataIndex) 让所有图表只显示
+   轴指针竖线（不显示提示框），底部横轴显示时间标签，各信号侧栏 Real 值实时更新 */
+function nearestIndex(series, t){
+  if(!series || !series.length) return -1;
   let lo=0, hi=series.length-1, best=-1;
   while(lo<=hi){
     const mid=(lo+hi)>>1;
     if(series[mid][0]<=t){ best=mid; lo=mid+1; } else hi=mid-1;
   }
-  let v=null;
-  if(best>=0){
-    const p=series[best];
-    if(p[1]!=null) v=p[1];
-    else if(best+1<series.length && series[best+1][1]!=null) v=series[best+1][1];
+  return best;
+}
+function setLiveReal(c, t){
+  const lv = c._liveEl;
+  if(!lv) return;
+  const series = c._series;
+  if(!series || !series.length){ lv.textContent='Real '; return; }
+  const idx = nearestIndex(series, t);
+  let v = null;
+  if(idx>=0){
+    const p = series[idx];
+    if(p[1]!=null) v = p[1];
+    else if(idx+1<series.length && series[idx+1][1]!=null) v = series[idx+1][1];
   }
   lv.textContent = v!=null ? ('Real '+v.toFixed(3)+' '+(c._sig.unit||'')) : 'Real ';
 }
 let crosshairRaf = 0;
 let crosshairPending = null;
 function setupCrosshair(){
-  const allTargets = ()=>{ const a = charts.slice(); if(xAxisChart) a.push(xAxisChart); return a; };
   const resetCrosshair = ()=>{
     try{
       charts.forEach(c=>{ if(c._liveEl) c._liveEl.textContent='Real '; c.dispatchAction({type:'hideTip'}); });
@@ -1089,12 +1093,22 @@ function setupCrosshair(){
       if(!isFinite(t)){ resetCrosshair(); return; }
       // 各信号 Real 值
       charts.forEach(c=>setLiveReal(c, t));
-      // 十字线同步到所有图表与底部横轴（带 axesInfo 指定轴，否则指针会被销毁）
-      allTargets().forEach(c=>{
+      // 十字线：有数据图表用 showTip(dataIndex)（轴触发下只显示指针，不显示提示框）
+      charts.forEach(c=>{
         if(c===src) return;                       // 悬停图表由原生 tooltip 显示
-        const px = c.convertToPixel({xAxisIndex:0}, t);
-        if(px != null) c.dispatchAction({type:'updateAxisPointer', x:px, y:0, axesInfo:[{axisDim:'x', axisIndex:0}]});
+        if(c._series && c._series.length){
+          const idx = nearestIndex(c._series, t);
+          if(idx>=0) c.dispatchAction({type:'showTip', seriesIndex:0, dataIndex:idx});
+        } else {
+          const px = c.convertToPixel({xAxisIndex:0}, t);
+          if(px != null) c.dispatchAction({type:'updateAxisPointer', x:px, y:0, axesInfo:[{axisDim:'x', axisIndex:0}]});
+        }
       });
+      // 底部横轴：像素定位显示指针与时间标签
+      if(xAxisChart && xAxisChart!==src){
+        const px = xAxisChart.convertToPixel({xAxisIndex:0}, t);
+        if(px != null) xAxisChart.dispatchAction({type:'updateAxisPointer', x:px, y:0, axesInfo:[{axisDim:'x', axisIndex:0}]});
+      }
     }catch(e){}
   };
   const onMove = (src)=>(e)=>{
@@ -1706,7 +1720,7 @@ window.addEventListener('resize',()=>{ charts.forEach(c=>c.resize()); if(xAxisCh
 /* 升级时间显示：按设备/浏览器所在时区显示对应时间（如 升级于2026-08-12 15:21:00） */
 (function(){
   // 修改时间（UTC），每次更新页面时由开发者同步修改
-  const MOD_UTC = Date.UTC(2026, 7, 12, 7, 41, 20);
+  const MOD_UTC = Date.UTC(2026, 7, 12, 7, 45, 23);
   const d = new Date(MOD_UTC);
   const pad = n => String(n).padStart(2,'0');
   const dateStr = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
