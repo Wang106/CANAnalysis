@@ -1375,8 +1375,14 @@ function setupSync(){
       let lo=xAx.min, hi=xAx.max;
       if(lo==null||hi==null){ lo=ascData.tMin; hi=ascData.tMax; }
       const plotW=w-gL-gR;
-      const px=Math.max(0,Math.min(plotW, mx-gL));
-      const anchor=lo+(hi-lo)*(px/plotW);
+      /* 竖线已固定：以固定竖线为中心缩放；未固定：以鼠标位置为中心 */
+      let anchor;
+      if(pinned != null){
+        anchor = pinned;
+      } else {
+        const px=Math.max(0,Math.min(plotW, mx-gL));
+        anchor=lo+(hi-lo)*(px/plotW);
+      }
       const factor = e.deltaY > 0 ? 1.2 : 0.83;
       const nLo=anchor-(anchor-lo)*factor;
       const nHi=anchor+(hi-anchor)*factor;
@@ -1863,7 +1869,7 @@ window.addEventListener('resize',()=>{ charts.forEach(c=>c.resize()); if(xAxisCh
 /* 发布时间显示：按设备/浏览器所在时区显示对应时间（如 发布于2026-08-12 15:21:00） */
 (function(){
   // 修改时间（UTC），每次更新页面时由开发者同步修改
-  const MOD_UTC = Date.UTC(2026, 7, 12, 9, 2, 54);
+  const MOD_UTC = Date.UTC(2026, 7, 12, 9, 27, 48);
   const d = new Date(MOD_UTC);
   const pad = n => String(n).padStart(2,'0');
   const dateStr = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
