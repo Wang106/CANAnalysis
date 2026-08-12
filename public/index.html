@@ -195,7 +195,7 @@
       <img src="icon.png" class="icon" alt="icon" />
       <div class="htitle-wrap">
         <span class="htitle">CAN报文解析</span>
-        <span class="hmodtime">修改于2026-8-12 14:28:47</span>
+        <span class="hmodtime">修改于2026-8-12 14:45:34</span>
       </div>
     </div>
     <div class="header-right">
@@ -498,6 +498,27 @@ function buildSeries(sig){
   }
   return out;
 }
+/* 分片异步构建序列：让出主线程，保证取消按钮与页面及时响应 */
+function buildSeriesChunked(sig, cb, check, onCancel){
+  const md=ascData.map[sig.messageKey];
+  if(!md){ cb([]); return; }
+  const n=md.times.length;
+  const out=new Array(n);
+  const dlc=md.dlc;
+  const SLICE=50000;
+  let i=0;
+  function step(){
+    if(check && check()){ if(onCancel) onCancel(); return; }
+    const end=Math.min(i+SLICE,n);
+    for(;i<end;i++){
+      const raw=extractRawAt(md.data, i*dlc, dlc, sig);
+      out[i]=[md.times[i], toPhysical(raw,sig)];
+    }
+    if(i<n){ setTimeout(step,0); }
+    else cb(out);
+  }
+  step();
+}
 
 /* ---------- stats & analysis ---------- */
 function median(arr){
@@ -522,6 +543,39 @@ function computeStats(series, sig){
   return {count:series.length,min,max,mean,std,outRange,allSame,
           t0:series[0][0],t1:series[series.length-1][0],
           duration:series[series.length-1][0]-series[0][0]};
+}
+/* 分片异步计算统计：让出主线程，保证取消按钮与页面及时响应 */
+function computeStatsChunked(series, sig, cb, check, onCancel){
+  const n=series.length;
+  if(!n){ cb({count:0}); return; }
+  const SLICE=50000;
+  let idx=0, min=Infinity,max=-Infinity,sum=0,outRange=0;
+  const first=series[0][1]; let allSame=true;
+  function pass1(){
+    if(check && check()){ if(onCancel) onCancel(); return; }
+    const end=Math.min(idx+SLICE,n);
+    for(;idx<end;idx++){
+      const v=series[idx][1];
+      if(v<min)min=v; if(v>max)max=v; sum+=v;
+      if(v!==first) allSame=false;
+      if(v<sig.min||v>sig.max) outRange++;
+    }
+    if(idx<n){ setTimeout(pass1,0); return; }
+    const mean=sum/n;
+    idx=0; let sq=0;
+    function pass2(){
+      if(check && check()){ if(onCancel) onCancel(); return; }
+      const e2=Math.min(idx+SLICE,n);
+      for(;idx<e2;idx++){ const d=series[idx][1]-mean; sq+=d*d; }
+      if(idx<n){ setTimeout(pass2,0); return; }
+      const std=Math.sqrt(sq/n);
+      cb({count:n,min,max,mean,std,outRange,allSame,
+          t0:series[0][0],t1:series[n-1][0],
+          duration:series[n-1][0]-series[0][0]});
+    }
+    pass2();
+  }
+  pass1();
 }
 function analyzeGaps(md){
   if(!md||md.times.length<4) return null;
@@ -882,11 +936,15 @@ function renderCharts(){
     tickTimer();
     if(token.cancelled){ abortRender(); return; }
     if(idx>=sigs.length){ idx=0; nextBuild(); return; }
-    const sig=sigs[idx]; idx++;
-    const series=buildSeries(sig);
-    const stats=computeStats(series,sig);
-    cache.push({sig, series, stats});
-    setTimeout(nextData,0);
+    const sig=sigs[idx];
+    const chk=()=>token.cancelled;
+    buildSeriesChunked(sig, series=>{
+      computeStatsChunked(series, sig, stats=>{
+        cache.push({sig, series, stats});
+        idx++;
+        setTimeout(nextData,0);
+      }, chk, abortRender);
+    }, chk, abortRender);
   }
   function nextBuild(){
     tickTimer();
