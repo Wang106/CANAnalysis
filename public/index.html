@@ -102,10 +102,21 @@
   #xaxisContainer:empty{display:none;}
   #analysisDivider{display:none;height:5px;flex-shrink:0;background:var(--line);cursor:row-resize;border-top:1px solid var(--accent);border-bottom:1px solid var(--accent);z-index:5;}
   #analysisDivider.show{display:block;}
-  #analysisPanel{padding:10px 14px;border-top:1px solid var(--line);background:#13161d;flex:1;min-height:0;overflow-y:auto;}
+  #analysisPanel{padding:10px 14px;border-top:1px solid var(--line);background:#13161d;flex:1;min-height:0;overflow-y:auto;position:relative;}
   #analysisPanel.hidden{display:none;}
   .ana-btn{display:none;padding:3px 10px;font-size:11px;}
   .ana-btn:not(.hidden){display:inline-block;}
+  /* 全屏显示 */
+  .fs-btn{display:inline-flex;align-items:center;justify-content:center;padding:3px 6px;font-size:11px;}
+  .fs-btn svg{width:14px;height:14px;}
+  #fsExit{position:fixed;top:8px;right:8px;z-index:95;display:none;align-items:center;justify-content:center;}
+  #analysisWrap.fullscreen #fsExit{display:inline-flex;}
+  #analysisWrap.fullscreen{position:fixed;inset:0;z-index:90;background:var(--bg);}
+  #analysisWrap.fullscreen #chartArea{flex:1 !important;height:auto !important;}
+  #analysisWrap.fullscreen #analysisDivider{display:none !important;}
+  #analysisWrap.fullscreen #analysisPanel{display:none !important;}
+  #anaFullscreen{position:absolute;top:6px;right:10px;z-index:6;}
+  #analysisPanel.fullscreen{position:fixed;inset:0;z-index:90;background:var(--bg);height:auto !important;}
   /* global chart controls in sig-bar-head */
   .gctrls{display:none;align-items:center;gap:5px;font-size:11px;}
   .gctrls.show{display:flex;}
@@ -181,7 +192,7 @@
       <img src="icon.png" class="icon" alt="icon" />
       <div class="htitle-wrap">
         <span class="htitle">CAN报文解析</span>
-        <span class="hmodtime">修改于2026-8-12 13:40:23</span>
+        <span class="hmodtime">修改于2026-8-12 13:49:55</span>
       </div>
     </div>
     <div class="header-right">
@@ -234,10 +245,11 @@
         <button id="gFitX">X轴自适应</button>
         <button id="gFitY">Y轴自适应</button>
         <button id="gDots">圆点</button>
+        <button id="gFullscreen" class="fs-btn" title="全屏显示曲线"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg></button>
       </span>
-      <button id="btnToggleAnalysis" class="ana-btn hidden" disabled>显示分析</button>
     </div>
     <div id="analysisWrap">
+      <button id="fsExit" class="fs-btn" title="退出全屏"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/></svg></button>
       <div id="chartArea"></div>
       <div id="xaxisContainer"></div>
       <div id="analysisDivider"></div>
@@ -724,14 +736,12 @@ function selectedSignals(){
 /* ---------- chart rendering ---------- */
 let analysisReady = false;   // 当前曲线是否已生成过分析结果
 function disposeCharts(){
+  if(fsMode) exitFullscreen();
   if(xAxisChart){try{xAxisChart.dispose();}catch(e){} xAxisChart=null;}
   charts.forEach(c=>{try{c.dispose();}catch(e){}});
   charts=[]; $('chartArea').innerHTML='';
   $('xaxisContainer').innerHTML='';
   $('gctrls').classList.remove('show');
-  $('btnToggleAnalysis').classList.add('hidden');
-  $('btnToggleAnalysis').disabled=true;
-  $('btnToggleAnalysis').textContent='显示分析';
   $('btnAnalyze').disabled=true;
   $('btnAnalyze').textContent='报文分析';
   analysisReady=false;
@@ -838,8 +848,6 @@ function renderCharts(){
       if(emptyCount>0) parts.push(`未渲染 ${emptyCount} 个无数据信号`);
       $('contentTitle').textContent=parts.join('，');
       $('gctrls').classList.add('show');
-      $('btnToggleAnalysis').classList.remove('hidden');
-      $('btnToggleAnalysis').disabled=false;
       $('btnAnalyze').disabled=false;
       // add shared x-axis row at bottom (outside scrollable chartArea)
       const xRow=el('div','xaxis-row');
@@ -1101,6 +1109,12 @@ function renderAnalysis(sigs){
     html+=`<div style="font-size:12px;color:var(--accent2);margin-top:4px;">✓ 未检测到明显异常</div>`;
   }
   panel.innerHTML=html;
+  const anaFs=el('button','fs-btn');
+  anaFs.id='anaFullscreen';
+  anaFs.title='全屏显示分析';
+  anaFs.innerHTML = fsMode==='analysis' ? ICON_COMPRESS : ICON_EXPAND;
+  anaFs.onclick=()=>toggleAnalysisFullscreen();
+  panel.appendChild(anaFs);
 }
 
 /* ---------- wire up UI ---------- */
@@ -1209,10 +1223,9 @@ $('sigToggle').onclick=()=>{
   bar.style.transition='';
   setTimeout(()=>{ charts.forEach(c=>c.resize()); }, 250);
 };
-/* 分析面板显示/隐藏切换（报文分析按钮 与 顶部"显示/隐藏分析"按钮共用） */
+/* 分析面板显示/隐藏切换（由"报文分析"按钮控制） */
 function syncAnalysisBtns(visible){
   $('btnAnalyze').textContent = visible ? '隐藏分析' : '显示分析';
-  $('btnToggleAnalysis').textContent = visible ? '隐藏分析' : '显示分析';
 }
 function showAnalysisPanel(){
   $('analysisPanel').classList.remove('hidden');
@@ -1251,11 +1264,41 @@ $('btnAnalyze').onclick=()=>{
   if($('analysisPanel').classList.contains('hidden')) showAnalysisPanel();
   else hideAnalysisPanel();
 };
-$('btnToggleAnalysis').onclick=()=>{
-  if(!analysisReady){ runAnalysis(); return; }
-  if($('analysisPanel').classList.contains('hidden')) showAnalysisPanel();
-  else hideAnalysisPanel();
-};
+/* 全屏显示：曲线区域 / 报文分析 */
+const ICON_EXPAND='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>';
+const ICON_COMPRESS='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/></svg>';
+let fsMode = null;   // null | 'charts' | 'analysis'
+function updateFsIcons(){
+  const gBtn=$('gFullscreen');
+  if(gBtn) gBtn.innerHTML = fsMode==='charts' ? ICON_COMPRESS : ICON_EXPAND;
+  const anaBtn=$('anaFullscreen');
+  if(anaBtn) anaBtn.innerHTML = fsMode==='analysis' ? ICON_COMPRESS : ICON_EXPAND;
+}
+function enterFullscreen(mode){
+  const el = mode==='charts' ? $('analysisWrap') : $('analysisPanel');
+  if(!el) return;
+  el.classList.add('fullscreen');
+  fsMode = mode;
+  document.body.classList.add('fs-on');
+  updateFsIcons();
+  setTimeout(()=>{ charts.forEach(c=>c.resize()); if(xAxisChart)xAxisChart.resize(); }, 60);
+}
+function exitFullscreen(){
+  if(!fsMode) return;
+  const el = fsMode==='charts' ? $('analysisWrap') : $('analysisPanel');
+  if(el) el.classList.remove('fullscreen');
+  fsMode = null;
+  document.body.classList.remove('fs-on');
+  updateFsIcons();
+  setTimeout(()=>{ charts.forEach(c=>c.resize()); if(xAxisChart)xAxisChart.resize(); }, 60);
+}
+function toggleChartsFullscreen(){ fsMode==='charts' ? exitFullscreen() : enterFullscreen('charts'); }
+function toggleAnalysisFullscreen(){ fsMode==='analysis' ? exitFullscreen() : enterFullscreen('analysis'); }
+$('gFullscreen').onclick=toggleChartsFullscreen;
+$('fsExit').onclick=toggleChartsFullscreen;
+document.addEventListener('keydown',(e)=>{
+  if(e.key==='Escape' && fsMode) exitFullscreen();
+});
 /* draggable divider */
 (function(){
   const div=$('analysisDivider');
