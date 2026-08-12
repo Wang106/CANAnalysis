@@ -60,7 +60,7 @@
   #sigBar.collapsed .sig-list-wrap{opacity:0;max-height:0;transition:opacity .15s ease,max-height .35s ease;}
   .sig-col{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden;background:var(--panel);}
   .sig-col-head{font-size:12px;font-weight:600;color:var(--txt2);padding:6px 14px;border-bottom:1px solid var(--line);background:var(--panel2);flex-shrink:0;display:flex;align-items:center;gap:6px;position:relative;}
-  .sig-col-head .cnt{position:absolute;left:50%;transform:translateX(-50%);font-size:11px;color:var(--accent2);}
+  .sig-col-head .cnt{flex:1;text-align:center;font-size:11px;color:var(--accent2);}
   .sig-col-head .col-btn{padding:2px 8px;font-size:11px;}
   .sig-col-head .col-btn.active{background:var(--accent);border-color:var(--accent);color:#04121f;}
   .sig-col-body{flex:1;overflow-y:auto;padding:4px 10px;}
@@ -201,17 +201,17 @@
       <img src="icon.png" class="icon" alt="icon" />
       <div class="htitle-wrap">
         <span class="htitle">CAN报文解析</span>
-        <span class="hmodtime">修改于2026-8-12 15:01:52</span>
+        <span class="hmodtime" id="hmodtime"></span>
       </div>
     </div>
     <div class="header-right">
       <div class="file-row">
         <div class="finput" id="dbcInfo">未加载</div>
-        <button id="btnDbc">点击加载DBC文件</button>
+        <button id="btnDbc">加载DBC文件</button>
       </div>
       <div class="file-row">
         <div class="finput" id="ascInfo">未加载</div>
-        <button id="btnAsc">点击加载.asc文件</button>
+        <button id="btnAsc">加载.asc文件</button>
       </div>
     </div>
   </div>
@@ -893,12 +893,11 @@ function makeOption(series, sig, stats){
     yAxis:{type:'value',name:sig.unit||'',nameTextStyle:{color:'#8b93a3'},
       axisLine:{lineStyle:{color:'#3a4150'}},axisLabel:{color:'#8b93a3'},
       splitLine:{lineStyle:{color:'#222732'}}},
-    axisPointer:{link:[{xAxisIndex:'all'}]},
     dataZoom:[
       {id:'xZoom',type:'inside',xAxisIndex:0,zoomOnMouseWheel:false,moveOnMouseWheel:false,moveOnMouseMove:true,moveOnMouseUp:true,filterMode:'none'},
       {id:'yZoom',type:'inside',yAxisIndex:0,zoomOnMouseWheel:false,moveOnMouseWheel:false,moveOnMouseMove:false,moveOnMouseUp:false,filterMode:'none'}
     ],
-    tooltip:{trigger:'axis',axisPointer:{type:'line',lineStyle:{color:'#4a9eff'},label:{show:true,formatter:p=>(typeof p.value==='number'?p.value.toFixed(3):p.value)+'s',color:'#04121f',backgroundColor:'#4a9eff'}},formatter:buildTooltip(sig)},
+    tooltip:{trigger:'axis',axisPointer:{type:'line',lineStyle:{color:'#4a9eff'}},formatter:buildTooltip(sig)},
     series:[{
       type:'line',data:series,name:sig.name,showSymbol:false,symbol:'circle',symbolSize:4,
       clip:true, connectNulls:false,
@@ -923,7 +922,6 @@ function makeEmptyOption(sig){
     yAxis:{type:'value',name:sig.unit||'',nameTextStyle:{color:'#8b93a3'},
       axisLine:{lineStyle:{color:'#3a4150'}},axisLabel:{color:'#8b93a3'},
       splitLine:{lineStyle:{color:'#222732'}}},
-    axisPointer:{link:[{xAxisIndex:'all'}]},
     dataZoom:[
       {id:'xZoom',type:'inside',xAxisIndex:0,zoomOnMouseWheel:false,moveOnMouseWheel:false,moveOnMouseMove:true,moveOnMouseUp:true,filterMode:'filter'}
     ]
@@ -940,6 +938,7 @@ function makeXAxisOption(){
       axisTick:{lineStyle:{color:'#3a4150'}},
       splitLine:{show:false}},
     yAxis:{type:'value',show:false,min:0,max:1},
+    tooltip:{trigger:'axis',axisPointer:{type:'line',lineStyle:{color:'#4a9eff'},label:{show:true,formatter:p=>(typeof p.value==='number'?p.value.toFixed(3):p.value)+'s',color:'#04121f',backgroundColor:'#4a9eff'}},formatter:()=>''},
     dataZoom:[
       {id:'xZoom',type:'inside',xAxisIndex:0,zoomOnMouseWheel:false,moveOnMouseWheel:false,moveOnMouseMove:true,moveOnMouseUp:true,filterMode:'none'}
     ]
@@ -998,6 +997,7 @@ function renderCharts(){
       xAxisChart=echarts.init(xCd);
       xAxisChart.setOption(makeXAxisOption());
       setupSync();
+      setupCrosshair();
       // 点击"生成曲线"后自动执行X轴和Y轴自适应
       resetZoom();
       fitAllY();
@@ -1026,8 +1026,8 @@ function renderCharts(){
       const chart=echarts.init(cd);
       chart.setOption(makeOption(series,sig,stats));
       chart._series=series; chart._sig=sig; chart._stats=stats;
+      chart._liveEl = side.querySelector('.liveval');
       charts.push(chart);
-      attachLiveValue(chart, side);
     } else {
       emptyCount++;
       const chart=echarts.init(cd);
@@ -1040,43 +1040,75 @@ function renderCharts(){
   nextData();
 }
 
-/* 信号侧栏实时值：鼠标在任一曲线区移动时，所有信号按同一时间点显示 Real 值 */
-function attachLiveValue(chart, side){
-  const live=side.querySelector('.liveval');
-  if(!live) return;
-  chart._liveEl = live;
-  const dom=chart.getDom();
-  function setLive(c, t){
-    const lv=c._liveEl;
-    if(!lv) return;
-    const series=c._series;
-    if(!series || !series.length){ lv.textContent='Real '; return; }
-    let lo=0, hi=series.length-1, best=-1;
-    while(lo<=hi){
-      const mid=(lo+hi)>>1;
-      if(series[mid][0]<=t){ best=mid; lo=mid+1; } else hi=mid-1;
-    }
-    let v=null;
-    if(best>=0){
-      const p=series[best];
-      if(p[1]!=null) v=p[1];
-      else if(best+1<series.length && series[best+1][1]!=null) v=series[best+1][1];
-    }
-    lv.textContent = v!=null ? ('Real '+v.toFixed(3)+' '+(c._sig.unit||'')) : 'Real ';
+/* 跨图表十字线 + Real 实时值：
+   鼠标在任一曲线区域移动时，竖线通过 updateAxisPointer 同步到所有曲线与底部横轴，
+   各信号侧栏 Real 值按同一时间点实时更新 */
+function setLiveReal(c, t){
+  const lv = c._liveEl;
+  if(!lv) return;
+  const series = c._series;
+  if(!series || !series.length){ lv.textContent='Real '; return; }
+  let lo=0, hi=series.length-1, best=-1;
+  while(lo<=hi){
+    const mid=(lo+hi)>>1;
+    if(series[mid][0]<=t){ best=mid; lo=mid+1; } else hi=mid-1;
   }
-  dom.addEventListener('mousemove',(e)=>{
-    const rect=dom.getBoundingClientRect();
-    const mx=e.clientX-rect.left;
-    const opt=chart.getOption();
-    const grid=opt.grid||{left:78,right:8};
-    const gL=typeof grid.left==='number'?grid.left:78;
-    const gR=typeof grid.right==='number'?grid.right:8;
-    if(mx<=gL || mx>=dom.clientWidth-gR){ charts.forEach(c=>{ if(c._liveEl) c._liveEl.textContent='Real '; }); return; }
-    let t=chart.convertFromPixel({xAxisIndex:0}, [mx, 0]);
-    t=Array.isArray(t)?t[0]:t;
-    charts.forEach(c=>setLive(c,t));
+  let v=null;
+  if(best>=0){
+    const p=series[best];
+    if(p[1]!=null) v=p[1];
+    else if(best+1<series.length && series[best+1][1]!=null) v=series[best+1][1];
+  }
+  lv.textContent = v!=null ? ('Real '+v.toFixed(3)+' '+(c._sig.unit||'')) : 'Real ';
+}
+let crosshairRaf = 0;
+let crosshairPending = null;
+function setupCrosshair(){
+  const allTargets = ()=>{ const a = charts.slice(); if(xAxisChart) a.push(xAxisChart); return a; };
+  const resetCrosshair = ()=>{
+    charts.forEach(c=>{ if(c._liveEl) c._liveEl.textContent='Real '; try{c.dispatchAction({type:'hideTip'});}catch(e){} });
+    if(xAxisChart){ try{xAxisChart.dispatchAction({type:'hideTip'});}catch(e){} }
+  };
+  const flushCrosshair = ()=>{
+    crosshairRaf = 0;
+    const p = crosshairPending;
+    crosshairPending = null;
+    if(!p) return;
+    const {src, mx, my} = p;
+    const opt = src.getOption();
+    let grid = opt.grid;
+    if(Array.isArray(grid)) grid = grid[0];
+    grid = grid || {left:78, right:8};
+    const gL = typeof grid.left==='number' ? grid.left : 78;
+    const gR = typeof grid.right==='number' ? grid.right : 8;
+    const w = src.getDom().clientWidth;
+    if(mx<=gL || mx>=w-gR){ resetCrosshair(); return; }
+    let t = src.convertFromPixel({xAxisIndex:0}, [mx, my]);
+    t = Array.isArray(t) ? t[0] : t;
+    if(!isFinite(t)){ resetCrosshair(); return; }
+    charts.forEach(c=>setLiveReal(c, t));
+    allTargets().forEach(c=>{
+      if(c===src) return;                       // 悬停图表由原生 tooltip 显示
+      try{
+        const px = c.convertToPixel({xAxisIndex:0}, t);
+        if(px != null) c.dispatchAction({type:'updateAxisPointer', x:px, y:0});
+      }catch(e){}
+    });
+  };
+  const onMove = (src)=>(e)=>{
+    crosshairPending = {src, mx: e.offsetX, my: e.offsetY};
+    if(!crosshairRaf) crosshairRaf = requestAnimationFrame(flushCrosshair);
+  };
+  charts.forEach(chart=>{
+    const zr = chart.getZr();
+    zr.on('mousemove', onMove(chart));
+    zr.on('mouseout', resetCrosshair);
   });
-  dom.addEventListener('mouseleave',()=>{ charts.forEach(c=>{ if(c._liveEl) c._liveEl.textContent='Real '; }); });
+  if(xAxisChart){
+    const zr = xAxisChart.getZr();
+    zr.on('mousemove', onMove(xAxisChart));
+    zr.on('mouseout', resetCrosshair);
+  }
 }
 
 /* Replace out-of-bounds y-values with null so the line breaks into separate segments.
@@ -1660,6 +1692,22 @@ function applyXRange(){
 $('gXmin').addEventListener('change', applyXRange);
 $('gXmax').addEventListener('change', applyXRange);
 window.addEventListener('resize',()=>{ charts.forEach(c=>c.resize()); if(xAxisChart)xAxisChart.resize(); });
+
+/* 修改时间显示：按设备/浏览器所在时区显示对应时间，前缀为时区偏移（如 UTC+8_2026-08-12 15:01:52） */
+(function(){
+  // 修改时间（UTC），每次更新页面时由开发者同步修改
+  const MOD_UTC = Date.UTC(2026, 7, 12, 7, 21, 0);
+  const d = new Date(MOD_UTC);
+  const off = -d.getTimezoneOffset();
+  const sign = off >= 0 ? '+' : '-';
+  const abs = Math.abs(off);
+  let offStr = sign + Math.floor(abs/60);
+  if(abs%60) offStr += ':' + String(abs%60).padStart(2,'0');
+  const pad = n => String(n).padStart(2,'0');
+  const dateStr = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
+  const timeStr = pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+  $('hmodtime').textContent = 'UTC' + offStr + '_' + dateStr + ' ' + timeStr;
+})();
 
 // init
 renderSignalList();
