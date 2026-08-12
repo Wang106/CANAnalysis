@@ -40,7 +40,7 @@
   .file-row{display:flex;align-items:center;gap:8px;}
   .file-row .finput{flex:1;background:var(--panel2);border:1px solid var(--line);color:var(--txt2);border-radius:6px;padding:5px 10px;font-size:12px;font-family:inherit;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
   .file-row .finput.loaded{color:var(--accent2);}
-  .file-row button{white-space:nowrap;padding:5px 14px;font-size:12px;}
+  .file-row button{white-space:nowrap;padding:5px 14px;font-size:12px;width:110px;text-align:center;}
 
   /* row 2: signal search & selection (collapsible) */
   #sigBar{background:var(--panel);border-bottom:1px solid var(--line);flex-shrink:0;display:flex;flex-direction:column;transition:flex .2s;}
@@ -148,7 +148,7 @@
   .xaxis-row{display:flex;flex-direction:row;background:var(--panel);border:1px solid var(--line);border-top:none;border-radius:0 0 var(--radius) var(--radius);overflow:hidden;flex-shrink:0;position:relative;}
   .xaxis-row .xaxis-spacer{width:var(--cc-side-w,120px);flex-shrink:0;background:var(--panel2);border-right:1px solid var(--line);}
   .xaxis-row .xaxis-chart{flex:1;min-width:0;height:22px;}
-  .xaxis-unit{position:absolute;left:calc(var(--cc-side-w,120px) + 11px);top:6px;font-size:12px;color:var(--txt2);white-space:nowrap;pointer-events:none;}
+  .xaxis-unit{position:absolute;left:calc(var(--cc-side-w,120px) + 11px);top:2px;line-height:1;font-size:12px;color:var(--txt2);white-space:nowrap;pointer-events:none;}
   /* 跨图表十字线 SVG 覆盖层 */
   #crosshairOverlay{position:absolute;inset:0;pointer-events:none;z-index:8;display:none;}
   #crosshairOverlay.show{display:block;}
@@ -1453,37 +1453,66 @@ function renderAnalysis(sigs){
 }
 
 /* ---------- wire up UI ---------- */
-$('btnDbc').onclick=()=>$('fileDbc').click();
-$('btnAsc').onclick=()=>$('fileAsc').click();
+/* 加载文本框"加载中."循环动画 */
+let loadTxtTimer = null;
+function startLoadTxt(el){
+  stopLoadTxt();
+  let dots = 0;
+  const update = ()=>{
+    dots = (dots % 3) + 1;
+    el.textContent = '加载中' + '.'.repeat(dots);
+  };
+  update();
+  loadTxtTimer = setInterval(update, 400);
+}
+function stopLoadTxt(){
+  if(loadTxtTimer){ clearInterval(loadTxtTimer); loadTxtTimer = null; }
+}
+$('btnDbc').onclick=()=>{ startLoadTxt($('dbcInfo')); $('fileDbc').click(); };
+$('btnAsc').onclick=()=>{ startLoadTxt($('ascInfo')); $('fileAsc').click(); };
+$('fileDbc').addEventListener('cancel',()=>{ stopLoadTxt(); $('dbcInfo').textContent='未加载'; $('dbcInfo').classList.remove('loaded'); });
+$('fileAsc').addEventListener('cancel',()=>{ stopLoadTxt(); $('ascInfo').textContent='未加载'; $('ascInfo').classList.remove('loaded'); });
 
 async function loadDbcText(name, txt, showBusy){
   const token = showBusy ? startBusy('解析 DBC 文件…', ()=>{ token.cancelled=true; }, {immediate:true}) : null;
   try{
     dbcData = await parseDBC(txt, showBusy ? ()=>token.cancelled : null);
-    if(showBusy && (token.cancelled || !dbcData || dbcData.cancelled)){ dbcData=null; toast('已取消 DBC 解析'); return; }
+    if(showBusy && (token.cancelled || !dbcData || dbcData.cancelled)){
+      dbcData=null; $('dbcInfo').textContent='未加载'; $('dbcInfo').classList.remove('loaded');
+      toast('已取消 DBC 解析'); return;
+    }
     $('dbcInfo').textContent=`${name} · ${Object.keys(dbcData.messages).length} 报文 / ${dbcData.signals.length} 信号`;
     $('dbcInfo').classList.add('loaded');
     $('totalCount').textContent=dbcData.signals.length;
     selectedSet.clear();
     renderSignalList(); renderPickedList(); updateSelCount(); updateStartBtn();
     toast(`DBC 已加载：${dbcData.signals.length} 个信号`);
-  }catch(err){ toast('DBC 解析失败：'+err.message); }
-  finally{ if(showBusy) finishBusy(); }
+  }catch(err){
+    $('dbcInfo').textContent='加载失败'; $('dbcInfo').classList.remove('loaded');
+    toast('DBC 解析失败：'+err.message);
+  }
+  finally{ stopLoadTxt(); if(showBusy) finishBusy(); }
 }
 async function loadAscText(name, txt, showBusy){
   hideLoading();
   const token = showBusy ? startBusy('解析 ASC 文件…', ()=>{ token.cancelled=true; }, {immediate:true}) : null;
   try{
     ascData = await parseASC(txt, null, showBusy ? ()=>token.cancelled : null);
-    if(showBusy && (token.cancelled || !ascData || ascData.cancelled)){ ascData=null; toast('已取消 ASC 解析'); return; }
-    if(ascData.totalMessages===0){ toast('ASC 文件无可识别报文'); return; }
+    if(showBusy && (token.cancelled || !ascData || ascData.cancelled)){
+      ascData=null; $('ascInfo').textContent='未加载'; $('ascInfo').classList.remove('loaded');
+      toast('已取消 ASC 解析'); return;
+    }
+    if(ascData.totalMessages===0){ $('ascInfo').textContent='未加载'; $('ascInfo').classList.remove('loaded'); toast('ASC 文件无可识别报文'); return; }
     curXMin = ascData.tMin; curXMax = ascData.tMax;
     $('ascInfo').textContent=`${name} · ${ascData.totalMessages} 帧 · ${ascData.tMin.toFixed(2)}–${ascData.tMax.toFixed(2)}s`;
     $('ascInfo').classList.add('loaded');
     renderSignalList(); renderPickedList(); updateSelCount(); updateStartBtn();
     toast(`ASC 已加载：${ascData.totalMessages} 帧`);
-  }catch(err){ toast('ASC 解析失败：'+err.message); }
-  finally{ if(showBusy) finishBusy(); }
+  }catch(err){
+    $('ascInfo').textContent='加载失败'; $('ascInfo').classList.remove('loaded');
+    toast('ASC 解析失败：'+err.message);
+  }
+  finally{ stopLoadTxt(); if(showBusy) finishBusy(); }
 }
 $('fileDbc').onchange=async e=>{ const f=e.target.files[0]; if(!f) return; await loadDbcText(f.name, await readText(f), f.size>=50*1024); e.target.value=''; };
 $('fileAsc').onchange=async e=>{ const f=e.target.files[0]; if(!f) return; const big=f.size>=50*1024*1024; await loadAscText(f.name, await readText(f, big?p=>showLoading('读取 ASC… '+Math.round(p*100)+'%', p):null), big); e.target.value=''; };
@@ -1812,15 +1841,15 @@ $('gXmin').addEventListener('change', applyXRange);
 $('gXmax').addEventListener('change', applyXRange);
 window.addEventListener('resize',()=>{ charts.forEach(c=>c.resize()); if(xAxisChart)xAxisChart.resize(); });
 
-/* 升级时间显示：按设备/浏览器所在时区显示对应时间（如 升级于2026-08-12 15:21:00） */
+/* 发布时间显示：按设备/浏览器所在时区显示对应时间（如 发布于2026-08-12 15:21:00） */
 (function(){
   // 修改时间（UTC），每次更新页面时由开发者同步修改
-  const MOD_UTC = Date.UTC(2026, 7, 12, 8, 51, 18);
+  const MOD_UTC = Date.UTC(2026, 7, 12, 8, 56, 9);
   const d = new Date(MOD_UTC);
   const pad = n => String(n).padStart(2,'0');
   const dateStr = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
   const timeStr = pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
-  $('hmodtime').textContent = '升级于' + dateStr + ' ' + timeStr;
+  $('hmodtime').textContent = '发布于' + dateStr + ' ' + timeStr;
 })();
 
 // init
