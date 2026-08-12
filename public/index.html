@@ -178,7 +178,7 @@
       <img src="icon.png" class="icon" alt="icon" />
       <div class="htitle-wrap">
         <span class="htitle">CAN报文解析</span>
-        <span class="hmodtime">修改于2026-8-12 11:55:51</span>
+        <span class="hmodtime">修改于2026-8-12 13:02:57</span>
       </div>
     </div>
     <div class="header-right">
@@ -449,7 +449,7 @@ async function parseASC(text, onProgress, isCancelled){
         if(t>tMax) tMax=t;
         totalMessages++;
       }
-      onProgress(i/total);
+      if(onProgress) onProgress(i/total);
       if(i<total){ setTimeout(step,0); }
       else {
         // finalize: convert to typed arrays
