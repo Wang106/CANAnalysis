@@ -195,7 +195,7 @@
       <img src="icon.png" class="icon" alt="icon" />
       <div class="htitle-wrap">
         <span class="htitle">CAN报文解析</span>
-        <span class="hmodtime">修改于2026-8-12 14:15:19</span>
+        <span class="hmodtime">修改于2026-8-12 14:28:47</span>
       </div>
     </div>
     <div class="header-right">
@@ -864,18 +864,34 @@ function renderCharts(){
   const sigs=selectedSignals();
   if(!sigs.length){ $('contentTitle').textContent='请选择至少一个信号'; return; }
   $('contentTitle').textContent=`正在渲染 ${sigs.length} 条曲线…`;
-  let renderCount=0, emptyCount=0;
   const token = startBusy('正在渲染曲线…', ()=>{ token.cancelled=true; }, {immediate:true});
-  // render in chunks to avoid blocking
+  let renderCount=0, emptyCount=0;
+  /* 分两阶段渲染：先逐信号准备数据，再逐信号创建图表；
+     每块边界都刷新计时，避免长渲染时计时显示卡住 */
+  const cache=[];
   let idx=0;
-  function next(){
-    if(token.cancelled){
-      finishBusy();
-      disposeCharts();
-      $('contentTitle').textContent='渲染已取消';
-      return;
-    }
-    if(idx>=sigs.length){
+  function tickTimer(){
+    if(busyState) $('busyTimer').textContent = Math.floor((Date.now()-busyState.startTime)/1000)+' s';
+  }
+  function abortRender(){
+    finishBusy();
+    disposeCharts();
+    $('contentTitle').textContent='渲染已取消';
+  }
+  function nextData(){
+    tickTimer();
+    if(token.cancelled){ abortRender(); return; }
+    if(idx>=sigs.length){ idx=0; nextBuild(); return; }
+    const sig=sigs[idx]; idx++;
+    const series=buildSeries(sig);
+    const stats=computeStats(series,sig);
+    cache.push({sig, series, stats});
+    setTimeout(nextData,0);
+  }
+  function nextBuild(){
+    tickTimer();
+    if(token.cancelled){ abortRender(); return; }
+    if(idx>=cache.length){
       const parts=[`已选择 ${sigs.length} 个信号，已渲染 ${renderCount} 条曲线`];
       if(emptyCount>0) parts.push(`未渲染 ${emptyCount} 个无数据信号`);
       $('contentTitle').textContent=parts.join('，');
@@ -900,9 +916,7 @@ function renderCharts(){
       finishBusy();
       return;
     }
-    const sig=sigs[idx]; idx++;
-    const series=buildSeries(sig);
-    const stats=computeStats(series,sig);
+    const {sig, series, stats}=cache[idx]; idx++;
     const card=el('div','chart-card');
     const side=el('div','cc-side');
     const has = series.length>0;
@@ -931,9 +945,9 @@ function renderCharts(){
       chart._sig=sig; chart._stats={count:0};
       charts.push(chart);
     }
-    setTimeout(next,0);
+    setTimeout(nextBuild,0);
   }
-  next();
+  nextData();
 }
 
 /* 信号侧栏实时值：鼠标在曲线区移动时，显示鼠标所在时间点对应的信号值 */
@@ -1200,22 +1214,14 @@ function renderAnalysis(sigs){
 }
 
 /* ---------- wire up UI ---------- */
-$('btnDbc').onclick=()=>{
-  startBusy('等待选择 DBC 文件…', null, {immediate:true});
-  $('fileDbc').click();
-};
-$('btnAsc').onclick=()=>{
-  startBusy('等待选择 ASC 文件…', null, {immediate:true});
-  $('fileAsc').click();
-};
-$('fileDbc').addEventListener('cancel',()=>cleanupBusy());
-$('fileAsc').addEventListener('cancel',()=>cleanupBusy());
+$('btnDbc').onclick=()=>$('fileDbc').click();
+$('btnAsc').onclick=()=>$('fileAsc').click();
 
-async function loadDbcText(name, txt){
-  const token = startBusy('解析 DBC 文件…', ()=>{ token.cancelled=true; }, {immediate:true});
+async function loadDbcText(name, txt, showBusy){
+  const token = showBusy ? startBusy('解析 DBC 文件…', ()=>{ token.cancelled=true; }, {immediate:true}) : null;
   try{
-    dbcData = await parseDBC(txt, ()=>token.cancelled);
-    if(token.cancelled || !dbcData || dbcData.cancelled){ dbcData=null; toast('已取消 DBC 解析'); return; }
+    dbcData = await parseDBC(txt, showBusy ? ()=>token.cancelled : null);
+    if(showBusy && (token.cancelled || !dbcData || dbcData.cancelled)){ dbcData=null; toast('已取消 DBC 解析'); return; }
     $('dbcInfo').textContent=`${name} · ${Object.keys(dbcData.messages).length} 报文 / ${dbcData.signals.length} 信号`;
     $('dbcInfo').classList.add('loaded');
     $('totalCount').textContent=dbcData.signals.length;
@@ -1223,24 +1229,24 @@ async function loadDbcText(name, txt){
     renderSignalList(); renderPickedList(); updateSelCount(); updateStartBtn();
     toast(`DBC 已加载：${dbcData.signals.length} 个信号`);
   }catch(err){ toast('DBC 解析失败：'+err.message); }
-  finally{ finishBusy(); }
+  finally{ if(showBusy) finishBusy(); }
 }
-async function loadAscText(name, txt){
+async function loadAscText(name, txt, showBusy){
   hideLoading();
-  const token = startBusy('解析 ASC 文件…', ()=>{ token.cancelled=true; }, {immediate:true});
+  const token = showBusy ? startBusy('解析 ASC 文件…', ()=>{ token.cancelled=true; }, {immediate:true}) : null;
   try{
-    ascData = await parseASC(txt, null, ()=>token.cancelled);
-    if(token.cancelled || !ascData || ascData.cancelled){ ascData=null; toast('已取消 ASC 解析'); return; }
+    ascData = await parseASC(txt, null, showBusy ? ()=>token.cancelled : null);
+    if(showBusy && (token.cancelled || !ascData || ascData.cancelled)){ ascData=null; toast('已取消 ASC 解析'); return; }
     if(ascData.totalMessages===0){ toast('ASC 文件无可识别报文'); return; }
     $('ascInfo').textContent=`${name} · ${ascData.totalMessages} 帧 · ${ascData.tMin.toFixed(2)}–${ascData.tMax.toFixed(2)}s`;
     $('ascInfo').classList.add('loaded');
     renderSignalList(); renderPickedList(); updateSelCount(); updateStartBtn();
     toast(`ASC 已加载：${ascData.totalMessages} 帧`);
   }catch(err){ toast('ASC 解析失败：'+err.message); }
-  finally{ finishBusy(); }
+  finally{ if(showBusy) finishBusy(); }
 }
-$('fileDbc').onchange=async e=>{ const f=e.target.files[0]; if(!f) return; await loadDbcText(f.name, await readText(f)); e.target.value=''; };
-$('fileAsc').onchange=async e=>{ const f=e.target.files[0]; if(!f) return; await loadAscText(f.name, await readText(f, p=>showLoading('读取 ASC… '+Math.round(p*100)+'%', p))); e.target.value=''; };
+$('fileDbc').onchange=async e=>{ const f=e.target.files[0]; if(!f) return; await loadDbcText(f.name, await readText(f), f.size>=30*1024); e.target.value=''; };
+$('fileAsc').onchange=async e=>{ const f=e.target.files[0]; if(!f) return; const big=f.size>=30*1024*1024; await loadAscText(f.name, await readText(f, big?p=>showLoading('读取 ASC… '+Math.round(p*100)+'%', p):null), big); e.target.value=''; };
 
 // expose for testing/automation
 window.__can={loadDbcText, loadAscText, renderCharts, selectedSet, get dbc(){return dbcData;}, get asc(){return ascData;}, get charts(){return charts;}};
@@ -1344,13 +1350,8 @@ function hideAnalysisPanel(){
 function runAnalysis(){
   const sigs=selectedSignals();
   if(!sigs.length) return;
-  startBusy('正在分析报文…', null, {immediate:true, minMs:400});
-  try{
-    renderAnalysis(sigs);
-    analysisReady=true;
-  } finally {
-    finishBusy();
-  }
+  renderAnalysis(sigs);
+  analysisReady=true;
   showAnalysisPanel();
 }
 $('btnAnalyze').onclick=()=>{
@@ -1536,10 +1537,19 @@ $('gDots').onclick=()=>{
   gDotsLast=now;
   const btn=$('gDots');
   flashEl(btn);
-  startBusy('切换圆点显示…', null, {immediate:true, minMs:400});
   const on=btn.classList.toggle('active');
-  charts.forEach(c=>c.setOption({series:[{showSymbol:on,symbolSize:on?4:0}]}));
-  finishBusy();
+  /* 先显示刷新动画，再分块逐图执行，避免信号多时页面卡死，支持取消 */
+  const token = startBusy('切换圆点显示…', ()=>{ token.cancelled=true; }, {immediate:true});
+  let i=0;
+  function step(){
+    if(token.cancelled){ finishBusy(); return; }
+    if(i>=charts.length){ finishBusy(); return; }
+    const c=charts[i]; i++;
+    try{ c.setOption({series:[{showSymbol:on,symbolSize:on?4:0}]}); }catch(e){}
+    if(busyState) $('busyTimer').textContent = Math.floor((Date.now()-busyState.startTime)/1000)+' s';
+    setTimeout(step,0);
+  }
+  step();
 };
 /* 全局控制：X轴自适应（重置缩放） */
 $('gFitX').onclick=resetZoom;
