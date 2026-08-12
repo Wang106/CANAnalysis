@@ -119,7 +119,9 @@
   #anaFullscreen{position:absolute;top:6px;right:10px;z-index:6;}
   #analysisPanel.fullscreen{position:fixed;inset:0;z-index:90;background:var(--bg);height:auto !important;}
   /* 信号侧栏实时值 */
-  .cc-side .liveval{color:var(--accent2);font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .cc-side .liveval{font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .cc-side .liveval .lvlabel{color:var(--txt2);}
+  .cc-side .liveval .lvval{color:var(--accent2);}
   /* global chart controls in sig-bar-head */
   .gctrls{display:none;align-items:center;gap:5px;font-size:11px;}
   .gctrls.show{display:flex;}
@@ -858,6 +860,9 @@ function selectedSignals(){
 let analysisReady = false;   // 当前曲线是否已生成过分析结果
 function disposeCharts(){
   if(fsMode) exitFullscreen();
+  pinned = null; lastT = null;
+  const cvo = $('crosshairOverlay');
+  if(cvo){ cvo.classList.remove('show'); const l=cvo.querySelector('#chLine'); if(l) l.setAttribute('display','none'); }
   if(xAxisChart){try{xAxisChart.dispose();}catch(e){} xAxisChart=null;}
   charts.forEach(c=>{try{c.dispose();}catch(e){}});
   charts=[]; $('chartArea').innerHTML='';
@@ -1001,6 +1006,7 @@ function renderCharts(){
       xAxisChart.setOption(makeXAxisOption());
       setupSync();
       setupCrosshair();
+      setupCrosshairBoxes();
       // 点击"生成曲线"后自动执行X轴和Y轴自适应
       resetZoom();
       fitAllY();
@@ -1017,7 +1023,7 @@ function renderCharts(){
     const isExt=(sig.messageId & 0x80000000)!==0;
     side.innerHTML = `
       <span class="signame">${sig.name}<span class="msgtip">${sig.messageName} ${fmtId(realId, isExt)}</span></span>
-      ${has?`<span class="liveval">Real </span><span class="stat">min ${stats.min.toFixed(3)}</span><span class="stat">max ${stats.max.toFixed(3)}</span>`:'<span class="stat" style="color:var(--err)">无数据</span>'}`;
+      ${has?`<span class="liveval"><span class="lvlabel">Real </span><span class="lvval"></span></span><span class="stat">min ${stats.min.toFixed(3)}</span><span class="stat">max ${stats.max.toFixed(3)}</span>`:'<span class="stat" style="color:var(--err)">无数据</span>'}`;
     const body=el('div','cc-body');
     const cd=el('div','chart');
     body.appendChild(cd);
@@ -1043,8 +1049,8 @@ function renderCharts(){
   nextData();
 }
 
-/* 跨图表十字线 + Real 实时值 + 底部时间标签：
-   采用独立 SVG 覆盖层 + 全局鼠标监听，完全不依赖 ECharts 内部指针机制 */
+/* 跨图表数据点方框 + Real 实时值 + 底部时间标签 + 点击固定竖线：
+   独立 SVG 覆盖层 + 全局鼠标监听，完全不依赖 ECharts 内部指针机制 */
 function nearestIndex(series, t){
   if(!series || !series.length) return -1;
   let lo=0, hi=series.length-1, best=-1;
@@ -1054,22 +1060,28 @@ function nearestIndex(series, t){
   }
   return best;
 }
+function getSeriesValueAt(c, t){
+  const series = c._series;
+  if(!series || !series.length) return null;
+  const idx = nearestIndex(series, t);
+  if(idx<0) return null;
+  const p = series[idx];
+  if(p[1]!=null) return p[1];
+  if(idx+1<series.length && series[idx+1][1]!=null) return series[idx+1][1];
+  return null;
+}
 function setLiveReal(c, t){
   const lv = c._liveEl;
   if(!lv) return;
-  const series = c._series;
-  if(!series || !series.length){ lv.textContent='Real '; return; }
-  const idx = nearestIndex(series, t);
-  let v = null;
-  if(idx>=0){
-    const p = series[idx];
-    if(p[1]!=null) v = p[1];
-    else if(idx+1<series.length && series[idx+1][1]!=null) v = series[idx+1][1];
-  }
-  lv.textContent = v!=null ? ('Real '+v.toFixed(3)+' '+(c._sig.unit||'')) : 'Real ';
+  const v = getSeriesValueAt(c, t);
+  const valEl = lv.querySelector('.lvval');
+  if(valEl) valEl.textContent = v!=null ? (v.toFixed(3)+' '+(c._sig.unit||'')) : '';
 }
 let curXMin = 0, curXMax = 1;   // 当前X轴显示范围（随缩放同步）
 const SVG_NS = 'http://www.w3.org/2000/svg';
+let pinned = null;              // 点击固定的时间点（null=未固定）
+let lastT = null;               // 最近悬停时间
+let lastOverlayX = 0;           // 最近悬停位置（相对覆盖层）
 function setupCrosshair(){
   if($('crosshairOverlay')) return;   // 已创建过，避免重复
   const ov = el('div');
@@ -1077,11 +1089,14 @@ function setupCrosshair(){
   const svg = document.createElementNS(SVG_NS,'svg');
   svg.setAttribute('width','100%');
   svg.setAttribute('height','100%');
+  const boxGroup = document.createElementNS(SVG_NS,'g');
+  boxGroup.id = 'chBoxGroup';
   const line = document.createElementNS(SVG_NS,'line');
   line.id = 'chLine';
   line.setAttribute('y1','0');
   line.setAttribute('stroke','#4a9eff');
   line.setAttribute('stroke-width','1');
+  line.setAttribute('display','none');
   const labelRect = document.createElementNS(SVG_NS,'rect');
   labelRect.id = 'chLabelRect';
   labelRect.setAttribute('rx','3');
@@ -1091,13 +1106,41 @@ function setupCrosshair(){
   labelText.setAttribute('fill','#04121f');
   labelText.setAttribute('font-size','11');
   labelText.setAttribute('text-anchor','middle');
-  svg.append(line, labelRect, labelText);
+  svg.append(boxGroup, line, labelRect, labelText);
   ov.appendChild(svg);
   $('analysisWrap').appendChild(ov);
 
+  const drawBox = (c, t, ovRect)=>{
+    const box = c._boxEl;
+    if(!box) return;
+    const v = getSeriesValueAt(c, t);
+    if(v==null){ box.setAttribute('display','none'); return; }
+    const px = c.convertToPixel({xAxisIndex:0}, t);
+    const py = c.convertToPixel({yAxisIndex:0}, v);
+    if(px==null || py==null || !isFinite(px) || !isFinite(py)){ box.setAttribute('display','none'); return; }
+    const cr = c.getDom().getBoundingClientRect();
+    if(cr.bottom < ovRect.top || cr.top > ovRect.bottom){ box.setAttribute('display','none'); return; }
+    const bx = cr.left - ovRect.left + px;
+    const by = cr.top - ovRect.top + py;
+    box.setAttribute('display','block');
+    box.setAttribute('x', bx-5);
+    box.setAttribute('y', by-5);
+  };
+  const updateLabel = (t, x, ovH)=>{
+    const labelStr = t.toFixed(3)+'s';
+    labelText.textContent = labelStr;
+    const tw = labelStr.length * 6.5 + 10;
+    labelRect.setAttribute('x', x - tw/2);
+    labelRect.setAttribute('y', ovH - 33);
+    labelRect.setAttribute('width', tw);
+    labelRect.setAttribute('height', 16);
+    labelText.setAttribute('x', x);
+    labelText.setAttribute('y', ovH - 21);
+  };
   const hideCrosshair = ()=>{
+    if(pinned != null) return;                 // 固定状态保持显示
     ov.classList.remove('show');
-    charts.forEach(c=>{ if(c._liveEl) c._liveEl.textContent='Real '; });
+    charts.forEach(c=>{ const lv=c._liveEl; if(lv){ const ve=lv.querySelector('.lvval'); if(ve) ve.textContent=''; } });
   };
   document.addEventListener('mousemove',(e)=>{
     const tgt = e.target && e.target.closest ? (e.target.closest('.chart') || e.target.closest('.xaxis-chart')) : null;
@@ -1108,24 +1151,62 @@ function setupCrosshair(){
     if(plotW<=0 || mx<78 || mx>rect.width-8){ hideCrosshair(); return; }
     const t = curXMin + (mx-78)/plotW*(curXMax-curXMin);
     if(!isFinite(t)){ hideCrosshair(); return; }
-    charts.forEach(c=>setLiveReal(c, t));
     const ovRect = ov.getBoundingClientRect();
-    const lx = e.clientX - ovRect.left;
-    line.setAttribute('x1', lx);
-    line.setAttribute('x2', lx);
-    line.setAttribute('y2', ovRect.height);
-    const labelStr = t.toFixed(3)+'s';
-    labelText.textContent = labelStr;
-    const tw = labelStr.length * 6.5 + 10;
-    labelRect.setAttribute('x', lx - tw/2);
-    labelRect.setAttribute('y', ovRect.height - 33);
-    labelRect.setAttribute('width', tw);
-    labelRect.setAttribute('height', 16);
-    labelText.setAttribute('x', lx);
-    labelText.setAttribute('y', ovRect.height - 21);
+    lastT = t;
+    lastOverlayX = e.clientX - ovRect.left;
+    if(pinned != null) return;                 // 已固定：显示保持不变
+    updateLabel(t, lastOverlayX, ovRect.height);
+    charts.forEach(c=>setLiveReal(c, t));
+    charts.forEach(c=>drawBox(c, t, ovRect));
+    line.setAttribute('display','none');       // 悬停不显示竖线
     ov.classList.add('show');
   });
+  document.addEventListener('click',(e)=>{
+    const tgt = e.target && e.target.closest ? (e.target.closest('.chart') || e.target.closest('.xaxis-chart')) : null;
+    if(!tgt || lastT==null) return;
+    const ovRect = ov.getBoundingClientRect();
+    if(pinned == null){
+      pinned = lastT;                          // 固定：显示竖线+方框+Real+标签
+      line.setAttribute('display','block');
+      line.setAttribute('x1', lastOverlayX);
+      line.setAttribute('x2', lastOverlayX);
+      line.setAttribute('y2', ovRect.height);
+      updateLabel(pinned, lastOverlayX, ovRect.height);
+      charts.forEach(c=>setLiveReal(c, pinned));
+      charts.forEach(c=>drawBox(c, pinned, ovRect));
+      ov.classList.add('show');
+    } else {
+      pinned = null;                           // 取消固定
+      line.setAttribute('display','none');
+      lastT = null;
+    }
+  });
+  document.addEventListener('keydown',(e)=>{
+    if(e.key==='Escape' && pinned != null){
+      pinned = null;
+      line.setAttribute('display','none');
+      lastT = null;
+    }
+  });
   document.addEventListener('mouseleave', hideCrosshair);
+}
+/* 渲染完成后为每个信号图表创建/重建方框元素 */
+function setupCrosshairBoxes(){
+  const group = $('chBoxGroup');
+  if(!group) return;
+  while(group.firstChild) group.firstChild.remove();
+  charts.forEach(c=>{
+    const box = document.createElementNS(SVG_NS,'rect');
+    box.setAttribute('width','10');
+    box.setAttribute('height','10');
+    box.setAttribute('rx','1');
+    box.setAttribute('fill','rgba(255,255,255,0.12)');
+    box.setAttribute('stroke','#ffffff');
+    box.setAttribute('stroke-width','1');
+    box.setAttribute('display','none');
+    group.appendChild(box);
+    c._boxEl = box;
+  });
 }
 
 /* Replace out-of-bounds y-values with null so the line breaks into separate segments.
@@ -1715,7 +1796,7 @@ window.addEventListener('resize',()=>{ charts.forEach(c=>c.resize()); if(xAxisCh
 /* 升级时间显示：按设备/浏览器所在时区显示对应时间（如 升级于2026-08-12 15:21:00） */
 (function(){
   // 修改时间（UTC），每次更新页面时由开发者同步修改
-  const MOD_UTC = Date.UTC(2026, 7, 12, 7, 55, 18);
+  const MOD_UTC = Date.UTC(2026, 7, 12, 8, 26, 19);
   const d = new Date(MOD_UTC);
   const pad = n => String(n).padStart(2,'0');
   const dateStr = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
