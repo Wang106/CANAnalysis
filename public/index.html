@@ -147,6 +147,10 @@
   .xaxis-row .xaxis-spacer{width:var(--cc-side-w,120px);flex-shrink:0;background:var(--panel2);border-right:1px solid var(--line);}
   .xaxis-row .xaxis-chart{flex:1;min-width:0;height:22px;}
   .xaxis-unit{position:absolute;left:calc(var(--cc-side-w,120px) + 11px);top:6px;font-size:12px;color:var(--txt2);white-space:nowrap;pointer-events:none;}
+  /* 跨图表十字线 SVG 覆盖层 */
+  #crosshairOverlay{position:absolute;inset:0;pointer-events:none;z-index:8;display:none;}
+  #crosshairOverlay.show{display:block;}
+  #crosshairOverlay svg{width:100%;height:100%;}
   .cc-side{width:var(--cc-side-w,120px);flex-shrink:0;padding:4px 6px;border-right:1px solid var(--line);background:var(--panel2);display:flex;flex-direction:column;gap:2px;font-size:11px;overflow:hidden;justify-content:center;position:relative;}
   .cc-side .signame{font-weight:400;font-size:12px;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;word-break:normal;cursor:default;}
   .cc-side .msgtip{display:none;position:absolute;left:100%;top:0;z-index:20;background:#0f1115;border:1px solid var(--accent);border-radius:4px;padding:5px 8px;font-size:11px;color:var(--txt2);white-space:nowrap;pointer-events:none;}
@@ -893,7 +897,6 @@ function makeOption(series, sig, stats){
     yAxis:{type:'value',name:sig.unit||'',nameTextStyle:{color:'#8b93a3'},
       axisLine:{lineStyle:{color:'#3a4150'}},axisLabel:{color:'#8b93a3'},
       splitLine:{lineStyle:{color:'#222732'}}},
-    axisPointer:{link:[{xAxisIndex:'all'}]},
     dataZoom:[
       {id:'xZoom',type:'inside',xAxisIndex:0,zoomOnMouseWheel:false,moveOnMouseWheel:false,moveOnMouseMove:true,moveOnMouseUp:true,filterMode:'none'},
       {id:'yZoom',type:'inside',yAxisIndex:0,zoomOnMouseWheel:false,moveOnMouseWheel:false,moveOnMouseMove:false,moveOnMouseUp:false,filterMode:'none'}
@@ -939,8 +942,6 @@ function makeXAxisOption(){
       axisTick:{lineStyle:{color:'#3a4150'}},
       splitLine:{show:false}},
     yAxis:{type:'value',show:false,min:0,max:1},
-    axisPointer:{link:[{xAxisIndex:'all'}]},
-    tooltip:{trigger:'axis',axisPointer:{type:'line',lineStyle:{color:'#4a9eff'},label:{show:true,formatter:p=>(typeof p.value==='number'?p.value.toFixed(3):p.value)+'s',color:'#04121f',backgroundColor:'#4a9eff'}},formatter:()=>''},
     dataZoom:[
       {id:'xZoom',type:'inside',xAxisIndex:0,zoomOnMouseWheel:false,moveOnMouseWheel:false,moveOnMouseMove:true,moveOnMouseUp:true,filterMode:'none'}
     ]
@@ -1042,9 +1043,8 @@ function renderCharts(){
   nextData();
 }
 
-/* 跨图表十字线 + Real 实时值：
-   鼠标在任一曲线区域移动时，通过 showTip(seriesIndex,dataIndex) 让所有图表只显示
-   轴指针竖线（不显示提示框），底部横轴显示时间标签，各信号侧栏 Real 值实时更新 */
+/* 跨图表十字线 + Real 实时值 + 底部时间标签：
+   采用独立 SVG 覆盖层 + 全局鼠标监听，完全不依赖 ECharts 内部指针机制 */
 function nearestIndex(series, t){
   if(!series || !series.length) return -1;
   let lo=0, hi=series.length-1, best=-1;
@@ -1068,71 +1068,64 @@ function setLiveReal(c, t){
   }
   lv.textContent = v!=null ? ('Real '+v.toFixed(3)+' '+(c._sig.unit||'')) : 'Real ';
 }
-let crosshairRaf = 0;
-let crosshairPending = null;
+let curXMin = 0, curXMax = 1;   // 当前X轴显示范围（随缩放同步）
+const SVG_NS = 'http://www.w3.org/2000/svg';
 function setupCrosshair(){
-  const resetCrosshair = ()=>{
-    try{
-      charts.forEach(c=>{ if(c._liveEl) c._liveEl.textContent='Real '; c.dispatchAction({type:'hideTip'}); });
-      if(xAxisChart) xAxisChart.dispatchAction({type:'hideTip'});
-    }catch(e){}
+  if($('crosshairOverlay')) return;   // 已创建过，避免重复
+  const ov = el('div');
+  ov.id = 'crosshairOverlay';
+  const svg = document.createElementNS(SVG_NS,'svg');
+  svg.setAttribute('width','100%');
+  svg.setAttribute('height','100%');
+  const line = document.createElementNS(SVG_NS,'line');
+  line.id = 'chLine';
+  line.setAttribute('y1','0');
+  line.setAttribute('stroke','#4a9eff');
+  line.setAttribute('stroke-width','1');
+  const labelRect = document.createElementNS(SVG_NS,'rect');
+  labelRect.id = 'chLabelRect';
+  labelRect.setAttribute('rx','3');
+  labelRect.setAttribute('fill','#4a9eff');
+  const labelText = document.createElementNS(SVG_NS,'text');
+  labelText.id = 'chLabelText';
+  labelText.setAttribute('fill','#04121f');
+  labelText.setAttribute('font-size','11');
+  labelText.setAttribute('text-anchor','middle');
+  svg.append(line, labelRect, labelText);
+  ov.appendChild(svg);
+  $('analysisWrap').appendChild(ov);
+
+  const hideCrosshair = ()=>{
+    ov.classList.remove('show');
+    charts.forEach(c=>{ if(c._liveEl) c._liveEl.textContent='Real '; });
   };
-  const flushCrosshair = ()=>{
-    crosshairRaf = 0;
-    const p = crosshairPending;
-    crosshairPending = null;
-    if(!p) return;
-    try{
-      const {src, mx, my} = p;
-      if(!(mx>0) || !(my>=0)){ resetCrosshair(); return; }
-      const gL = 78, gR = 8;   // 所有图表网格左/右留白固定
-      const w = src.getDom().clientWidth;
-      if(mx<=gL || mx>=w-gR){ resetCrosshair(); return; }
-      let t = src.convertFromPixel({xAxisIndex:0}, [mx, my]);
-      t = Array.isArray(t) ? t[0] : t;
-      if(!isFinite(t)){ resetCrosshair(); return; }
-      // 各信号 Real 值
-      charts.forEach(c=>setLiveReal(c, t));
-      // 十字线：有数据图表用 showTip(dataIndex)（轴触发下只显示指针，不显示提示框）
-      charts.forEach(c=>{
-        if(c===src) return;                       // 悬停图表由原生 tooltip 显示
-        if(c._series && c._series.length){
-          const idx = nearestIndex(c._series, t);
-          if(idx>=0) c.dispatchAction({type:'showTip', seriesIndex:0, dataIndex:idx});
-        } else {
-          const px = c.convertToPixel({xAxisIndex:0}, t);
-          if(px != null) c.dispatchAction({type:'updateAxisPointer', x:px, y:0, axesInfo:[{axisDim:'x', axisIndex:0}]});
-        }
-      });
-      // 底部横轴：像素定位显示指针与时间标签
-      if(xAxisChart && xAxisChart!==src){
-        const px = xAxisChart.convertToPixel({xAxisIndex:0}, t);
-        if(px != null) xAxisChart.dispatchAction({type:'updateAxisPointer', x:px, y:0, axesInfo:[{axisDim:'x', axisIndex:0}]});
-      }
-    }catch(e){}
-  };
-  const onMove = (src)=>(e)=>{
-    // 兼容 zrender 事件(zrX/zrY)与原生事件(offsetX/clientX)
-    let mx = e.zrX, my = e.zrY;
-    if(mx == null && e.offsetX != null){ mx = e.offsetX; my = e.offsetY; }
-    if(mx == null && e.event && e.event.offsetX != null){ mx = e.event.offsetX; my = e.event.offsetY; }
-    if(mx == null && e.clientX != null){
-      const r = src.getDom().getBoundingClientRect();
-      mx = e.clientX - r.left; my = e.clientY - r.top;
-    }
-    crosshairPending = {src, mx, my};
-    if(!crosshairRaf) crosshairRaf = requestAnimationFrame(flushCrosshair);
-  };
-  const attach = (chart)=>{
-    const zr = chart.getZr();
-    const dom = chart.getDom();
-    zr.on('mousemove', onMove(chart));
-    zr.on('globalout', resetCrosshair);
-    dom.addEventListener('mousemove', onMove(chart));
-    dom.addEventListener('mouseleave', resetCrosshair);
-  };
-  charts.forEach(attach);
-  if(xAxisChart) attach(xAxisChart);
+  document.addEventListener('mousemove',(e)=>{
+    const tgt = e.target && e.target.closest ? (e.target.closest('.chart') || e.target.closest('.xaxis-chart')) : null;
+    if(!tgt){ hideCrosshair(); return; }
+    const rect = tgt.getBoundingClientRect();
+    const plotW = rect.width - 86;   // 左78 + 右8
+    const mx = e.clientX - rect.left;
+    if(plotW<=0 || mx<78 || mx>rect.width-8){ hideCrosshair(); return; }
+    const t = curXMin + (mx-78)/plotW*(curXMax-curXMin);
+    if(!isFinite(t)){ hideCrosshair(); return; }
+    charts.forEach(c=>setLiveReal(c, t));
+    const ovRect = ov.getBoundingClientRect();
+    const lx = e.clientX - ovRect.left;
+    line.setAttribute('x1', lx);
+    line.setAttribute('x2', lx);
+    line.setAttribute('y2', ovRect.height);
+    const labelStr = t.toFixed(3)+'s';
+    labelText.textContent = labelStr;
+    const tw = labelStr.length * 6.5 + 10;
+    labelRect.setAttribute('x', lx - tw/2);
+    labelRect.setAttribute('y', ovRect.height - 33);
+    labelRect.setAttribute('width', tw);
+    labelRect.setAttribute('height', 16);
+    labelText.setAttribute('x', lx);
+    labelText.setAttribute('y', ovRect.height - 21);
+    ov.classList.add('show');
+  });
+  document.addEventListener('mouseleave', hideCrosshair);
 }
 
 /* Replace out-of-bounds y-values with null so the line breaks into separate segments.
@@ -1177,6 +1170,7 @@ function fitAllY(){ charts.forEach(c=>fitY(c)); }
 
 /* sync x-axis across charts + custom wheel zoom on axes */
 function syncXAxis(nLo, nHi){
+  curXMin = nLo; curXMax = nHi;
   charts.forEach(c=>c.setOption({xAxis:{min:nLo,max:nHi}}));
   if(xAxisChart) xAxisChart.setOption({xAxis:{min:nLo,max:nHi}});
   updateXInputs(nLo, nHi);
@@ -1383,6 +1377,7 @@ async function loadAscText(name, txt, showBusy){
     ascData = await parseASC(txt, null, showBusy ? ()=>token.cancelled : null);
     if(showBusy && (token.cancelled || !ascData || ascData.cancelled)){ ascData=null; toast('已取消 ASC 解析'); return; }
     if(ascData.totalMessages===0){ toast('ASC 文件无可识别报文'); return; }
+    curXMin = ascData.tMin; curXMax = ascData.tMax;
     $('ascInfo').textContent=`${name} · ${ascData.totalMessages} 帧 · ${ascData.tMin.toFixed(2)}–${ascData.tMax.toFixed(2)}s`;
     $('ascInfo').classList.add('loaded');
     renderSignalList(); renderPickedList(); updateSelCount(); updateStartBtn();
@@ -1720,7 +1715,7 @@ window.addEventListener('resize',()=>{ charts.forEach(c=>c.resize()); if(xAxisCh
 /* 升级时间显示：按设备/浏览器所在时区显示对应时间（如 升级于2026-08-12 15:21:00） */
 (function(){
   // 修改时间（UTC），每次更新页面时由开发者同步修改
-  const MOD_UTC = Date.UTC(2026, 7, 12, 7, 45, 23);
+  const MOD_UTC = Date.UTC(2026, 7, 12, 7, 55, 18);
   const d = new Date(MOD_UTC);
   const pad = n => String(n).padStart(2,'0');
   const dateStr = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
