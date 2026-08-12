@@ -1166,14 +1166,33 @@ function setupCrosshair(){
     if(!isFinite(t)){ hideCrosshair(); return; }
     const ovRect = ov.getBoundingClientRect();
     lastT = t;
-    lastOverlayX = e.clientX - ovRect.left;
     hoveredChart = tgt.classList.contains('xaxis-chart') ? null : charts.find(c=>c.getDom()===tgt);
     if(pinned != null) return;                 // 已固定：显示保持不变
-    updateLabel(t, lastOverlayX, ovRect.height);
-    charts.forEach(c=>setLiveReal(c, t));
+    // 吸附到悬停图表最近的数据圆点，竖线实时贴着方框
+    let snapT = t;
+    let lineX = e.clientX - ovRect.left;
+    if(hoveredChart){
+      const series = hoveredChart._series;
+      const idx = (series && series.length) ? nearestDataIdx(series, t) : -1;
+      const p = series && series[idx];
+      if(p && p[1]!=null){
+        snapT = p[0];
+        const px = hoveredChart.convertToPixel({xAxisIndex:0}, snapT);
+        if(px!=null && isFinite(px)){
+          const cr = hoveredChart.getDom().getBoundingClientRect();
+          lineX = cr.left - ovRect.left + px;   // 与方框同一X位置
+        }
+      }
+    }
+    lastOverlayX = lineX;
+    updateLabel(snapT, lineX, ovRect.height);
+    charts.forEach(c=>setLiveReal(c, snapT));
     hideAllBoxes();
-    if(hoveredChart) drawBox(hoveredChart, t, ovRect);   // 仅悬停图表显示方框
-    line.setAttribute('display','none');       // 悬停不显示竖线
+    if(hoveredChart) drawBox(hoveredChart, snapT, ovRect);   // 仅悬停图表显示方框
+    line.setAttribute('display','block');      // 竖线实时显示
+    line.setAttribute('x1', lineX);
+    line.setAttribute('x2', lineX);
+    line.setAttribute('y2', ovRect.height);
     ov.classList.add('show');
   });
   document.addEventListener('click',(e)=>{
@@ -1844,7 +1863,7 @@ window.addEventListener('resize',()=>{ charts.forEach(c=>c.resize()); if(xAxisCh
 /* 发布时间显示：按设备/浏览器所在时区显示对应时间（如 发布于2026-08-12 15:21:00） */
 (function(){
   // 修改时间（UTC），每次更新页面时由开发者同步修改
-  const MOD_UTC = Date.UTC(2026, 7, 12, 8, 56, 9);
+  const MOD_UTC = Date.UTC(2026, 7, 12, 9, 2, 54);
   const d = new Date(MOD_UTC);
   const pad = n => String(n).padStart(2,'0');
   const dateStr = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
