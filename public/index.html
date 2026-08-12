@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>CAN 信号波形分析工具</title>
+<link rel="icon" href="icon.png" type="image/png" />
+<title>CAN报文解析</title>
 <style>
   :root{
     --bg:#0f1115; --panel:#171a21; --panel2:#1d212b; --line:#2a2f3a;
@@ -120,7 +121,7 @@
   .chart-card:last-child{border-radius:0;}
   .xaxis-row{display:flex;flex-direction:row;background:var(--panel);border:1px solid var(--line);border-top:none;border-radius:0 0 var(--radius) var(--radius);overflow:hidden;flex-shrink:0;}
   .xaxis-row .xaxis-spacer{width:120px;flex-shrink:0;background:var(--panel2);border-right:1px solid var(--line);}
-  .xaxis-row .xaxis-chart{flex:1;min-width:0;height:22px;}
+  .xaxis-row .xaxis-chart{flex:1;min-width:0;height:34px;}
   .cc-side{width:120px;flex-shrink:0;padding:4px 6px;border-right:1px solid var(--line);background:var(--panel2);display:flex;flex-direction:column;gap:2px;font-size:11px;overflow:hidden;justify-content:center;position:relative;}
   .cc-side .signame{font-weight:600;font-size:12px;color:var(--txt);word-break:break-all;cursor:help;}
   .cc-side .msgtip{display:none;position:absolute;left:100%;top:0;z-index:20;background:#0f1115;border:1px solid var(--accent);border-radius:4px;padding:5px 8px;font-size:11px;color:var(--txt2);white-space:nowrap;pointer-events:none;}
@@ -688,7 +689,7 @@ function makeXAxisOption(){
   const tMin=ascData.tMin, tMax=ascData.tMax;
   return {
     animation:false,
-    grid:{left:78,right:8,top:0,bottom:14},
+    grid:{left:78,right:8,top:0,bottom:22},
     xAxis:{type:'value',min:tMin,max:tMax,name:'时间',nameLocation:'middle',nameGap:12,
       axisLine:{lineStyle:{color:'#3a4150'}},
       axisLabel:{color:'#8b93a3',formatter:v=>v.toFixed(2)},
@@ -725,7 +726,9 @@ function renderCharts(){
       xAxisChart=echarts.init(xCd);
       xAxisChart.setOption(makeXAxisOption());
       setupSync();
-      updateXInputs(ascData.tMin, ascData.tMax);
+      // 点击"开始分析"后自动执行X轴和Y轴自适应
+      resetZoom();
+      fitAllY();
       setTimeout(()=>{ charts.forEach(c=>c.resize()); if(xAxisChart)xAxisChart.resize(); }, 100);
       setTimeout(()=>{ charts.forEach(c=>c.resize()); if(xAxisChart)xAxisChart.resize(); }, 300);
       return;
@@ -926,7 +929,8 @@ function renderAnalysis(sigs){
   // per-signal analysis
   for(const sig of sigs){
     const md=ascData.map[sig.messageKey];
-    const series = charts.find(c=>c._sig===sig)?charts.find(c=>c._sig===sig)._series : buildSeries(sig);
+    const found = charts.find(c=>c._sig===sig);
+    const series = (found && found._series) ? found._series : buildSeries(sig);
     const st=computeStats(series,sig);
     if(!md || st.count===0){
       issues.push({sev:'err', tag:sig.name, text:`信号无数据：报文 ${sig.messageName} 在 ASC 中未出现`});
