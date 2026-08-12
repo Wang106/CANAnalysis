@@ -718,14 +718,25 @@ $('busyCancel').onclick=()=>{
 };
 /* 30秒确认框：询问是否继续执行（不再自动停止） */
 let busy30Open = false;
+let confirmAction = null;   // 通用确认框回调（如圆点确认）
 function showBusy30Dialog(){
   if(busy30Open || !busyState) return;
   busy30Open = true;
   $('confirmOverlay').classList.add('show');
 }
+/* 通用确认框：text 为提示内容，yes/no 为确定/取消回调 */
+function showConfirmBox(text, yes, no){
+  $('busy30Text').textContent = text;
+  confirmAction = {yes, no};
+  busy30Open = false;
+  $('confirmOverlay').classList.add('show');
+}
 $('busy30Yes').onclick=()=>{
   busy30Open = false;
   $('confirmOverlay').classList.remove('show');
+  const a = confirmAction;
+  confirmAction = null;
+  if(a){ if(a.yes) a.yes(); return; }
   if(busyState){
     clearTimeout(busyState.watchdog);
     busyState.watchdog = setTimeout(()=>{ showBusy30Dialog(); }, 30000);
@@ -734,6 +745,9 @@ $('busy30Yes').onclick=()=>{
 $('busy30No').onclick=()=>{
   busy30Open = false;
   $('confirmOverlay').classList.remove('show');
+  const a = confirmAction;
+  confirmAction = null;
+  if(a){ if(a.no) a.no(); return; }
   $('busyCancel').click();
 };
 /* 执行期间拦截键盘输入（取消按钮所在遮罩内的按键除外） */
@@ -1250,6 +1264,10 @@ function setupCrosshair(){
     }
   });
   document.addEventListener('mouseleave', hideCrosshair);
+  /* 固定竖线后：页面/图表区滚动时方框跟随数据点移动 */
+  $('chartArea').addEventListener('scroll', ()=>{ if(pinned != null) refreshPinnedDisplay(); });
+  window.addEventListener('scroll', ()=>{ if(pinned != null) refreshPinnedDisplay(); });
+  window.addEventListener('resize', ()=>{ if(pinned != null) refreshPinnedDisplay(); });
 }
 /* 渲染完成后为每个信号图表创建/重建方框元素 */
 function setupCrosshairBoxes(){
@@ -1613,7 +1631,7 @@ async function loadAscText(name, txt, showBusy){
   finally{ stopLoadTxt(); if(showBusy) finishBusy(); }
 }
 $('fileDbc').onchange=async e=>{ const f=e.target.files[0]; if(!f) return; await loadDbcText(f.name, await readText(f), f.size>=50*1024); e.target.value=''; };
-$('fileAsc').onchange=async e=>{ const f=e.target.files[0]; if(!f) return; const big=f.size>=50*1024*1024; await loadAscText(f.name, await readText(f, big?p=>showLoading('读取 ASC… '+Math.round(p*100)+'%', p):null), big); e.target.value=''; };
+$('fileAsc').onchange=async e=>{ const f=e.target.files[0]; if(!f) return; ascFileSize=f.size; const big=f.size>=50*1024*1024; await loadAscText(f.name, await readText(f, big?p=>showLoading('读取 ASC… '+Math.round(p*100)+'%', p):null), big); e.target.value=''; };
 
 // expose for testing/automation
 window.__can={loadDbcText, loadAscText, renderCharts, selectedSet, get dbc(){return dbcData;}, get asc(){return ascData;}, get charts(){return charts;}};
@@ -1905,14 +1923,8 @@ document.addEventListener('keydown',(e)=>{
 })();
 /* 全局控制：圆点切换（1s 节流 + 闪烁） */
 let gDotsLast=0;
-$('gDots').onclick=()=>{
-  const now=Date.now();
-  if(now - gDotsLast < 1000) return;
-  gDotsLast=now;
-  const btn=$('gDots');
-  flashEl(btn);
-  const on=btn.classList.toggle('active');
-  /* 先显示刷新动画，再分块逐图执行，避免信号多时页面卡死，支持取消 */
+let ascFileSize = null;   // 最近一次加载的 ASC 文件大小（字节）
+function applyDots(on){
   const token = startBusy('切换圆点显示…', ()=>{ token.cancelled=true; }, {immediate:true});
   let i=0;
   function step(){
@@ -1924,6 +1936,27 @@ $('gDots').onclick=()=>{
     setTimeout(step,0);
   }
   step();
+}
+$('gDots').onclick=()=>{
+  const now=Date.now();
+  if(now - gDotsLast < 1000) return;
+  gDotsLast=now;
+  const btn=$('gDots');
+  flashEl(btn);
+  const turningOn = !btn.classList.contains('active');
+  /* 数据量较大时先弹确认框 */
+  const big = selectedSet.size >= 10 || (ascFileSize != null && ascFileSize >= 10*1024*1024);
+  if(turningOn && big){
+    showConfirmBox('数据量较大，显示圆点会比较卡哦~', ()=>{
+      btn.classList.add('active');
+      applyDots(true);
+    }, ()=>{
+      btn.classList.remove('active');
+    });
+    return;
+  }
+  btn.classList.toggle('active');
+  applyDots(turningOn);
 };
 /* 全局控制：X轴自适应（重置缩放） */
 $('gFitX').onclick=resetZoom;
@@ -1943,7 +1976,7 @@ window.addEventListener('resize',()=>{ charts.forEach(c=>c.resize()); if(xAxisCh
 /* 发布时间显示：按设备/浏览器所在时区显示对应时间（如 发布于2026-08-12 15:21:00） */
 (function(){
   // 修改时间（UTC），每次更新页面时由开发者同步修改
-  const MOD_UTC = Date.UTC(2026, 7, 12, 9, 34, 8);
+  const MOD_UTC = Date.UTC(2026, 7, 12, 9, 46, 45);
   const d = new Date(MOD_UTC);
   const pad = n => String(n).padStart(2,'0');
   const dateStr = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
