@@ -83,7 +83,13 @@
   .sig-item.picked .drag{flex:none;cursor:grab;color:var(--txt2);display:inline-flex;flex-direction:column;align-items:center;justify-content:center;font-size:8px;line-height:1;min-width:16px;padding:2px 4px;border-radius:4px;user-select:none;}
   .sig-item.picked .drag .d-up,.sig-item.picked .drag .d-dn{display:block;height:8px;line-height:8px;}
   .sig-item.picked .drag:hover{color:var(--accent);background:var(--panel2);}
-  .sig-item.picked.dragging .drag{cursor:grabbing;color:var(--accent);}
+  .sig-item.picked.dragging{background:rgba(74,158,255,0.12);}
+  .sig-item.picked.dragging .drag{cursor:grabbing;}
+  .sig-item.picked.dragging .sname,
+  .sig-item.picked.dragging .sid,
+  .sig-item.picked.dragging .sright .sunit,
+  .sig-item.picked.dragging .sright .smsg,
+  .sig-item.picked.dragging .drag{color:var(--accent);}
   .sig-item .sid{color:var(--txt2);font-size:10px;margin-left:3px;white-space:nowrap;}
   .sig-item .nodata{color:var(--err);font-size:10px;margin-left:3px;}
   .sig-item.pending-remove{opacity:.35;text-decoration:line-through;}
@@ -817,7 +823,8 @@ function renderPickedList(){
   for(const s of sigs){ tmp.textContent=s.name; maxW=Math.max(maxW,tmp.offsetWidth); }
   document.body.removeChild(tmp);
   const colW=picked.clientWidth||400;
-  const nameMinW=Math.max(40, Math.min(Math.ceil(maxW), colW-220))+'px';   /* 过长时截断，保证其他列可见 */
+  /* 名称列按最长名称自适应，仅预留勾选框+ID+排序图标的空间，保证名称完整显示 */
+  const nameMinW=Math.max(40, Math.min(Math.ceil(maxW), colW-100))+'px';
   for(const s of sigs){
     const has = ascData && ascData.map[s.messageKey];
     const it=el('div','sig-item picked'+(has?' hasdata':''));
@@ -877,6 +884,8 @@ function renderPickedList(){
         const layoutTop=renderedTop-curTransform;
         const desiredTop=clientY-grabOffset;
         curTransform=desiredTop-layoutTop;
+        /* 项已在第一位时不再向上位移（避免被拖出窗口上边沿消失） */
+        if(picked.firstElementChild===it && curTransform<0) curTransform=0;
         /* 项已在最后一位时不再向下位移，避免列表下方出现大片空白 */
         if(picked.lastElementChild===it && curTransform>0) curTransform=0;
         it.style.transform='translateY('+curTransform+'px)';
@@ -2173,7 +2182,7 @@ window.addEventListener('resize',()=>{ charts.forEach(c=>c.resize()); if(xAxisCh
 /* 发布时间显示：按设备/浏览器所在时区显示对应时间（如 发布于2026-08-12 15:21:00） */
 (function(){
   // 修改时间（UTC），每次更新页面时由开发者同步修改
-  const MOD_UTC = Date.UTC(2026, 7, 13, 5, 48, 56);
+  const MOD_UTC = Date.UTC(2026, 7, 13, 5, 56, 0);
   const d = new Date(MOD_UTC);
   const pad = n => String(n).padStart(2,'0');
   const dateStr = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
