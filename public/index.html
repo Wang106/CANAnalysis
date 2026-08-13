@@ -1913,8 +1913,8 @@ $('btnStart').onclick=()=>{
   $('analysisWrap').scrollTop=0;
   setTimeout(()=>{ charts.forEach(c=>c.resize()); if(xAxisChart)xAxisChart.resize(); }, 400);
 };
-/* 信号选择按钮：1s 节流 + 闪烁提示 */
-let sigToggleLast=0;
+/* 信号选择按钮：动作执行中不接收新点击 + 闪烁提示 */
+let sigToggleBusy=false;
 function flashEl(el){
   el.classList.remove('flash');
   void el.offsetWidth;
@@ -1922,25 +1922,28 @@ function flashEl(el){
 }
 $('sigToggle').onclick=()=>{
   $('sigToggle').classList.add('active');   /* 点击后变亮蓝 */
-  const now=Date.now();
-  if(now - sigToggleLast < 1000) return;
-  sigToggleLast=now;
-  flashEl($('sigToggle'));
-  const bar=$('sigBar');
-  const expanded=bar.classList.contains('expanded');
-  bar.classList.toggle('expanded', !expanded);
-  bar.classList.toggle('collapsed', expanded);
-  /* 收起信号选择区域且已生成曲线、信号顺序被拖动修改过时，同步曲线顺序 */
-  if(expanded && charts.length && sigOrderChanged){
-    sigOrderChanged=false;
-    reorderChartsBySelection();
-  }
+  if(sigToggleBusy) return;
+  sigToggleBusy=true;
+  try{
+    flashEl($('sigToggle'));
+    const bar=$('sigBar');
+    const expanded=bar.classList.contains('expanded');
+    bar.classList.toggle('expanded', !expanded);
+    bar.classList.toggle('collapsed', expanded);
+    /* 收起信号选择区域且已生成曲线、信号顺序被拖动修改过时，同步曲线顺序 */
+    if(expanded && charts.length && sigOrderChanged){
+      sigOrderChanged=false;
+      reorderChartsBySelection();
+    }
   /* 收起或展开均清除用户拖动设置的固定高度：展开后恢复默认高度，直到再次拖动 */
   bar.classList.remove('resized');
   bar.style.height='';
   bar.style.flex='';
   bar.style.transition='';
   setTimeout(()=>{ charts.forEach(c=>c.resize()); }, 250);
+  } finally {
+    sigToggleBusy=false;
+  }
 };
 /* 按已选信号顺序重排曲线图表（DOM 卡片 + charts 数组，不重新解析数据） */
 function reorderChartsBySelection(){
@@ -2182,14 +2185,16 @@ document.addEventListener('keydown',(e)=>{
   });
 })();
 /* 全局控制：圆点切换（1s 节流 + 闪烁） */
-let gDotsLast=0;
+let gDotsBusy=false;   // 圆点切换动作执行中不接受新点击
 let ascFileSize = null;   // 最近一次加载的 ASC 文件大小（字节）
 function applyDots(on){
+  if(gDotsBusy) return;
+  gDotsBusy=true;
   const token = startBusy('切换圆点显示…', ()=>{ token.cancelled=true; }, {immediate:true});
   let i=0;
   function step(){
-    if(token.cancelled){ finishBusy(); return; }
-    if(i>=charts.length){ finishBusy(); return; }
+    if(token.cancelled){ finishBusy(); gDotsBusy=false; return; }
+    if(i>=charts.length){ finishBusy(); gDotsBusy=false; return; }
     const c=charts[i]; i++;
     try{ c.setOption({series:[{showSymbol:on,symbolSize:on?4:0}]}); }catch(e){}
     if(busyState) $('busyTimer').textContent = Math.floor((Date.now()-busyState.startTime)/1000)+' s';
@@ -2198,9 +2203,7 @@ function applyDots(on){
   step();
 }
 $('gDots').onclick=()=>{
-  const now=Date.now();
-  if(now - gDotsLast < 1000) return;
-  gDotsLast=now;
+  if(gDotsBusy) return;   /* 当前动作执行中不接收新点击 */
   const btn=$('gDots');
   flashEl(btn);
   const turningOn = !btn.classList.contains('active');
@@ -2236,7 +2239,7 @@ window.addEventListener('resize',()=>{ charts.forEach(c=>c.resize()); if(xAxisCh
 /* 发布时间显示：按设备/浏览器所在时区显示对应时间（如 发布于2026-08-12 15:21:00） */
 (function(){
   // 修改时间（UTC），每次更新页面时由开发者同步修改
-  const MOD_UTC = Date.UTC(2026, 7, 13, 6, 48, 14);
+  const MOD_UTC = Date.UTC(2026, 7, 13, 7, 1, 28);
   const d = new Date(MOD_UTC);
   const pad = n => String(n).padStart(2,'0');
   const dateStr = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
