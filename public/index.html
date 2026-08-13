@@ -52,10 +52,9 @@
   #sigResizeHandle:hover{background:var(--accent);}
   #sigBar.collapsed #sigResizeHandle{display:none;}
   .sig-bar-head{display:flex;align-items:center;gap:8px;padding:7px 16px;flex-wrap:wrap;flex-shrink:0;}
-  .sig-toggle{display:flex;align-items:center;gap:4px;cursor:pointer;font-size:13px;font-weight:700;color:#04121f;background:var(--accent);user-select:none;padding:4px 14px;border-radius:6px;transition:filter .15s;}
+  .sig-toggle{display:flex;align-items:center;gap:4px;cursor:pointer;font-size:13px;font-weight:700;color:#9db8de;background:#22304a;user-select:none;padding:4px 14px;border-radius:6px;transition:filter .15s;}
   .sig-toggle:hover{filter:brightness(1.15);}
-  .sig-toggle.disabled{background:var(--line);color:var(--txt2);cursor:default;}
-  .sig-toggle.disabled:hover{filter:none;}
+  .sig-toggle.active{color:#04121f;background:var(--accent);}
   .sig-toggle .arrow{display:inline-block;transition:transform .3s;font-size:11px;}
   #sigBar.collapsed .sig-toggle .arrow{transform:rotate(-90deg);}
   .sig-list-wrap{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:row;gap:1px;background:var(--line);transition:opacity .3s ease,max-height .35s ease;}
@@ -228,7 +227,7 @@
   <!-- signal selection (collapsible) -->
   <div id="sigBar" class="expanded">
     <div class="sig-bar-head">
-      <span class="sig-toggle disabled" id="sigToggle"><span class="arrow">▼</span> 信号选择</span>
+      <span class="sig-toggle" id="sigToggle"><span class="arrow">▼</span> 信号选择</span>
       <input type="text" id="searchInput" placeholder="搜索信号名 / 报文名…" />
       <span class="selstat">共 <span id="totalCount">0</span> 个，已选 <b id="selCount">0</b> 个，<span style="color:var(--accent2)">●</span>=有数据</span>
       <span style="flex:1"></span>
@@ -917,7 +916,8 @@ function makeOption(series, sig, stats){
       axisTick:{show:false},
       splitLine:{show:false}},
     yAxis:{type:'value',name:sig.unit||'',nameTextStyle:{color:'#8b93a3'},
-      axisLine:{lineStyle:{color:'#3a4150'}},axisLabel:{color:'#8b93a3'},
+      axisLine:{lineStyle:{color:'#3a4150'}},
+      axisLabel:{color:'#8b93a3',formatter:v=>fmtSigValue(v, sig)},   /* 纵坐标按DBC分辨率精度 */
       splitLine:{lineStyle:{color:'#222732'}}},
     dataZoom:[
       {id:'xZoom',type:'inside',xAxisIndex:0,zoomOnMouseWheel:false,moveOnMouseWheel:false,moveOnMouseMove:true,moveOnMouseUp:true,filterMode:'none'},
@@ -946,7 +946,8 @@ function makeEmptyOption(sig){
       axisTick:{show:false},
       splitLine:{show:false}},
     yAxis:{type:'value',name:sig.unit||'',nameTextStyle:{color:'#8b93a3'},
-      axisLine:{lineStyle:{color:'#3a4150'}},axisLabel:{color:'#8b93a3'},
+      axisLine:{lineStyle:{color:'#3a4150'}},
+      axisLabel:{color:'#8b93a3',formatter:v=>fmtSigValue(v, sig)},   /* 纵坐标按DBC分辨率精度 */
       splitLine:{lineStyle:{color:'#222732'}}},
     dataZoom:[
       {id:'xZoom',type:'inside',xAxisIndex:0,zoomOnMouseWheel:false,moveOnMouseWheel:false,moveOnMouseMove:true,moveOnMouseUp:true,filterMode:'filter'}
@@ -1040,7 +1041,7 @@ function renderCharts(){
     const isExt=(sig.messageId & 0x80000000)!==0;
     side.innerHTML = `
       <span class="signame">${sig.name}<span class="msgtip">${sig.messageName} ${fmtId(realId, isExt)}</span></span>
-      ${has?`<span class="liveval"><span class="lvlabel">Real </span><span class="lvval"></span></span><span class="stat">min ${stats.min.toFixed(3)}</span><span class="stat">max ${stats.max.toFixed(3)}</span>`:'<span class="stat" style="color:var(--err)">无数据</span>'}`;
+      ${has?`<span class="liveval"><span class="lvlabel">Real </span><span class="lvval"></span></span><span class="stat">min ${fmtSigValue(stats.min, sig)}</span><span class="stat">max ${fmtSigValue(stats.max, sig)}</span>`:'<span class="stat" style="color:var(--err)">无数据</span>'}`;
     const body=el('div','cc-body');
     const cd=el('div','chart');
     body.appendChild(cd);
@@ -1084,6 +1085,27 @@ function nearestDataIdx(series, t){
   if(idx+1 < series.length && series[idx+1][0] - t < t - series[idx][0]) return idx+1;
   return idx;
 }
+/* 依据DBC信号分辨率(factor)确定小数位数：factor=1→0位，factor=0.1→1位，factor=0.01→2位 */
+function factorDecimals(factor){
+  if(!factor || factor<=0 || !isFinite(factor)) return 0;
+  const s = String(factor).toLowerCase();
+  const e = s.indexOf('e');
+  if(e >= 0){
+    const m = s.match(/^(\d+(?:\.\d+)?)e([+-]?\d+)$/);
+    if(m){
+      const mantDec = m[1].indexOf('.') >= 0 ? m[1].length - m[1].indexOf('.') - 1 : 0;
+      const exp = parseInt(m[2], 10);
+      return Math.max(0, mantDec - exp);
+    }
+    return 0;
+  }
+  const i = s.indexOf('.');
+  return i < 0 ? 0 : s.length - i - 1;
+}
+function fmtSigValue(v, sig){
+  if(v==null || !isFinite(v)) return '';
+  return v.toFixed(factorDecimals(sig && sig.factor));
+}
 function getSeriesValueAt(c, t){
   const series = c._series;
   if(!series || !series.length) return null;
@@ -1102,7 +1124,7 @@ function setLiveReal(c, t){
   if(v==null) return;
   const num = document.createElement('span');
   num.className = 'lvnum';
-  num.textContent = v.toFixed(3);
+  num.textContent = fmtSigValue(v, c._sig);   /* 按DBC分辨率精度 */
   valEl.appendChild(num);
   valEl.appendChild(document.createTextNode(' '));
   const unit = document.createElement('span');
@@ -1638,7 +1660,6 @@ async function loadDbcText(name, txt, showBusy){
     }
     $('dbcInfo').textContent=`${name} · ${Object.keys(dbcData.messages).length} 报文 / ${dbcData.signals.length} 信号`;
     $('dbcInfo').classList.add('loaded');
-    $('sigToggle').classList.remove('disabled');   /* 加载 DBC 后启用信号选择 */
     $('totalCount').textContent=dbcData.signals.length;
     selectedSet.clear();
     renderSignalList(); renderPickedList(); updateSelCount(); updateStartBtn();
@@ -1729,7 +1750,7 @@ function flashEl(el){
   el.classList.add('flash');
 }
 $('sigToggle').onclick=()=>{
-  if(!dbcData) return;   /* 未加载 DBC 前按钮为灰色不可用 */
+  $('sigToggle').classList.add('active');   /* 点击后变亮蓝 */
   const now=Date.now();
   if(now - sigToggleLast < 1000) return;
   sigToggleLast=now;
@@ -2016,7 +2037,7 @@ window.addEventListener('resize',()=>{ charts.forEach(c=>c.resize()); if(xAxisCh
 /* 发布时间显示：按设备/浏览器所在时区显示对应时间（如 发布于2026-08-12 15:21:00） */
 (function(){
   // 修改时间（UTC），每次更新页面时由开发者同步修改
-  const MOD_UTC = Date.UTC(2026, 7, 13, 1, 28, 8);
+  const MOD_UTC = Date.UTC(2026, 7, 13, 1, 39, 12);
   const d = new Date(MOD_UTC);
   const pad = n => String(n).padStart(2,'0');
   const dateStr = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
