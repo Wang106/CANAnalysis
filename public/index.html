@@ -1105,6 +1105,15 @@ let pinnedChart = null;         // 固定时悬停的图表实例
 let hoveredChart = null;        // 当前悬停的图表实例
 let lastT = null;               // 最近悬停时间
 let lastOverlayX = 0;           // 最近悬停位置（相对覆盖层）
+/* 曲线显示区域边界（chartArea 顶部 → 底部横轴底部），竖线只在此区域内贯穿 */
+function crosshairRegion(ovRect){
+  let top = 0, bottom = ovRect.height;
+  const ca = $('chartArea');
+  if(ca){ const r = ca.getBoundingClientRect(); top = r.top - ovRect.top; }
+  const xa = $('xaxisContainer');
+  if(xa){ const r = xa.getBoundingClientRect(); bottom = r.bottom - ovRect.top; }
+  return {top, bottom};
+}
 function setupCrosshair(){
   if($('crosshairOverlay')) return;   // 已创建过，避免重复
   const ov = el('div');
@@ -1202,14 +1211,16 @@ function setupCrosshair(){
       }
     }
     lastOverlayX = lineX;
-    updateLabel(snapT, lineX, ovRect.height);
+    const reg = crosshairRegion(ovRect);        // 竖线仅贯穿曲线显示区域
+    updateLabel(snapT, lineX, reg.bottom);
     charts.forEach(c=>setLiveReal(c, snapT));
     hideAllBoxes();
     if(hoveredChart) drawBox(hoveredChart, snapT, ovRect);   // 仅悬停图表显示方框
     line.setAttribute('display','block');      // 竖线实时显示
     line.setAttribute('x1', lineX);
     line.setAttribute('x2', lineX);
-    line.setAttribute('y2', ovRect.height);
+    line.setAttribute('y1', reg.top);
+    line.setAttribute('y2', reg.bottom);
     ov.classList.add('show');
   });
   document.addEventListener('click',(e)=>{
@@ -1219,11 +1230,13 @@ function setupCrosshair(){
     if(pinned == null){
       pinned = lastT;                          // 固定：显示竖线+方框+Real+标签
       pinnedChart = hoveredChart;
+      const reg = crosshairRegion(ovRect);
       line.setAttribute('display','block');
       line.setAttribute('x1', lastOverlayX);
       line.setAttribute('x2', lastOverlayX);
-      line.setAttribute('y2', ovRect.height);
-      updateLabel(pinned, lastOverlayX, ovRect.height);
+      line.setAttribute('y1', reg.top);
+      line.setAttribute('y2', reg.bottom);
+      updateLabel(pinned, lastOverlayX, reg.bottom);
       charts.forEach(c=>setLiveReal(c, pinned));
       hideAllBoxes();
       if(pinnedChart) drawBox(pinnedChart, pinned, ovRect);
@@ -1286,9 +1299,11 @@ function refreshPinnedDisplay(){
     }
   }
   lastOverlayX = lineX;
+  const reg = crosshairRegion(ovRect);
   line.setAttribute('x1', lineX);
   line.setAttribute('x2', lineX);
-  line.setAttribute('y2', ovRect.height);
+  line.setAttribute('y1', reg.top);
+  line.setAttribute('y2', reg.bottom);
   const labelStr = pinned.toFixed(3)+'s';
   const lt = $('chLabelText');
   const lr = $('chLabelRect');
@@ -1296,11 +1311,11 @@ function refreshPinnedDisplay(){
     lt.textContent = labelStr;
     const tw = labelStr.length * 6.5 + 10;
     lr.setAttribute('x', lineX - tw/2);
-    lr.setAttribute('y', ovRect.height - 33);
+    lr.setAttribute('y', reg.bottom - 33);
     lr.setAttribute('width', tw);
     lr.setAttribute('height', 16);
     lt.setAttribute('x', lineX);
-    lt.setAttribute('y', ovRect.height - 21);
+    lt.setAttribute('y', reg.bottom - 21);
   }
   const box = pinnedChart._boxEl;
   if(box && p && p[1]!=null){
@@ -1956,7 +1971,7 @@ window.addEventListener('resize',()=>{ charts.forEach(c=>c.resize()); if(xAxisCh
 /* 发布时间显示：按设备/浏览器所在时区显示对应时间（如 发布于2026-08-12 15:21:00） */
 (function(){
   // 修改时间（UTC），每次更新页面时由开发者同步修改
-  const MOD_UTC = Date.UTC(2026, 7, 13, 1, 6, 58);
+  const MOD_UTC = Date.UTC(2026, 7, 13, 1, 12, 47);
   const d = new Date(MOD_UTC);
   const pad = n => String(n).padStart(2,'0');
   const dateStr = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
