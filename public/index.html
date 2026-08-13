@@ -11,7 +11,7 @@
     --txt:#d6dae3; --txt2:#8b93a3; --accent:#4a9eff; --accent2:#3ddc84;
     --warn:#ffb454; --err:#ff6b6b; --info:#9aa4b2;
     --radius:8px;
-    --col-real:56px; --col-min:48px; --col-max:48px;   /* 侧栏 Real/Min/Max 列宽（可拖动调整） */
+    --col-name:80px; --col-real:56px; --col-min:48px; --col-max:48px;   /* 侧栏四列宽（可拖动/双击调整） */
     font-family:"Noto Sans CJK SC","Microsoft YaHei","WenQuanYi Micro Hei",system-ui,sans-serif;
   }
   *{box-sizing:border-box;}
@@ -137,7 +137,7 @@
   #analysisPanel.fullscreen{position:fixed;inset:0;z-index:90;background:var(--bg);height:auto !important;}
   /* 信号侧栏：一行四列（Name / Real / Min / Max） */
   .cc-side{width:var(--cc-side-w,120px);flex-shrink:0;padding:4px 6px;border-right:1px solid var(--line);background:var(--panel2);display:flex;flex-direction:row;align-items:center;gap:6px;font-size:11px;overflow:hidden;justify-content:flex-start;position:relative;}
-  .cc-side .signame{flex:1;min-width:0;font-weight:400;font-size:12px;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;word-break:normal;cursor:default;}
+  .cc-side .signame{width:var(--col-name,80px);flex:none;font-weight:400;font-size:12px;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;word-break:normal;cursor:default;}
   .cc-side .msgtip{display:none;position:absolute;left:100%;top:0;z-index:20;background:#0f1115;border:1px solid var(--accent);border-radius:4px;padding:5px 8px;font-size:11px;color:var(--txt2);white-space:nowrap;pointer-events:none;}
   .cc-side:hover .msgtip{display:block;}
   .cc-side .liveval{width:var(--col-real,56px);flex:none;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-left:1px solid var(--line);padding-left:4px;}
@@ -149,8 +149,8 @@
   .cc-side .stat.c-max{width:var(--col-max,48px);}
   .cc-side .stat b{color:var(--txt);}
   /* 侧栏表头：Name / Real / Min / Max（位于内容区标题左侧，固定不随滚动） */
-  .side-head{display:flex;align-items:stretch;margin-left:-12px;height:26px;width:var(--cc-side-w,120px);flex-shrink:0;border-right:1px solid var(--line);font-size:10px;font-weight:700;color:var(--txt2);}
-  .side-head .sh-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;justify-content:center;}
+  .side-head{display:flex;align-items:stretch;margin-left:-12px;height:26px;width:var(--cc-side-w,120px);flex-shrink:0;border-right:1px solid var(--line);font-size:10px;font-weight:700;color:var(--txt2);overflow:hidden;}
+  .side-head .sh-name{width:var(--col-name,80px);flex:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;justify-content:center;}
   .side-head .sh-real{width:var(--col-real,56px);flex:none;display:flex;align-items:center;justify-content:center;white-space:nowrap;}
   .side-head .sh-min{width:var(--col-min,48px);flex:none;display:flex;align-items:center;justify-content:center;white-space:nowrap;}
   .side-head .sh-max{width:var(--col-max,48px);flex:none;display:flex;align-items:center;justify-content:center;white-space:nowrap;}
@@ -1068,8 +1068,8 @@ function buildTooltip(sig){
     return `<div style="font-size:12px">${sig.name} = <b>${typeof v==='number'?fmtSigValue(v, sig):v}</b> ${sig.unit}${extra}</div>`;
   };
 }
-/* 曲线配色盘：10个高区分度颜色，按图表顺序循环分配（1-10、11-20…依次重复） */
-const CURVE_COLORS=['#4a9eff','#3ddc84','#ffb454','#ff6b6b','#d066ff','#2dd4bf','#f4d35e','#ff8fab','#a8d15c','#7dd3fc'];
+/* 曲线配色盘：5个高区分度颜色（亮红/亮黄/亮蓝/亮绿/亮紫），按图表顺序循环分配 */
+const CURVE_COLORS=['#ff5252','#ffd700','#4a9eff','#3ddc84','#c77dff'];
 function makeOption(series, sig, stats, color){
   const tMin=ascData.tMin, tMax=ascData.tMax;
   return {
@@ -1154,6 +1154,15 @@ function measureColumn(col){
   tmp.remove();
   return Math.ceil(maxW)+6;   /* 含细线边框与内边距余量 */
 }
+/* 侧栏总宽 = 四列宽度之和 + 左右内边距(12)与列间间距(18)，列宽变化后调用 */
+function updateSideTotal(){
+  const cs=getComputedStyle(document.documentElement);
+  const n=parseFloat(cs.getPropertyValue('--col-name'))||80;
+  const r=parseFloat(cs.getPropertyValue('--col-real'))||56;
+  const m=parseFloat(cs.getPropertyValue('--col-min'))||48;
+  const x=parseFloat(cs.getPropertyValue('--col-max'))||48;
+  document.documentElement.style.setProperty('--cc-side-w', (n+r+m+x+30)+'px');
+}
 /* 曲线区左侧名称列宽度：按当前信号中最长名称自动调整，保证每个信号名完整显示 */
 function autoFitSideWidth(){
   const sigs=selectedSignals();
@@ -1164,8 +1173,8 @@ function autoFitSideWidth(){
   let maxW=0;
   for(const s of sigs){ tmp.textContent=s.name; maxW=Math.max(maxW,tmp.offsetWidth); }
   tmp.remove();
-  const w=Math.max(90, Math.ceil(maxW) + (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--col-real'))||56) + (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--col-min'))||48) + (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--col-max'))||48) + 30);   /* 名称 + Real/Min/Max 三列 + 间距与内边距 */
-  document.documentElement.style.setProperty('--cc-side-w', w+'px');
+  document.documentElement.style.setProperty('--col-name', Math.max(40, Math.ceil(maxW))+'px');
+  updateSideTotal();
 }
 function renderCharts(){
   disposeCharts();
@@ -1219,7 +1228,7 @@ function renderCharts(){
       $('xaxisContainer').appendChild(xRow);
       // 侧栏表头（Name/Real/Min/Max），位于内容区标题左侧，固定不随滚动
       const sideHead=el('div','side-head');
-      sideHead.innerHTML='<span class="sh-name">Name</span><span class="sh-h" data-col="real"></span><span class="sh-real">Real</span><span class="sh-h" data-col="min"></span><span class="sh-min">Min</span><span class="sh-h" data-col="max"></span><span class="sh-max">Max</span>';
+      sideHead.innerHTML='<span class="sh-name">Name</span><span class="sh-h" data-col="name"></span><span class="sh-real">Real</span><span class="sh-h" data-col="real"></span><span class="sh-min">Min</span><span class="sh-h" data-col="min"></span><span class="sh-max">Max</span>';
       $('contentTop').insertBefore(sideHead, $('contentTitle'));
       /* 拖动表头分隔条调整对应列宽 */
       sideHead.querySelectorAll('.sh-h').forEach(h=>{
@@ -1227,12 +1236,13 @@ function renderCharts(){
           e.preventDefault();
           e.stopPropagation();
           if(e.button!==0) return;
-          const col=h.dataset.col;
+          const col=h.dataset.col;   /* 调整该细线左侧的列 */
           const startX=e.clientX;
-          const cur=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--col-'+col))||(col==='real'?56:48);
+          const cur=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--col-'+col))||(col==='name'?80:col==='real'?56:48);
           const onMove=ev=>{
-            /* 边界跟随鼠标：向左拖该列变宽、向右拖变窄（名称列弹性吸收变化） */
-            document.documentElement.style.setProperty('--col-'+col, Math.max(24, cur-(ev.clientX-startX))+'px');
+            /* 只调整左侧列宽度，其他列保持不变，并同步侧栏总宽 */
+            document.documentElement.style.setProperty('--col-'+col, Math.max(24, cur+(ev.clientX-startX))+'px');
+            updateSideTotal();
           };
           const onUp=()=>{
             document.removeEventListener('pointermove',onMove);
@@ -1247,13 +1257,13 @@ function renderCharts(){
           document.addEventListener('mousemove',onMove);
           document.addEventListener('mouseup',onUp);
         });
-        /* 双击分隔条：按左侧列的显示内容长度自动调整该列宽度 */
+        /* 双击分隔条：按左侧列显示内容长度自动调整该列宽度，其他列不变 */
         h.addEventListener('dblclick', e=>{
           e.stopPropagation();
           const col=h.dataset.col;
-          if(col==='real') autoFitSideWidth();        /* Name 列（左侧）按最长名称适配 */
-          else if(col==='min') document.documentElement.style.setProperty('--col-real', Math.max(24, measureColumn('real'))+'px');
-          else document.documentElement.style.setProperty('--col-min', Math.max(24, measureColumn('min'))+'px');
+          if(col==='name') autoFitSideWidth();        /* Name 列按最长名称适配 */
+          else if(col==='real'){ document.documentElement.style.setProperty('--col-real', Math.max(24, measureColumn('real'))+'px'); updateSideTotal(); }
+          else { document.documentElement.style.setProperty('--col-min', Math.max(24, measureColumn('min'))+'px'); updateSideTotal(); }
         });
       });
       xAxisChart=echarts.init(xCd);
@@ -1286,6 +1296,7 @@ function renderCharts(){
     divider.addEventListener('dblclick', e=>{
       e.stopPropagation();
       document.documentElement.style.setProperty('--col-max', Math.max(24, measureColumn('max'))+'px');
+      updateSideTotal();
     });
     card.append(side,divider,body);
     $('chartArea').appendChild(card);
@@ -2324,7 +2335,7 @@ window.addEventListener('resize',()=>{ charts.forEach(c=>c.resize()); if(xAxisCh
 /* 发布时间显示：按设备/浏览器所在时区显示对应时间（如 发布于2026-08-12 15:21:00） */
 (function(){
   // 修改时间（UTC），每次更新页面时由开发者同步修改
-  const MOD_UTC = Date.UTC(2026, 7, 13, 8, 22, 3);
+  const MOD_UTC = Date.UTC(2026, 7, 13, 8, 33, 14);
   const d = new Date(MOD_UTC);
   const pad = n => String(n).padStart(2,'0');
   const dateStr = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
