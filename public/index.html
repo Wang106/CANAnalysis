@@ -140,11 +140,11 @@
   .cc-side .signame{flex:1;min-width:0;font-weight:400;font-size:12px;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;word-break:normal;cursor:default;}
   .cc-side .msgtip{display:none;position:absolute;left:100%;top:0;z-index:20;background:#0f1115;border:1px solid var(--accent);border-radius:4px;padding:5px 8px;font-size:11px;color:var(--txt2);white-space:nowrap;pointer-events:none;}
   .cc-side:hover .msgtip{display:block;}
-  .cc-side .liveval{width:var(--col-real,56px);flex:none;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .cc-side .liveval{width:var(--col-real,56px);flex:none;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-left:1px solid var(--line);padding-left:4px;}
   .cc-side .liveval .lvlabel{color:var(--txt2);}
   .cc-side .liveval .lvval{color:var(--accent2);}
   .cc-side .liveval .lvunit{color:var(--txt2);}
-  .cc-side .stat{flex:none;color:var(--txt2);font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .cc-side .stat{flex:none;color:var(--txt2);font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-left:1px solid var(--line);padding-left:4px;}
   .cc-side .stat.c-min{width:var(--col-min,48px);}
   .cc-side .stat.c-max{width:var(--col-max,48px);}
   .cc-side .stat b{color:var(--txt);}
@@ -154,8 +154,9 @@
   .side-head .sh-real{width:var(--col-real,56px);flex:none;display:flex;align-items:center;justify-content:center;white-space:nowrap;}
   .side-head .sh-min{width:var(--col-min,48px);flex:none;display:flex;align-items:center;justify-content:center;white-space:nowrap;}
   .side-head .sh-max{width:var(--col-max,48px);flex:none;display:flex;align-items:center;justify-content:center;white-space:nowrap;}
-  .side-head .sh-h{flex:none;width:4px;cursor:col-resize;background:var(--line);align-self:stretch;}
-  .side-head .sh-h:hover{background:var(--accent);}
+  .side-head .sh-h{flex:none;width:7px;cursor:col-resize;background:transparent;align-self:stretch;position:relative;}
+  .side-head .sh-h::before{content:'';position:absolute;left:3px;top:0;bottom:0;width:1px;background:var(--line);}
+  .side-head .sh-h:hover::before{background:var(--accent);}
   /* global chart controls in sig-bar-head */
   .gctrls{display:none;align-items:center;gap:5px;font-size:11px;}
   .gctrls.show{display:flex;}
@@ -175,11 +176,11 @@
   .issue.warn{border-color:#5a4a20;}
   .issue .tag{color:var(--accent);font-weight:600;}
 
-  #chartArea{padding:4px 12px 0;flex:1;min-height:0;display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;}
+  #chartArea{padding:4px 0 0;flex:1;min-height:0;display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;}
   .chart-card{background:var(--panel);border:1px solid var(--line);border-top:none;border-radius:0;margin-bottom:0;overflow:hidden;display:flex;flex-direction:row;flex:1 1 130px;min-height:130px;}
   .chart-card:first-child{border-top:1px solid var(--line);border-radius:var(--radius) var(--radius) 0 0;}
   .chart-card:last-child{border-radius:0;}
-  .xaxis-row{display:flex;flex-direction:row;background:#11141a;border:1px solid var(--line);border-top:none;border-radius:0 0 var(--radius) var(--radius);overflow:hidden;flex-shrink:0;position:relative;}
+  .xaxis-row{display:flex;flex-direction:row;background:#11141a;border:1px solid var(--line);border-top:none;border-radius:0;overflow:hidden;flex-shrink:0;position:relative;}
   .xaxis-row .xaxis-spacer{width:var(--cc-side-w,120px);flex-shrink:0;background:var(--panel2);border-right:1px solid var(--line);}
   .xaxis-row .xaxis-chart{flex:1;min-width:0;height:22px;}
   .xaxis-unit{position:absolute;left:calc(var(--cc-side-w,120px) + 11px);top:2px;line-height:1;font-size:12px;color:var(--txt2);white-space:nowrap;pointer-events:none;}
@@ -1132,6 +1133,25 @@ function makeXAxisOption(){
     ]
   };
 }
+/* 测量某列内容的最宽显示宽度（real 以 max 值+单位为参考） */
+function measureColumn(col){
+  const tmp=document.createElement('span');
+  tmp.style.cssText='position:absolute;visibility:hidden;white-space:nowrap;font:10px "Noto Sans CJK SC","Microsoft YaHei",system-ui,sans-serif;';
+  document.body.appendChild(tmp);
+  let maxW=0;
+  charts.forEach(c=>{
+    const sig=c._sig, st=c._stats;
+    if(!sig || !st || st.count==null || st.count===0) return;
+    let str='';
+    if(col==='real') str=fmtSigValue(st.max, sig)+(sig.unit?(' '+sig.unit):'');
+    else if(col==='min') str=fmtSigValue(st.min, sig);
+    else str=fmtSigValue(st.max, sig);
+    tmp.textContent=str;
+    maxW=Math.max(maxW,tmp.offsetWidth);
+  });
+  tmp.remove();
+  return Math.ceil(maxW)+6;   /* 含细线边框与内边距余量 */
+}
 /* 曲线区左侧名称列宽度：按当前信号中最长名称自动调整，保证每个信号名完整显示 */
 function autoFitSideWidth(){
   const sigs=selectedSignals();
@@ -1225,6 +1245,14 @@ function renderCharts(){
           document.addEventListener('mousemove',onMove);
           document.addEventListener('mouseup',onUp);
         });
+        /* 双击分隔条：按左侧列的显示内容长度自动调整该列宽度 */
+        h.addEventListener('dblclick', e=>{
+          e.stopPropagation();
+          const col=h.dataset.col;
+          if(col==='real') autoFitSideWidth();        /* Name 列（左侧）按最长名称适配 */
+          else if(col==='min') document.documentElement.style.setProperty('--col-real', Math.max(24, measureColumn('real'))+'px');
+          else document.documentElement.style.setProperty('--col-min', Math.max(24, measureColumn('min'))+'px');
+        });
       });
       xAxisChart=echarts.init(xCd);
       xAxisChart.setOption(makeXAxisOption());
@@ -1253,6 +1281,10 @@ function renderCharts(){
     const cd=el('div','chart');
     body.appendChild(cd);
     const divider=el('div','cc-divider');
+    divider.addEventListener('dblclick', e=>{
+      e.stopPropagation();
+      document.documentElement.style.setProperty('--col-max', Math.max(24, measureColumn('max'))+'px');
+    });
     card.append(side,divider,body);
     $('chartArea').appendChild(card);
     if(has){
@@ -2284,7 +2316,7 @@ window.addEventListener('resize',()=>{ charts.forEach(c=>c.resize()); if(xAxisCh
 /* 发布时间显示：按设备/浏览器所在时区显示对应时间（如 发布于2026-08-12 15:21:00） */
 (function(){
   // 修改时间（UTC），每次更新页面时由开发者同步修改
-  const MOD_UTC = Date.UTC(2026, 7, 13, 8, 3, 48);
+  const MOD_UTC = Date.UTC(2026, 7, 13, 8, 11, 12);
   const d = new Date(MOD_UTC);
   const pad = n => String(n).padStart(2,'0');
   const dateStr = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
