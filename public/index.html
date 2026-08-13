@@ -147,7 +147,7 @@
   .chart-card{background:var(--panel);border:1px solid var(--line);border-top:none;border-radius:0;margin-bottom:0;overflow:hidden;display:flex;flex-direction:row;flex:1 1 130px;min-height:130px;}
   .chart-card:first-child{border-top:1px solid var(--line);border-radius:var(--radius) var(--radius) 0 0;}
   .chart-card:last-child{border-radius:0;}
-  .xaxis-row{display:flex;flex-direction:row;background:var(--panel);border:1px solid var(--line);border-top:none;border-radius:0 0 var(--radius) var(--radius);overflow:hidden;flex-shrink:0;position:relative;}
+  .xaxis-row{display:flex;flex-direction:row;background:#11141a;border:1px solid var(--line);border-top:none;border-radius:0 0 var(--radius) var(--radius);overflow:hidden;flex-shrink:0;position:relative;}
   .xaxis-row .xaxis-spacer{width:var(--cc-side-w,120px);flex-shrink:0;background:var(--panel2);border-right:1px solid var(--line);}
   .xaxis-row .xaxis-chart{flex:1;min-width:0;height:22px;}
   .xaxis-unit{position:absolute;left:calc(var(--cc-side-w,120px) + 11px);top:2px;line-height:1;font-size:12px;color:var(--txt2);white-space:nowrap;pointer-events:none;}
@@ -922,7 +922,7 @@ function makeOption(series, sig, stats){
       {id:'xZoom',type:'inside',xAxisIndex:0,zoomOnMouseWheel:false,moveOnMouseWheel:false,moveOnMouseMove:true,moveOnMouseUp:true,filterMode:'none'},
       {id:'yZoom',type:'inside',yAxisIndex:0,zoomOnMouseWheel:false,moveOnMouseWheel:false,moveOnMouseMove:false,moveOnMouseUp:false,filterMode:'none'}
     ],
-    tooltip:{trigger:'axis',backgroundColor:'transparent',borderColor:'transparent',borderWidth:0,padding:0,shadowBlur:0,shadowColor:'transparent',extraCssText:'box-shadow:none;background:transparent;padding:0;',axisPointer:{type:'line',lineStyle:{color:'#4a9eff'}},formatter:buildTooltip(sig)},
+    tooltip:{trigger:'axis',backgroundColor:'transparent',borderColor:'transparent',borderWidth:0,padding:0,shadowBlur:0,shadowColor:'transparent',extraCssText:'box-shadow:none;background:transparent;padding:0;',axisPointer:{type:'none'},formatter:buildTooltip(sig)},
     series:[{
       type:'line',data:series,name:sig.name,showSymbol:false,symbol:'circle',symbolSize:4,
       clip:true, connectNulls:false,
@@ -1976,7 +1976,7 @@ window.addEventListener('resize',()=>{ charts.forEach(c=>c.resize()); if(xAxisCh
 /* 发布时间显示：按设备/浏览器所在时区显示对应时间（如 发布于2026-08-12 15:21:00） */
 (function(){
   // 修改时间（UTC），每次更新页面时由开发者同步修改
-  const MOD_UTC = Date.UTC(2026, 7, 12, 9, 46, 45);
+  const MOD_UTC = Date.UTC(2026, 7, 13, 0, 50, 21);
   const d = new Date(MOD_UTC);
   const pad = n => String(n).padStart(2,'0');
   const dateStr = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
