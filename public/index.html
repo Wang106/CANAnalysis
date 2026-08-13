@@ -149,8 +149,8 @@
   .cc-side .stat.c-max{width:var(--col-max,48px);}
   .cc-side .stat b{color:var(--txt);}
   /* 侧栏表头：Name / Real / Min / Max（位于内容区标题左侧，固定不随滚动） */
-  .side-head{display:flex;align-items:stretch;margin-left:-12px;height:26px;width:var(--cc-side-w,120px);flex-shrink:0;background:var(--panel2);border-right:1px solid var(--line);font-size:10px;font-weight:700;color:var(--txt2);}
-  .side-head .sh-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;padding-left:6px;}
+  .side-head{display:flex;align-items:stretch;margin-left:-12px;height:26px;width:var(--cc-side-w,120px);flex-shrink:0;border-right:1px solid var(--line);font-size:10px;font-weight:700;color:var(--txt2);}
+  .side-head .sh-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;justify-content:center;}
   .side-head .sh-real{width:var(--col-real,56px);flex:none;display:flex;align-items:center;justify-content:center;white-space:nowrap;}
   .side-head .sh-min{width:var(--col-min,48px);flex:none;display:flex;align-items:center;justify-content:center;white-space:nowrap;}
   .side-head .sh-max{width:var(--col-max,48px);flex:none;display:flex;align-items:center;justify-content:center;white-space:nowrap;}
@@ -1209,7 +1209,8 @@ function renderCharts(){
           const startX=e.clientX;
           const cur=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--col-'+col))||(col==='real'?56:48);
           const onMove=ev=>{
-            document.documentElement.style.setProperty('--col-'+col, Math.max(24, cur+(ev.clientX-startX))+'px');
+            /* 边界跟随鼠标：向左拖该列变宽、向右拖变窄（名称列弹性吸收变化） */
+            document.documentElement.style.setProperty('--col-'+col, Math.max(24, cur-(ev.clientX-startX))+'px');
           };
           const onUp=()=>{
             document.removeEventListener('pointermove',onMove);
@@ -2283,7 +2284,7 @@ window.addEventListener('resize',()=>{ charts.forEach(c=>c.resize()); if(xAxisCh
 /* 发布时间显示：按设备/浏览器所在时区显示对应时间（如 发布于2026-08-12 15:21:00） */
 (function(){
   // 修改时间（UTC），每次更新页面时由开发者同步修改
-  const MOD_UTC = Date.UTC(2026, 7, 13, 7, 55, 44);
+  const MOD_UTC = Date.UTC(2026, 7, 13, 8, 3, 48);
   const d = new Date(MOD_UTC);
   const pad = n => String(n).padStart(2,'0');
   const dateStr = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
