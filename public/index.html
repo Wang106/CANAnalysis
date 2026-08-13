@@ -76,10 +76,12 @@
   .selstat b{color:var(--accent2);}
   .sig-item.picked{padding-left:6px;}
   .sig-item.picked .sname{flex:none;white-space:nowrap;}
-  .sig-item.picked .sid{color:var(--txt2);font-size:10px;margin-left:6px;white-space:nowrap;flex:none;}
-  .sig-item.picked .sright{margin-left:auto;display:flex;align-items:center;gap:4px;white-space:nowrap;}
+  .sig-item.picked .sid{color:var(--txt2);font-size:10px;margin-left:6px;white-space:nowrap;flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;}
+  .sig-item.picked .sright{margin-left:auto;display:flex;align-items:center;gap:4px;white-space:nowrap;flex:0 1 auto;min-width:0;overflow:hidden;}
+  .sig-item.picked .sright .sunit,.sig-item.picked .sright .smsg{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;}
   .sig-item.picked .sright .sunit{color:var(--txt2);font-size:11px;}
   .sig-item.picked .sright .smsg{color:var(--txt2);font-size:10px;}
+  #sigPicked{overflow-x:auto;}   /* 极长名称时可横向滚动查看完整内容 */
   .sig-item.picked .drag{flex:none;cursor:grab;color:var(--txt2);display:inline-flex;flex-direction:column;align-items:center;justify-content:center;font-size:8px;line-height:1;min-width:16px;padding:2px 4px;border-radius:4px;user-select:none;}
   .sig-item.picked .drag .d-up,.sig-item.picked .drag .d-dn{display:block;height:8px;line-height:8px;}
   .sig-item.picked .drag:hover{color:var(--accent);background:var(--panel2);}
@@ -815,16 +817,6 @@ function renderPickedList(){
   const sigs=selectedSignals();
   $('pickedCount').textContent=selectedSet.size;
   if(!sigs.length){ picked.innerHTML='<div class="empty-hint">勾选左侧信号后自动出现在此</div>'; return; }
-  // 计算最长信号名宽度，使ID列对齐（用真实渲染元素测量，避免字体未加载导致测量偏小而截断）
-  const tmp=document.createElement('span');
-  tmp.style.cssText='position:absolute;visibility:hidden;white-space:nowrap;font:13px "Noto Sans CJK SC","Microsoft YaHei",system-ui,sans-serif;';
-  document.body.appendChild(tmp);
-  let maxW=0;
-  for(const s of sigs){ tmp.textContent=s.name; maxW=Math.max(maxW,tmp.offsetWidth); }
-  document.body.removeChild(tmp);
-  const colW=picked.clientWidth||400;
-  /* 名称列按最长名称自适应，仅预留勾选框+ID+排序图标的空间，保证名称完整显示 */
-  const nameMinW=Math.max(40, Math.min(Math.ceil(maxW), colW-100))+'px';
   for(const s of sigs){
     const has = ascData && ascData.map[s.messageKey];
     const it=el('div','sig-item picked'+(has?' hasdata':''));
@@ -846,10 +838,7 @@ function renderPickedList(){
     });
     const realId=s.messageId & 0x1FFFFFFF;
     const isExt=(s.messageId & 0x80000000)!==0;
-    const span=el('span','sname',s.name);
-    span.style.width=nameMinW;
-    span.style.overflow='hidden';
-    span.style.textOverflow='ellipsis';
+    const span=el('span','sname',s.name);   /* 名称按自身长度自然显示，完整可见 */
     if(ascData && !has) span.appendChild(el('span','nodata','[无数据]'));
     const sid=el('span','sid',fmtId(realId,isExt));
     const sright=el('span','sright');
@@ -2220,7 +2209,7 @@ window.addEventListener('resize',()=>{ charts.forEach(c=>c.resize()); if(xAxisCh
 /* 发布时间显示：按设备/浏览器所在时区显示对应时间（如 发布于2026-08-12 15:21:00） */
 (function(){
   // 修改时间（UTC），每次更新页面时由开发者同步修改
-  const MOD_UTC = Date.UTC(2026, 7, 13, 6, 1, 25);
+  const MOD_UTC = Date.UTC(2026, 7, 13, 6, 5, 56);
   const d = new Date(MOD_UTC);
   const pad = n => String(n).padStart(2,'0');
   const dateStr = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
