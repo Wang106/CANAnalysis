@@ -78,6 +78,9 @@
   .sig-item.picked .sright{margin-left:auto;display:flex;align-items:center;gap:4px;white-space:nowrap;}
   .sig-item.picked .sright .sunit{color:var(--txt2);font-size:11px;}
   .sig-item.picked .sright .smsg{color:var(--txt2);font-size:10px;}
+  .sig-item.picked .drag{flex:none;cursor:grab;color:var(--txt2);font-size:13px;padding:2px 5px;border-radius:4px;user-select:none;}
+  .sig-item.picked .drag:hover{color:var(--accent);background:var(--panel2);}
+  .sig-item.picked.dragging .drag{cursor:grabbing;color:var(--accent);}
   .sig-item .sid{color:var(--txt2);font-size:10px;margin-left:3px;white-space:nowrap;}
   .sig-item .nodata{color:var(--err);font-size:10px;margin-left:3px;}
   .sig-item.pending-remove{opacity:.35;text-decoration:line-through;}
@@ -216,11 +219,11 @@
     <div class="header-right">
       <div class="file-row">
         <div class="finput" id="dbcInfo">未加载</div>
-        <button id="btnDbc" class="primary">加载DBC文件</button>
+        <button id="btnDbc" class="primary">加载<span style="color:#fff">DBC</span>文件</button>
       </div>
       <div class="file-row">
         <div class="finput" id="ascInfo">未加载</div>
-        <button id="btnAsc" class="primary">加载ASC文件</button>
+        <button id="btnAsc" class="primary">加载<span style="color:#fff">ASC</span>文件</button>
       </div>
     </div>
   </div>
@@ -841,8 +844,52 @@ function renderPickedList(){
     const unit=el('span','sunit',s.unit?('['+s.unit+']'):'');
     const msgInfo=el('span','smsg',s.messageName);
     sright.append(unit,msgInfo);
-    it.append(cb,span,sid,sright);
-    it.addEventListener('click',e=>{ if(e.target!==cb){ cb.checked=!cb.checked; cb.dispatchEvent(new Event('change')); } });
+    /* 拖动排序手柄 */
+    const drag=el('span','drag','⠿');
+    drag.title='拖动排序';
+    drag.addEventListener('mousedown',e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      if(e.button!==0) return;
+      it.classList.add('dragging');
+      const startY=e.clientY;
+      const onMove=ev=>{
+        const dy=ev.clientY-startY;
+        const itRect=it.getBoundingClientRect();
+        const itMid=itRect.top+itRect.height/2;
+        const sibs=Array.from(picked.children).filter(x=>x!==it);
+        if(dy<0){
+          for(const s of sibs){
+            const r=s.getBoundingClientRect();
+            if(itMid<r.top+r.height/2){ picked.insertBefore(it,s); return; }
+          }
+        }else if(dy>0){
+          let after=null;
+          for(const s of sibs){
+            const r=s.getBoundingClientRect();
+            if(itMid>=r.top+r.height/2) after=s;
+          }
+          if(after&&after.nextSibling) picked.insertBefore(it,after.nextSibling);
+          else if(after) picked.appendChild(it);
+        }
+      };
+      const onUp=()=>{
+        document.removeEventListener('mousemove',onMove);
+        document.removeEventListener('mouseup',onUp);
+        it.classList.remove('dragging');
+        /* 提交新顺序到 selectedSet */
+        const keys=Array.from(picked.children).map(x=>x.querySelector('input').dataset.key);
+        selectedSet.clear();
+        keys.forEach(k=>selectedSet.add(k));
+        sigOrderChanged=true;
+        updateSelCount();
+      };
+      document.addEventListener('mousemove',onMove);
+      document.addEventListener('mouseup',onUp);
+    });
+    drag.addEventListener('click',e=>e.stopPropagation());
+    it.append(cb,span,sid,sright,drag);
+    it.addEventListener('click',e=>{ if(e.target.closest('.drag')) return; if(e.target!==cb){ cb.checked=!cb.checked; cb.dispatchEvent(new Event('change')); } });
     picked.appendChild(it);
   }
 }
@@ -853,6 +900,7 @@ function findLeftCb(key){
 }
 const selectedSet=new Set();
 let filterEmpty=false;
+let sigOrderChanged=false;   // 已选信号顺序是否被拖动修改
 function updateSelCount(){
   $('selCount').textContent=selectedSet.size;
   $('pickedCount').textContent=selectedSet.size;
@@ -1767,6 +1815,11 @@ $('sigToggle').onclick=()=>{
   const expanded=bar.classList.contains('expanded');
   bar.classList.toggle('expanded', !expanded);
   bar.classList.toggle('collapsed', expanded);
+  /* 收起信号选择区域且已生成曲线、信号顺序被拖动修改过时，同步曲线顺序 */
+  if(expanded && charts.length && sigOrderChanged){
+    sigOrderChanged=false;
+    reorderChartsBySelection();
+  }
   /* 收起或展开均清除用户拖动设置的固定高度：展开后恢复默认高度，直到再次拖动 */
   bar.classList.remove('resized');
   bar.style.height='';
@@ -1774,6 +1827,29 @@ $('sigToggle').onclick=()=>{
   bar.style.transition='';
   setTimeout(()=>{ charts.forEach(c=>c.resize()); }, 250);
 };
+/* 按已选信号顺序重排曲线图表（DOM 卡片 + charts 数组，不重新解析数据） */
+function reorderChartsBySelection(){
+  const ca=$('chartArea');
+  if(!ca || !charts.length) return;
+  const sigs=selectedSignals();
+  const byKey=new Map();
+  charts.forEach(c=>{ byKey.set(c._sig.messageKey+'::'+c._sig.name, c); });
+  const newCharts=[];
+  sigs.forEach(s=>{
+    const k=s.messageKey+'::'+s.name;
+    const c=byKey.get(k);
+    if(c && !newCharts.includes(c)){
+      newCharts.push(c);
+      const card=c.getDom().closest('.chart-card');
+      if(card) ca.appendChild(card);
+    }
+  });
+  /* 未匹配到的保持在末尾原顺序 */
+  charts.forEach(c=>{ if(!newCharts.includes(c)) newCharts.push(c); });
+  charts=newCharts;
+  /* 竖线固定时方框跟随最新布局 */
+  if(pinned != null) refreshPinnedDisplay();
+}
 /* 分析面板显示/隐藏切换（由"报文分析"按钮控制） */
 function syncAnalysisBtns(visible){
   $('btnAnalyze').textContent = visible ? '隐藏分析' : '显示分析';
@@ -2045,7 +2121,7 @@ window.addEventListener('resize',()=>{ charts.forEach(c=>c.resize()); if(xAxisCh
 /* 发布时间显示：按设备/浏览器所在时区显示对应时间（如 发布于2026-08-12 15:21:00） */
 (function(){
   // 修改时间（UTC），每次更新页面时由开发者同步修改
-  const MOD_UTC = Date.UTC(2026, 7, 13, 3, 48, 31);
+  const MOD_UTC = Date.UTC(2026, 7, 13, 4, 3, 0);
   const d = new Date(MOD_UTC);
   const pad = n => String(n).padStart(2,'0');
   const dateStr = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
