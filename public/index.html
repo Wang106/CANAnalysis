@@ -22,6 +22,7 @@
   button.primary{background:var(--accent);border-color:var(--accent);color:#04121f;font-weight:600;}
   button.primary:hover:not(:disabled){filter:brightness(1.1);color:#04121f;}
   .file-row button.primary{color:#fff;}   /* 首次打开加载按钮文字为白色 */
+  .file-row button.primary:hover:not(:disabled){color:#04121f;}   /* 悬停统一变黑 */
   button.go{background:var(--accent2);border-color:var(--accent2);color:#042015;font-weight:600;}
   button.go:hover:not(:disabled){filter:brightness(1.1);}
   input[type=text],input[type=number]{background:var(--panel2);border:1px solid var(--line);color:var(--txt);border-radius:6px;padding:5px 8px;font-size:13px;font-family:inherit;}
@@ -79,7 +80,8 @@
   .sig-item.picked .sright{margin-left:auto;display:flex;align-items:center;gap:4px;white-space:nowrap;}
   .sig-item.picked .sright .sunit{color:var(--txt2);font-size:11px;}
   .sig-item.picked .sright .smsg{color:var(--txt2);font-size:10px;}
-  .sig-item.picked .drag{flex:none;cursor:grab;color:var(--txt2);font-size:11px;min-width:18px;text-align:center;padding:2px 4px;border-radius:4px;user-select:none;line-height:1.2;}
+  .sig-item.picked .drag{flex:none;cursor:grab;color:var(--txt2);display:inline-flex;flex-direction:column;align-items:center;justify-content:center;font-size:8px;line-height:1;min-width:16px;padding:2px 4px;border-radius:4px;user-select:none;}
+  .sig-item.picked .drag .d-up,.sig-item.picked .drag .d-dn{display:block;height:8px;line-height:8px;}
   .sig-item.picked .drag:hover{color:var(--accent);background:var(--panel2);}
   .sig-item.picked.dragging .drag{cursor:grabbing;color:var(--accent);}
   .sig-item .sid{color:var(--txt2);font-size:10px;margin-left:3px;white-space:nowrap;}
@@ -220,11 +222,11 @@
     <div class="header-right">
       <div class="file-row">
         <div class="finput" id="dbcInfo">未加载</div>
-        <button id="btnDbc" class="primary">加载<span style="color:#fff">DBC</span>文件</button>
+        <button id="btnDbc" class="primary">加载DBC文件</button>
       </div>
       <div class="file-row">
         <div class="finput" id="ascInfo">未加载</div>
-        <button id="btnAsc" class="primary">加载<span style="color:#fff">ASC</span>文件</button>
+        <button id="btnAsc" class="primary">加载ASC文件</button>
       </div>
     </div>
   </div>
@@ -845,18 +847,26 @@ function renderPickedList(){
     const unit=el('span','sunit',s.unit?('['+s.unit+']'):'');
     const msgInfo=el('span','smsg',s.messageName);
     sright.append(unit,msgInfo);
-    /* 拖动排序手柄：上下三角图标，按住上下拖动排序 */
-    const drag=el('span','drag','▲▼');
+    /* 拖动排序手柄：上下叠放的两个三角形，按住上下拖动排序 */
+    const drag=el('span','drag');
+    const dUp=document.createElement('span'); dUp.className='d-up'; dUp.textContent='▲';
+    const dDn=document.createElement('span'); dDn.className='d-dn'; dDn.textContent='▼';
+    drag.append(dUp,dDn);
     drag.title='拖动排序';
-    drag.addEventListener('pointerdown',e=>{
+    let sigDragActive=false;
+    const startSigDrag=(e)=>{
+      if(e.button!==0||sigDragActive) return;
+      sigDragActive=true;
       e.preventDefault();
       e.stopPropagation();
-      if(e.button!==0) return;
       it.classList.add('dragging');
-      try{ drag.setPointerCapture(e.pointerId); }catch(err){}
+      it.style.position='relative';
+      it.style.zIndex='5';
+      document.body.style.userSelect='none';
       const startY=e.clientY;
       const onMove=ev=>{
         const dy=ev.clientY-startY;
+        it.style.transform='translateY('+dy+'px)';   /* 视觉跟随鼠标 */
         const itRect=it.getBoundingClientRect();
         const itMid=itRect.top+itRect.height/2;
         const sibs=Array.from(picked.children).filter(x=>x!==it);
@@ -876,10 +886,15 @@ function renderPickedList(){
         }
       };
       const onUp=()=>{
-        drag.removeEventListener('pointermove',onMove);
-        drag.removeEventListener('pointerup',onUp);
-        drag.removeEventListener('pointercancel',onUp);
+        document.removeEventListener('mousemove',onMove);
+        document.removeEventListener('mouseup',onUp);
+        document.removeEventListener('pointermove',onMove);
+        document.removeEventListener('pointerup',onUp);
+        document.body.style.userSelect='';
+        it.style.transform='';
+        it.style.zIndex='';
         it.classList.remove('dragging');
+        sigDragActive=false;
         /* 提交新顺序到 selectedSet */
         const keys=Array.from(picked.children).map(x=>x.querySelector('input').dataset.key);
         selectedSet.clear();
@@ -890,10 +905,13 @@ function renderPickedList(){
         it._dragJustEnded=true;
         setTimeout(()=>{ it._dragJustEnded=false; }, 150);
       };
-      drag.addEventListener('pointermove',onMove);
-      drag.addEventListener('pointerup',onUp);
-      drag.addEventListener('pointercancel',onUp);
-    });
+      document.addEventListener('mousemove',onMove);
+      document.addEventListener('mouseup',onUp);
+      document.addEventListener('pointermove',onMove);
+      document.addEventListener('pointerup',onUp);
+    };
+    drag.addEventListener('mousedown',startSigDrag);
+    drag.addEventListener('pointerdown',startSigDrag);
     drag.addEventListener('click',e=>e.stopPropagation());
     it.append(cb,span,sid,sright,drag);
     it.addEventListener('click',e=>{ if(it._dragJustEnded||e.target.closest('.drag')) return; if(e.target!==cb){ cb.checked=!cb.checked; cb.dispatchEvent(new Event('change')); } });
@@ -2128,7 +2146,7 @@ window.addEventListener('resize',()=>{ charts.forEach(c=>c.resize()); if(xAxisCh
 /* 发布时间显示：按设备/浏览器所在时区显示对应时间（如 发布于2026-08-12 15:21:00） */
 (function(){
   // 修改时间（UTC），每次更新页面时由开发者同步修改
-  const MOD_UTC = Date.UTC(2026, 7, 13, 5, 19, 28);
+  const MOD_UTC = Date.UTC(2026, 7, 13, 5, 25, 43);
   const d = new Date(MOD_UTC);
   const pad = n => String(n).padStart(2,'0');
   const dateStr = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
