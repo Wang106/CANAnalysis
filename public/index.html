@@ -1114,6 +1114,13 @@ function crosshairRegion(ovRect){
   if(xa){ const r = xa.getBoundingClientRect(); bottom = r.bottom - ovRect.top; }
   return {top, bottom};
 }
+/* 将覆盖层裁剪区更新为曲线显示区域，竖线/方框/标签均不越界 */
+function applyCrosshairClip(reg){
+  const cr = $('chClipRect');
+  if(!cr) return;
+  cr.setAttribute('y', reg.top);
+  cr.setAttribute('height', reg.bottom - reg.top);
+}
 function setupCrosshair(){
   if($('crosshairOverlay')) return;   // 已创建过，避免重复
   const ov = el('div');
@@ -1121,6 +1128,20 @@ function setupCrosshair(){
   const svg = document.createElementNS(SVG_NS,'svg');
   svg.setAttribute('width','100%');
   svg.setAttribute('height','100%');
+  /* 裁剪到曲线显示区域：竖线/方框/标签都不会溢出到其他区域 */
+  const clipDefs = document.createElementNS(SVG_NS,'defs');
+  const clipPath = document.createElementNS(SVG_NS,'clipPath');
+  clipPath.id = 'chClip';
+  const clipRect = document.createElementNS(SVG_NS,'rect');
+  clipRect.id = 'chClipRect';
+  clipRect.setAttribute('x','0');
+  clipRect.setAttribute('y','0');
+  clipRect.setAttribute('width','100%');
+  clipRect.setAttribute('height','100%');
+  clipPath.appendChild(clipRect);
+  clipDefs.appendChild(clipPath);
+  const clipGroup = document.createElementNS(SVG_NS,'g');
+  clipGroup.setAttribute('clip-path','url(#chClip)');
   const boxGroup = document.createElementNS(SVG_NS,'g');
   boxGroup.id = 'chBoxGroup';
   const line = document.createElementNS(SVG_NS,'line');
@@ -1139,7 +1160,8 @@ function setupCrosshair(){
   labelText.setAttribute('fill','#04121f');
   labelText.setAttribute('font-size','11');
   labelText.setAttribute('text-anchor','middle');
-  svg.append(boxGroup, line, labelRect, labelText);
+  clipGroup.append(boxGroup, line, labelRect, labelText);
+  svg.append(clipDefs, clipGroup);
   ov.appendChild(svg);
   $('analysisWrap').appendChild(ov);
 
@@ -1212,6 +1234,7 @@ function setupCrosshair(){
     }
     lastOverlayX = lineX;
     const reg = crosshairRegion(ovRect);        // 竖线仅贯穿曲线显示区域
+    applyCrosshairClip(reg);
     updateLabel(snapT, lineX, reg.bottom);
     charts.forEach(c=>setLiveReal(c, snapT));
     hideAllBoxes();
@@ -1231,6 +1254,7 @@ function setupCrosshair(){
       pinned = lastT;                          // 固定：显示竖线+方框+Real+标签
       pinnedChart = hoveredChart;
       const reg = crosshairRegion(ovRect);
+      applyCrosshairClip(reg);
       line.setAttribute('display','block');
       line.setAttribute('x1', lastOverlayX);
       line.setAttribute('x2', lastOverlayX);
@@ -1261,6 +1285,14 @@ function setupCrosshair(){
   $('chartArea').addEventListener('scroll', ()=>{ if(pinned != null) refreshPinnedDisplay(); });
   window.addEventListener('scroll', ()=>{ if(pinned != null) refreshPinnedDisplay(); });
   window.addEventListener('resize', ()=>{ if(pinned != null) refreshPinnedDisplay(); });
+  /* 布局变化（面板开合/全屏/信号选择区等）时刷新固定显示，避免竖线与方框停留在旧位置 */
+  let pinnedRefreshTimer = null;
+  new ResizeObserver(()=>{
+    if(pinned == null) return;
+    clearTimeout(pinnedRefreshTimer);
+    pinnedRefreshTimer = setTimeout(()=>{ if(pinned != null) refreshPinnedDisplay(); }, 80);
+    setTimeout(()=>{ if(pinned != null) refreshPinnedDisplay(); }, 350);
+  }).observe($('analysisWrap'));
 }
 /* 渲染完成后为每个信号图表创建/重建方框元素 */
 function setupCrosshairBoxes(){
@@ -1300,6 +1332,7 @@ function refreshPinnedDisplay(){
   }
   lastOverlayX = lineX;
   const reg = crosshairRegion(ovRect);
+  applyCrosshairClip(reg);
   line.setAttribute('x1', lineX);
   line.setAttribute('x2', lineX);
   line.setAttribute('y1', reg.top);
@@ -1971,7 +2004,7 @@ window.addEventListener('resize',()=>{ charts.forEach(c=>c.resize()); if(xAxisCh
 /* 发布时间显示：按设备/浏览器所在时区显示对应时间（如 发布于2026-08-12 15:21:00） */
 (function(){
   // 修改时间（UTC），每次更新页面时由开发者同步修改
-  const MOD_UTC = Date.UTC(2026, 7, 13, 1, 12, 47);
+  const MOD_UTC = Date.UTC(2026, 7, 13, 1, 20, 31);
   const d = new Date(MOD_UTC);
   const pad = n => String(n).padStart(2,'0');
   const dateStr = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
