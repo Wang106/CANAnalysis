@@ -864,26 +864,25 @@ function renderPickedList(){
       it.style.zIndex='5';
       document.body.style.userSelect='none';
       const startY=e.clientY;
+      const grabOffset=startY-it.getBoundingClientRect().top;   /* 光标相对项顶部的距离 */
+      let curTransform=0;
       const onMove=ev=>{
-        const dy=ev.clientY-startY;
-        it.style.transform='translateY('+dy+'px)';   /* 视觉跟随鼠标 */
-        const itRect=it.getBoundingClientRect();
-        const itMid=itRect.top+itRect.height/2;
-        const sibs=Array.from(picked.children).filter(x=>x!==it);
-        if(dy<0){
-          for(const s of sibs){
-            const r=s.getBoundingClientRect();
-            if(itMid<r.top+r.height/2){ picked.insertBefore(it,s); return; }
-          }
-        }else if(dy>0){
-          let after=null;
-          for(const s of sibs){
-            const r=s.getBoundingClientRect();
-            if(itMid>=r.top+r.height/2) after=s;
-          }
-          if(after&&after.nextSibling) picked.insertBefore(it,after.nextSibling);
-          else if(after) picked.appendChild(it);
+        /* 项始终贴合光标：按当前槽位动态计算位移，交换后不会漂移 */
+        const renderedTop=it.getBoundingClientRect().top;
+        const layoutTop=renderedTop-curTransform;
+        const desiredTop=ev.clientY-grabOffset;
+        curTransform=desiredTop-layoutTop;
+        it.style.transform='translateY('+curTransform+'px)';
+        /* 统一插入点判断：找到第一个中点位于项下方的兄弟，插入其前；无则放末尾 */
+        const itMid=it.getBoundingClientRect().top+it.getBoundingClientRect().height/2;
+        let insertBeforeEl=null;
+        for(const s of picked.children){
+          if(s===it) continue;
+          const r=s.getBoundingClientRect();
+          if(itMid<r.top+r.height/2){ insertBeforeEl=s; break; }
         }
+        if(insertBeforeEl) picked.insertBefore(it,insertBeforeEl);
+        else picked.appendChild(it);
       };
       const onUp=()=>{
         document.removeEventListener('mousemove',onMove);
@@ -2146,7 +2145,7 @@ window.addEventListener('resize',()=>{ charts.forEach(c=>c.resize()); if(xAxisCh
 /* 发布时间显示：按设备/浏览器所在时区显示对应时间（如 发布于2026-08-12 15:21:00） */
 (function(){
   // 修改时间（UTC），每次更新页面时由开发者同步修改
-  const MOD_UTC = Date.UTC(2026, 7, 13, 5, 25, 43);
+  const MOD_UTC = Date.UTC(2026, 7, 13, 5, 38, 30);
   const d = new Date(MOD_UTC);
   const pad = n => String(n).padStart(2,'0');
   const dateStr = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
