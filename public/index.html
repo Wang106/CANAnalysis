@@ -133,9 +133,10 @@
   #content.fullscreen #chartScrollWrap{flex:1 !important;height:auto !important;}
   #content.fullscreen #analysisDivider{display:none !important;}
   #content.fullscreen #analysisPanel{display:none !important;}
-  /* 独立信号名称列：与曲线分离，从上往下紧凑排列 */
+  /* 独立信号名称列：与曲线分离，从上往下紧凑排列；表头固定、仅信号行区域滚动 */
   #chartScrollWrap{flex:1;min-height:0;display:flex;flex-direction:row;align-items:stretch;overflow:hidden;}
-  .side-col{width:var(--cc-side-w,120px);flex-shrink:0;overflow-y:auto;overflow-x:hidden;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;padding-top:4px;}
+  .side-col{width:var(--cc-side-w,120px);flex-shrink:0;overflow:hidden;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;}
+  .side-col .sc-body{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;}
   .side-col .sc-row{display:flex;flex-direction:row;align-items:center;gap:6px;flex:none;height:26px;padding:0 6px;overflow:hidden;}
   .side-col .swatch{width:12px;height:12px;flex:none;border-radius:2px;cursor:pointer;border:1px solid rgba(255,255,255,0.25);}
   .side-col .signame{width:var(--col-name,80px);flex:none;font-weight:400;font-size:12px;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;word-break:normal;cursor:default;position:relative;}
@@ -163,8 +164,8 @@
   .cc-side .stat.c-min{width:var(--col-min,48px);}
   .cc-side .stat.c-max{width:var(--col-max,48px);}
   .cc-side .stat b{color:var(--txt);}
-  /* 侧栏表头：Name / Real / Min / Max（固定在信号列表顶部，不随列表滚动） */
-  .side-head{position:sticky;top:0;z-index:3;display:flex;align-items:stretch;height:26px;width:100%;flex-shrink:0;background:var(--panel);border-bottom:1px solid var(--line);font-size:10px;font-weight:700;color:var(--txt2);overflow:hidden;padding:0 6px;}
+  /* 侧栏表头：Name / Real / Min / Max（固定于列表顶部，不随列表滚动） */
+  .side-head{display:flex;align-items:stretch;height:22px;width:100%;flex-shrink:0;background:var(--panel);border-bottom:1px solid var(--line);font-size:10px;font-weight:700;color:var(--txt2);overflow:hidden;padding:0 6px;}
   .side-head .sh-swatch{width:12px;flex:none;}
   .side-head .sh-name{width:var(--col-name,80px);flex:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;justify-content:center;}
   .side-head .sh-real{width:var(--col-real,56px);flex:none;display:flex;align-items:center;justify-content:center;white-space:nowrap;}
@@ -311,7 +312,9 @@
     <div id="analysisWrap">
       <button id="fsExit" class="fs-btn" title="退出全屏"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/></svg></button>
       <div id="chartScrollWrap">
-        <div class="side-col" id="sideCol"></div>
+        <div class="side-col" id="sideCol">
+          <div class="sc-body" id="scBody"></div>
+        </div>
         <div class="cc-divider"></div>
         <div id="chartArea"></div>
       </div>
@@ -1064,7 +1067,7 @@ function disposeCharts(){
   if(xAxisChart){try{xAxisChart.dispose();}catch(e){} xAxisChart=null;}
   charts.forEach(c=>{try{c.dispose();}catch(e){}});
   charts=[]; $('chartArea').innerHTML='';
-  const sc=$('sideCol'); if(sc) sc.innerHTML='';   /* 清空独立信号名称列 */
+  const sb=$('scBody'); if(sb) sb.innerHTML='';   /* 清空独立信号名称列 */
   const sh=document.querySelector('.side-head'); if(sh) sh.remove();   /* 移除侧栏表头 */
   $('xaxisContainer').innerHTML='';
   $('gctrls').classList.remove('show');
@@ -1175,33 +1178,35 @@ function measureColumn(col){
   tmp.remove();
   return Math.ceil(maxW)+6;   /* 含细线边框与内边距余量 */
 }
-/* 点击色块弹出颜色选取框：选色后同步更新色块、信号名称字体与曲线颜色 */
-let colorInput=null;
+/* 点击色块弹出颜色选取框：选色后同步更新色块、信号名称字体与曲线颜色。
+   每次点击新建 input 并调用 showPicker()，避免复用导致取消选择后无法再次打开 */
 function pickColor(row){
-  if(!colorInput){
-    colorInput=document.createElement('input');
-    colorInput.type='color';
-    colorInput.style.cssText='position:fixed;left:-9999px;top:0;width:0;height:0;opacity:0;pointer-events:none;';
-    document.body.appendChild(colorInput);
-    colorInput.addEventListener('input', ()=>{
-      const r=colorInput._row;
-      if(!r) return;
-      const c=colorInput.value;
-      r._color=c;
-      const sw=r.querySelector('.swatch'); if(sw) sw.style.background=c;
-      const nm=r.querySelector('.signame'); if(nm) nm.style.color=c;
-      const chart=r._chart;
-      if(chart){
-        chart._color=c;
-        if(chart._series){
-          try{ chart.setOption({series:[{lineStyle:{color:c}, itemStyle:{color:c, borderColor:c}}]}); }catch(e){}
-        }
+  const inp=document.createElement('input');
+  inp.type='color';
+  inp.value = row._color || '#4a9eff';
+  inp.style.cssText='position:fixed;left:-9999px;top:0;width:0;height:0;opacity:0;';
+  document.body.appendChild(inp);
+  const apply=()=>{
+    const c=inp.value;
+    row._color=c;
+    const sw=row.querySelector('.swatch'); if(sw) sw.style.background=c;
+    const nm=row.querySelector('.signame'); if(nm) nm.style.color=c;
+    const chart=row._chart;
+    if(chart){
+      chart._color=c;
+      if(chart._series){
+        try{ chart.setOption({series:[{lineStyle:{color:c}, itemStyle:{color:c, borderColor:c}}]}); }catch(e){}
       }
-    });
-  }
-  colorInput._row=row;
-  colorInput.value = row._color || '#4a9eff';
-  colorInput.click();
+    }
+  };
+  const cleanup=()=>{
+    inp.remove();
+    document.removeEventListener('pointerdown', cleanup);
+  };
+  inp.addEventListener('input', apply);
+  inp.addEventListener('change', ()=>{ apply(); cleanup(); });
+  document.addEventListener('pointerdown', cleanup);   /* 点击别处取消选择时清理 */
+  try{ inp.showPicker(); }catch(e){ inp.click(); }
 }
 /* 侧栏总宽 = 四列宽度之和 + 左右内边距(12)与列间间距(24)及色块(12)，列宽变化后调用 */
 function updateSideTotal(){
@@ -1354,7 +1359,7 @@ function renderCharts(){
       swEl.style.background=color;
       swEl.addEventListener('click', e=>{ e.stopPropagation(); pickColor(row); });
     }
-    $('sideCol').appendChild(row);
+    $('scBody').appendChild(row);
     const nmEl = row.querySelector('.signame');
     if(nmEl) nmEl.style.color = color;
     if(has){
@@ -2119,7 +2124,7 @@ function reorderChartsBySelection(){
   charts.forEach(c=>{ if(!newCharts.includes(c)) newCharts.push(c); });
   charts=newCharts;
   /* 侧栏名称行与曲线同步重排（从上往下） */
-  const sc=$('sideCol');
+  const sc=$('scBody') || $('sideCol');
   if(sc) charts.forEach(c=>{ const row=c._rowEl; if(row) sc.appendChild(row); });
   /* 按新顺序重新分配曲线颜色（1/6/11…亮红、2/7/12…亮黄，依此类推），信号名同色跟随 */
   charts.forEach((c,i)=>{
@@ -2380,7 +2385,7 @@ window.addEventListener('resize',()=>{ charts.forEach(c=>c.resize()); if(xAxisCh
 /* 发布时间显示：按设备/浏览器所在时区显示对应时间（如 发布于2026-08-12 15:21:00） */
 (function(){
   // 修改时间（UTC），每次更新页面时由开发者同步修改
-  const MOD_UTC = Date.UTC(2026, 7, 13, 9, 1, 11);
+  const MOD_UTC = Date.UTC(2026, 7, 13, 9, 7, 43);
   const d = new Date(MOD_UTC);
   const pad = n => String(n).padStart(2,'0');
   const dateStr = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
