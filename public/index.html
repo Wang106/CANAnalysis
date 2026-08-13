@@ -124,6 +124,7 @@
   .cc-side .liveval{font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .cc-side .liveval .lvlabel{color:var(--txt2);}
   .cc-side .liveval .lvval{color:var(--accent2);}
+  .cc-side .liveval .lvunit{color:var(--txt2);}
   /* global chart controls in sig-bar-head */
   .gctrls{display:none;align-items:center;gap:5px;font-size:11px;}
   .gctrls.show{display:flex;}
@@ -229,7 +230,7 @@
     <div class="sig-bar-head">
       <span class="sig-toggle disabled" id="sigToggle"><span class="arrow">▼</span> 信号选择</span>
       <input type="text" id="searchInput" placeholder="搜索信号名 / 报文名…" />
-      <span class="selstat">已选 <b id="selCount">0</b> · 共 <span id="totalCount">0</span> 个 <span style="color:var(--accent2)">●</span>=有数据</span>
+      <span class="selstat">共 <span id="totalCount">0</span> 个，已选 <b id="selCount">0</b> 个，<span style="color:var(--accent2)">●</span>=有数据</span>
       <span style="flex:1"></span>
       <span id="help">滚轮在<b>底部横轴</b>=缩放横轴 · 滚轮在<b>纵轴</b>=缩放纵轴 · 滚轮在曲线区=上下滚动</span>
       <button id="btnAnalyze" class="primary" disabled>报文分析</button>
@@ -1096,7 +1097,18 @@ function setLiveReal(c, t){
   if(!lv) return;
   const v = getSeriesValueAt(c, t);
   const valEl = lv.querySelector('.lvval');
-  if(valEl) valEl.textContent = v!=null ? (v.toFixed(3)+' '+(c._sig.unit||'')) : '';
+  if(!valEl) return;
+  valEl.innerHTML = '';
+  if(v==null) return;
+  const num = document.createElement('span');
+  num.className = 'lvnum';
+  num.textContent = v.toFixed(3);
+  valEl.appendChild(num);
+  valEl.appendChild(document.createTextNode(' '));
+  const unit = document.createElement('span');
+  unit.className = 'lvunit';
+  unit.textContent = c._sig.unit || '';
+  valEl.appendChild(unit);
 }
 let curXMin = 0, curXMax = 1;   // 当前X轴显示范围（随缩放同步）
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -2004,7 +2016,7 @@ window.addEventListener('resize',()=>{ charts.forEach(c=>c.resize()); if(xAxisCh
 /* 发布时间显示：按设备/浏览器所在时区显示对应时间（如 发布于2026-08-12 15:21:00） */
 (function(){
   // 修改时间（UTC），每次更新页面时由开发者同步修改
-  const MOD_UTC = Date.UTC(2026, 7, 13, 1, 20, 31);
+  const MOD_UTC = Date.UTC(2026, 7, 13, 1, 28, 8);
   const d = new Date(MOD_UTC);
   const pad = n => String(n).padStart(2,'0');
   const dateStr = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
