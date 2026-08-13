@@ -216,11 +216,11 @@
     <div class="header-right">
       <div class="file-row">
         <div class="finput" id="dbcInfo">未加载</div>
-        <button id="btnDbc" class="go">加载DBC文件</button>
+        <button id="btnDbc" class="primary">加载DBC文件</button>
       </div>
       <div class="file-row">
         <div class="finput" id="ascInfo">未加载</div>
-        <button id="btnAsc" class="go">加载ASC文件</button>
+        <button id="btnAsc" class="primary">加载ASC文件</button>
       </div>
     </div>
   </div>
@@ -1667,6 +1667,7 @@ async function loadDbcText(name, txt, showBusy){
     }
     $('dbcInfo').textContent=`${name} · ${Object.keys(dbcData.messages).length} 报文 / ${dbcData.signals.length} 信号`;
     $('dbcInfo').classList.add('loaded');
+    $('sigToggle').classList.add('active');   /* 加载 DBC 后信号选择按钮高亮 */
     $('totalCount').textContent=dbcData.signals.length;
     selectedSet.clear();
     renderSignalList(); renderPickedList(); updateSelCount(); updateStartBtn();
@@ -1698,8 +1699,8 @@ async function loadAscText(name, txt, showBusy){
   }
   finally{ stopLoadTxt(); if(showBusy) finishBusy(); }
 }
-$('fileDbc').onchange=async e=>{ const f=e.target.files[0]; if(!f) return; $('btnDbc').classList.remove('go'); await loadDbcText(f.name, await readText(f), f.size>=50*1024); e.target.value=''; };
-$('fileAsc').onchange=async e=>{ const f=e.target.files[0]; if(!f) return; ascFileSize=f.size; $('btnAsc').classList.remove('go'); const big=f.size>=50*1024*1024; await loadAscText(f.name, await readText(f, big?p=>showLoading('读取 ASC… '+Math.round(p*100)+'%', p):null), big); e.target.value=''; };
+$('fileDbc').onchange=async e=>{ const f=e.target.files[0]; if(!f) return; $('btnDbc').classList.remove('primary'); await loadDbcText(f.name, await readText(f), f.size>=50*1024); e.target.value=''; };
+$('fileAsc').onchange=async e=>{ const f=e.target.files[0]; if(!f) return; ascFileSize=f.size; $('btnAsc').classList.remove('primary'); const big=f.size>=50*1024*1024; await loadAscText(f.name, await readText(f, big?p=>showLoading('读取 ASC… '+Math.round(p*100)+'%', p):null), big); e.target.value=''; };
 
 // expose for testing/automation
 window.__can={loadDbcText, loadAscText, renderCharts, selectedSet, get dbc(){return dbcData;}, get asc(){return ascData;}, get charts(){return charts;}};
@@ -2044,7 +2045,7 @@ window.addEventListener('resize',()=>{ charts.forEach(c=>c.resize()); if(xAxisCh
 /* 发布时间显示：按设备/浏览器所在时区显示对应时间（如 发布于2026-08-12 15:21:00） */
 (function(){
   // 修改时间（UTC），每次更新页面时由开发者同步修改
-  const MOD_UTC = Date.UTC(2026, 7, 13, 3, 35, 8);
+  const MOD_UTC = Date.UTC(2026, 7, 13, 3, 48, 31);
   const d = new Date(MOD_UTC);
   const pad = n => String(n).padStart(2,'0');
   const dateStr = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
