@@ -142,8 +142,8 @@
   .cc-side:hover .msgtip{display:block;}
   .cc-side .liveval{width:var(--col-real,56px);flex:none;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-left:1px solid var(--line);padding-left:4px;}
   .cc-side .liveval .lvlabel{color:var(--txt2);}
-  .cc-side .liveval .lvval{color:var(--accent2);}
-  .cc-side .liveval .lvunit{color:var(--txt2);}
+  .cc-side .liveval .lvval{color:#fff;}
+  .cc-side .liveval .lvunit{color:#fff;}
   .cc-side .stat{flex:none;color:var(--txt2);font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-left:1px solid var(--line);padding-left:4px;}
   .cc-side .stat.c-min{width:var(--col-min,48px);}
   .cc-side .stat.c-max{width:var(--col-max,48px);}
@@ -1068,8 +1068,8 @@ function buildTooltip(sig){
     return `<div style="font-size:12px">${sig.name} = <b>${typeof v==='number'?fmtSigValue(v, sig):v}</b> ${sig.unit}${extra}</div>`;
   };
 }
-/* 曲线配色盘：按图表顺序（上→下）分配，相邻颜色肉眼可辨 */
-const CURVE_COLORS=['#4a9eff','#3ddc84','#ffb454','#ff6b6b','#d066ff','#2dd4bf','#f4d35e','#ff8fab','#7dd3fc','#c0a3ff','#a8d15c','#ffa07a'];
+/* 曲线配色盘：10个高区分度颜色，按图表顺序循环分配（1-10、11-20…依次重复） */
+const CURVE_COLORS=['#4a9eff','#3ddc84','#ffb454','#ff6b6b','#d066ff','#2dd4bf','#f4d35e','#ff8fab','#a8d15c','#7dd3fc'];
 function makeOption(series, sig, stats, color){
   const tMin=ascData.tMin, tMax=ascData.tMax;
   return {
@@ -2324,7 +2324,7 @@ window.addEventListener('resize',()=>{ charts.forEach(c=>c.resize()); if(xAxisCh
 /* 发布时间显示：按设备/浏览器所在时区显示对应时间（如 发布于2026-08-12 15:21:00） */
 (function(){
   // 修改时间（UTC），每次更新页面时由开发者同步修改
-  const MOD_UTC = Date.UTC(2026, 7, 13, 8, 17, 12);
+  const MOD_UTC = Date.UTC(2026, 7, 13, 8, 22, 3);
   const d = new Date(MOD_UTC);
   const pad = n => String(n).padStart(2,'0');
   const dateStr = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
