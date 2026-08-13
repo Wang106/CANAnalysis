@@ -165,7 +165,7 @@
   .cc-side .stat.c-max{width:var(--col-max,48px);}
   .cc-side .stat b{color:var(--txt);}
   /* 侧栏表头：Name / Real / Min / Max（固定于列表顶部，不随列表滚动） */
-  .side-head{display:flex;align-items:stretch;height:22px;width:100%;flex-shrink:0;background:var(--panel);border-bottom:1px solid var(--line);font-size:10px;font-weight:700;color:var(--txt2);overflow:hidden;padding:0 6px;}
+  .side-head{display:flex;align-items:stretch;height:16px;width:100%;flex-shrink:0;background:var(--panel);border-bottom:1px solid var(--line);font-size:10px;font-weight:700;color:var(--txt2);overflow:hidden;padding:0 6px;}
   .side-head .sh-swatch{width:12px;flex:none;}
   .side-head .sh-name{width:var(--col-name,80px);flex:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;justify-content:center;}
   .side-head .sh-real{width:var(--col-real,56px);flex:none;display:flex;align-items:center;justify-content:center;white-space:nowrap;}
@@ -1179,7 +1179,7 @@ function measureColumn(col){
   return Math.ceil(maxW)+6;   /* 含细线边框与内边距余量 */
 }
 /* 点击色块弹出颜色选取框：选色后同步更新色块、信号名称字体与曲线颜色。
-   每次点击新建 input 并调用 showPicker()，避免复用导致取消选择后无法再次打开 */
+   每次点击新建 input 并调用 showPicker()/click()，可反复多次打开；用完延迟清理不残留 */
 function pickColor(row){
   const inp=document.createElement('input');
   inp.type='color';
@@ -1199,14 +1199,11 @@ function pickColor(row){
       }
     }
   };
-  const cleanup=()=>{
-    inp.remove();
-    document.removeEventListener('pointerdown', cleanup);
-  };
+  const cleanup=()=>{ if(inp.isConnected) inp.remove(); };
   inp.addEventListener('input', apply);
-  inp.addEventListener('change', ()=>{ apply(); cleanup(); });
-  document.addEventListener('pointerdown', cleanup);   /* 点击别处取消选择时清理 */
-  try{ inp.showPicker(); }catch(e){ inp.click(); }
+  inp.addEventListener('change', ()=>{ apply(); setTimeout(cleanup, 100); });
+  window.addEventListener('blur', ()=>{ setTimeout(cleanup, 200); }, {once:true});
+  try{ inp.showPicker(); }catch(e){ try{ inp.click(); }catch(e2){ cleanup(); } }
 }
 /* 侧栏总宽 = 四列宽度之和 + 左右内边距(12)与列间间距(24)及色块(12)，列宽变化后调用 */
 function updateSideTotal(){
@@ -1282,7 +1279,7 @@ function renderCharts(){
       $('xaxisContainer').appendChild(xRow);
       // 侧栏表头（Name/Real/Min/Max），固定在信号列表顶部不随滚动
       const sideHead=el('div','side-head');
-      sideHead.innerHTML='<span class="sh-swatch"></span><span class="sh-h" data-col="name"></span><span class="sh-name">Name</span><span class="sh-h" data-col="real"></span><span class="sh-real">Real</span><span class="sh-h" data-col="min"></span><span class="sh-min">Min</span><span class="sh-h" data-col="max"></span><span class="sh-max">Max</span>';
+      sideHead.innerHTML='<span class="sh-name">Name</span><span class="sh-h" data-col="name"></span><span class="sh-swatch"></span><span class="sh-h" data-col="real"></span><span class="sh-real">Real</span><span class="sh-h" data-col="min"></span><span class="sh-min">Min</span><span class="sh-h" data-col="max"></span><span class="sh-max">Max</span>';
       const scEl=$('sideCol');
       scEl.insertBefore(sideHead, scEl.firstChild);
       /* 拖动表头分隔条调整对应列宽 */
@@ -1351,8 +1348,8 @@ function renderCharts(){
     const row=el('div','sc-row');
     row._color = color;
     row.innerHTML = `
-      <span class="swatch" title="点击选择曲线颜色"></span>
       <span class="signame">${sig.name}<span class="msgtip">${sig.messageName} ${fmtId(realId, isExt)}</span></span>
+      <span class="swatch" title="点击选择曲线颜色"></span>
       ${has?`<span class="liveval"><span class="lvval"></span></span><span class="stat c-min">${fmtSigValue(stats.min, sig)}</span><span class="stat c-max">${fmtSigValue(stats.max, sig)}</span>`:`<span class="liveval"><span class="lvval">无数据</span></span><span class="stat c-min"></span><span class="stat c-max"></span>`}`;
     const swEl=row.querySelector('.swatch');
     if(swEl){
@@ -2385,7 +2382,7 @@ window.addEventListener('resize',()=>{ charts.forEach(c=>c.resize()); if(xAxisCh
 /* 发布时间显示：按设备/浏览器所在时区显示对应时间（如 发布于2026-08-12 15:21:00） */
 (function(){
   // 修改时间（UTC），每次更新页面时由开发者同步修改
-  const MOD_UTC = Date.UTC(2026, 7, 13, 9, 7, 43);
+  const MOD_UTC = Date.UTC(2026, 7, 13, 9, 14, 27);
   const d = new Date(MOD_UTC);
   const pad = n => String(n).padStart(2,'0');
   const dateStr = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
