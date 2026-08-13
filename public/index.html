@@ -134,11 +134,22 @@
   #anaMinimize{position:absolute;top:6px;right:38px;z-index:6;}
   #anaFullscreen{position:absolute;top:6px;right:10px;z-index:6;}
   #analysisPanel.fullscreen{position:fixed;inset:0;z-index:90;background:var(--bg);height:auto !important;}
-  /* 信号侧栏实时值 */
-  .cc-side .liveval{font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  /* 信号侧栏：一行四列（Name / Real / Min / Max） */
+  .cc-side{width:var(--cc-side-w,120px);flex-shrink:0;padding:4px 6px;border-right:1px solid var(--line);background:var(--panel2);display:flex;flex-direction:row;align-items:center;gap:6px;font-size:11px;overflow:hidden;justify-content:flex-start;position:relative;}
+  .cc-side .signame{flex:1;min-width:0;font-weight:400;font-size:12px;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;word-break:normal;cursor:default;}
+  .cc-side .msgtip{display:none;position:absolute;left:100%;top:0;z-index:20;background:#0f1115;border:1px solid var(--accent);border-radius:4px;padding:5px 8px;font-size:11px;color:var(--txt2);white-space:nowrap;pointer-events:none;}
+  .cc-side:hover .msgtip{display:block;}
+  .cc-side .liveval{width:56px;flex:none;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .cc-side .liveval .lvlabel{color:var(--txt2);}
   .cc-side .liveval .lvval{color:var(--accent2);}
   .cc-side .liveval .lvunit{color:var(--txt2);}
+  .cc-side .stat{width:48px;flex:none;color:var(--txt2);font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .cc-side .stat b{color:var(--txt);}
+  /* 侧栏表头：Name / Real / Min / Max（曲线区顶部固定） */
+  .side-head{display:flex;align-items:center;gap:6px;width:var(--cc-side-w,120px);flex-shrink:0;padding:4px 6px;border-right:1px solid var(--line);background:var(--panel2);font-size:10px;font-weight:700;color:var(--txt2);}
+  .side-head .sh-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .side-head .sh-real{width:56px;flex:none;}
+  .side-head .sh-min,.side-head .sh-max{width:48px;flex:none;}
   /* global chart controls in sig-bar-head */
   .gctrls{display:none;align-items:center;gap:5px;font-size:11px;}
   .gctrls.show{display:flex;}
@@ -170,12 +181,6 @@
   #crosshairOverlay{position:absolute;inset:0;pointer-events:none;z-index:8;display:none;}
   #crosshairOverlay.show{display:block;}
   #crosshairOverlay svg{width:100%;height:100%;}
-  .cc-side{width:var(--cc-side-w,120px);flex-shrink:0;padding:4px 6px;border-right:1px solid var(--line);background:var(--panel2);display:flex;flex-direction:column;gap:2px;font-size:11px;overflow:hidden;justify-content:center;position:relative;}
-  .cc-side .signame{font-weight:400;font-size:12px;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;word-break:normal;cursor:default;}
-  .cc-side .msgtip{display:none;position:absolute;left:100%;top:0;z-index:20;background:#0f1115;border:1px solid var(--accent);border-radius:4px;padding:5px 8px;font-size:11px;color:var(--txt2);white-space:nowrap;pointer-events:none;}
-  .cc-side:hover .msgtip{display:block;}
-  .cc-side .stat{color:var(--txt2);font-size:10px;}
-  .cc-side .stat b{color:var(--txt);}
   .cc-divider{width:5px;flex-shrink:0;cursor:col-resize;background:var(--line);transition:background .15s;}
   #analysisWrap.divider-hover .cc-divider{background:var(--accent);}
   .cc-body{flex:1;min-width:0;display:flex;flex-direction:column;}
@@ -1032,6 +1037,7 @@ function disposeCharts(){
   if(xAxisChart){try{xAxisChart.dispose();}catch(e){} xAxisChart=null;}
   charts.forEach(c=>{try{c.dispose();}catch(e){}});
   charts=[]; $('chartArea').innerHTML='';
+  const sh=document.querySelector('.side-head'); if(sh) sh.remove();   /* 移除侧栏表头 */
   $('xaxisContainer').innerHTML='';
   $('gctrls').classList.remove('show');
   $('btnAnalyze').disabled=true;
@@ -1130,7 +1136,7 @@ function autoFitSideWidth(){
   let maxW=0;
   for(const s of sigs){ tmp.textContent=s.name; maxW=Math.max(maxW,tmp.offsetWidth); }
   tmp.remove();
-  const w=Math.max(90, Math.ceil(maxW)+24);   /* 名称宽度 + 左右内边距与分隔余量，最小90px */
+  const w=Math.max(90, Math.ceil(maxW)+186);   /* 名称宽度 + Real(56)/Min(48)/Max(48) 三列 + 间距与内边距 */
   document.documentElement.style.setProperty('--cc-side-w', w+'px');
 }
 function renderCharts(){
@@ -1183,6 +1189,10 @@ function renderCharts(){
       xRow.appendChild(xCd);
       xRow.appendChild(el('span','xaxis-unit','时间/s'));
       $('xaxisContainer').appendChild(xRow);
+      // 侧栏表头（Name/Real/Min/Max），固定在曲线区顶部不随滚动
+      const sideHead=el('div','side-head');
+      sideHead.innerHTML='<span class="sh-name">Name</span><span class="sh-real">Real</span><span class="sh-min">Min</span><span class="sh-max">Max</span>';
+      $('chartArea').insertAdjacentElement('beforebegin', sideHead);
       xAxisChart=echarts.init(xCd);
       xAxisChart.setOption(makeXAxisOption());
       setupSync();
@@ -1205,7 +1215,7 @@ function renderCharts(){
     const isExt=(sig.messageId & 0x80000000)!==0;
     side.innerHTML = `
       <span class="signame">${sig.name}<span class="msgtip">${sig.messageName} ${fmtId(realId, isExt)}</span></span>
-      ${has?`<span class="liveval"><span class="lvlabel">Real </span><span class="lvval"></span></span><span class="stat">min ${fmtSigValue(stats.min, sig)}</span><span class="stat">max ${fmtSigValue(stats.max, sig)}</span>`:'<span class="stat" style="color:var(--err)">无数据</span>'}`;
+      ${has?`<span class="liveval"><span class="lvval"></span></span><span class="stat">${fmtSigValue(stats.min, sig)}</span><span class="stat">${fmtSigValue(stats.max, sig)}</span>`:`<span class="liveval"><span class="lvval">无数据</span></span><span class="stat"></span><span class="stat"></span>`}`;
     const body=el('div','cc-body');
     const cd=el('div','chart');
     body.appendChild(cd);
@@ -2241,7 +2251,7 @@ window.addEventListener('resize',()=>{ charts.forEach(c=>c.resize()); if(xAxisCh
 /* 发布时间显示：按设备/浏览器所在时区显示对应时间（如 发布于2026-08-12 15:21:00） */
 (function(){
   // 修改时间（UTC），每次更新页面时由开发者同步修改
-  const MOD_UTC = Date.UTC(2026, 7, 13, 7, 8, 46);
+  const MOD_UTC = Date.UTC(2026, 7, 13, 7, 46, 13);
   const d = new Date(MOD_UTC);
   const pad = n => String(n).padStart(2,'0');
   const dateStr = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
