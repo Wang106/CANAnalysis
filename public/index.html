@@ -1340,6 +1340,8 @@ function renderCharts(){
     body.appendChild(cd);
     card.append(body);
     $('chartArea').appendChild(card);
+    /* 按图表顺序（上→下）分配曲线颜色，信号名称字体与曲线同色 */
+    const color = CURVE_COLORS[charts.length % CURVE_COLORS.length];
     /* 独立信号名称列：每行 Name|Real|Min|Max，从上往下紧凑排列（与曲线不保持同行） */
     const row=el('div','sc-row');
     row._color = color;
@@ -1353,8 +1355,6 @@ function renderCharts(){
       swEl.addEventListener('click', e=>{ e.stopPropagation(); pickColor(row); });
     }
     $('sideCol').appendChild(row);
-    /* 按图表顺序（上→下）分配曲线颜色，信号名称字体与曲线同色 */
-    const color = CURVE_COLORS[charts.length % CURVE_COLORS.length];
     const nmEl = row.querySelector('.signame');
     if(nmEl) nmEl.style.color = color;
     if(has){
@@ -2380,7 +2380,7 @@ window.addEventListener('resize',()=>{ charts.forEach(c=>c.resize()); if(xAxisCh
 /* 发布时间显示：按设备/浏览器所在时区显示对应时间（如 发布于2026-08-12 15:21:00） */
 (function(){
   // 修改时间（UTC），每次更新页面时由开发者同步修改
-  const MOD_UTC = Date.UTC(2026, 7, 13, 8, 57, 36);
+  const MOD_UTC = Date.UTC(2026, 7, 13, 9, 1, 11);
   const d = new Date(MOD_UTC);
   const pad = n => String(n).padStart(2,'0');
   const dateStr = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
