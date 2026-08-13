@@ -1830,6 +1830,7 @@ async function loadDbcText(name, txt, showBusy){
     }
     $('dbcInfo').textContent=`${name} · ${Object.keys(dbcData.messages).length} 报文 / ${dbcData.signals.length} 信号`;
     $('dbcInfo').classList.add('loaded');
+    if(charts.length) disposeCharts();   /* 重新加载 DBC 后立即清空旧曲线，避免显示过期数据 */
     $('sigToggle').classList.add('active');   /* 加载 DBC 后信号选择按钮高亮 */
     $('totalCount').textContent=dbcData.signals.length;
     selectedSet.clear();
@@ -1854,6 +1855,7 @@ async function loadAscText(name, txt, showBusy){
     curXMin = ascData.tMin; curXMax = ascData.tMax;
     $('ascInfo').textContent=`${name} · ${ascData.totalMessages} 帧 · ${ascData.tMin.toFixed(2)}–${ascData.tMax.toFixed(2)}s`;
     $('ascInfo').classList.add('loaded');
+    if(charts.length) disposeCharts();   /* 重新加载 ASC 后立即清空旧曲线，避免显示过期数据 */
     renderSignalList(); renderPickedList(); updateSelCount(); updateStartBtn();
     toast(`ASC 已加载：${ascData.totalMessages} 帧`);
   }catch(err){
@@ -2239,7 +2241,7 @@ window.addEventListener('resize',()=>{ charts.forEach(c=>c.resize()); if(xAxisCh
 /* 发布时间显示：按设备/浏览器所在时区显示对应时间（如 发布于2026-08-12 15:21:00） */
 (function(){
   // 修改时间（UTC），每次更新页面时由开发者同步修改
-  const MOD_UTC = Date.UTC(2026, 7, 13, 7, 1, 28);
+  const MOD_UTC = Date.UTC(2026, 7, 13, 7, 8, 46);
   const d = new Date(MOD_UTC);
   const pad = n => String(n).padStart(2,'0');
   const dateStr = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
