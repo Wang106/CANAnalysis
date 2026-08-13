@@ -856,7 +856,7 @@ function renderPickedList(){
     const unit=el('span','sunit',s.unit?('['+s.unit+']'):'');
     const msgInfo=el('span','smsg',s.messageName);
     sright.append(unit,msgInfo);
-    /* 拖动排序手柄：上下叠放的两个三角形，按住上下拖动排序 */
+    /* 拖动排序：排序手柄或整行长按/移动均可进入拖动 */
     const drag=el('span','drag');
     const dUp=document.createElement('span'); dUp.className='d-up'; dUp.textContent='▲';
     const dDn=document.createElement('span'); dDn.className='d-dn'; dDn.textContent='▼';
@@ -949,6 +949,44 @@ function renderPickedList(){
     drag.addEventListener('mousedown',startSigDrag);
     drag.addEventListener('pointerdown',startSigDrag);
     drag.addEventListener('click',e=>e.stopPropagation());
+    /* 整行：长按400ms或快速移动进入拖动排序；单击仍切换勾选（取消选择） */
+    let pressTimer=null;
+    let pressActive=false;
+    const cancelPress=()=>{ if(pressTimer){ clearTimeout(pressTimer); pressTimer=null; } };
+    const enterDragByEvent=(ev)=>{
+      if(!sigDragActive) startSigDrag({clientY:ev.clientY, button:0, preventDefault(){}, stopPropagation(){}});
+    };
+    const onRowPress=(e)=>{
+      if(e.button!==0||e.target.closest('.drag')||e.target.tagName==='INPUT'||pressActive) return;
+      pressActive=true;
+      const sx=e.clientX, sy=e.clientY;
+      let cleaned=false;
+      const cleanup=()=>{
+        if(cleaned) return;
+        cleaned=true;
+        cancelPress();
+        pressActive=false;
+        document.removeEventListener('mousemove',onPressMove);
+        document.removeEventListener('mouseup',onPressUp);
+        document.removeEventListener('pointermove',onPressMove);
+        document.removeEventListener('pointerup',onPressUp);
+      };
+      const onPressMove=ev=>{
+        if(Math.abs(ev.clientX-sx)+Math.abs(ev.clientY-sy)>5){
+          cancelPress();
+          enterDragByEvent(ev);
+          cleanup();
+        }
+      };
+      const onPressUp=()=>{ cleanup(); };
+      pressTimer=setTimeout(()=>{ enterDragByEvent({clientY:sy}); cleanup(); }, 400);
+      document.addEventListener('mousemove',onPressMove);
+      document.addEventListener('mouseup',onPressUp);
+      document.addEventListener('pointermove',onPressMove);
+      document.addEventListener('pointerup',onPressUp);
+    };
+    it.addEventListener('mousedown',onRowPress);
+    it.addEventListener('pointerdown',onRowPress);
     it.append(cb,span,sid,sright,drag);
     it.addEventListener('click',e=>{ if(it._dragJustEnded||e.target.closest('.drag')) return; if(e.target!==cb){ cb.checked=!cb.checked; cb.dispatchEvent(new Event('change')); } });
     picked.appendChild(it);
@@ -2182,7 +2220,7 @@ window.addEventListener('resize',()=>{ charts.forEach(c=>c.resize()); if(xAxisCh
 /* 发布时间显示：按设备/浏览器所在时区显示对应时间（如 发布于2026-08-12 15:21:00） */
 (function(){
   // 修改时间（UTC），每次更新页面时由开发者同步修改
-  const MOD_UTC = Date.UTC(2026, 7, 13, 5, 56, 0);
+  const MOD_UTC = Date.UTC(2026, 7, 13, 6, 1, 25);
   const d = new Date(MOD_UTC);
   const pad = n => String(n).padStart(2,'0');
   const dateStr = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
