@@ -52,9 +52,10 @@
   #sigResizeHandle:hover{background:var(--accent);}
   #sigBar.collapsed #sigResizeHandle{display:none;}
   .sig-bar-head{display:flex;align-items:center;gap:8px;padding:7px 16px;flex-wrap:wrap;flex-shrink:0;}
-  .sig-toggle{display:flex;align-items:center;gap:4px;cursor:pointer;font-size:13px;font-weight:700;color:#9db8de;background:#22304a;user-select:none;padding:4px 14px;border-radius:6px;transition:filter .15s;}
+  .sig-toggle{display:flex;align-items:center;gap:4px;cursor:pointer;font-size:13px;font-weight:700;color:#04121f;background:var(--accent);opacity:.4;user-select:none;padding:4px 14px;border-radius:6px;transition:filter .15s,opacity .15s;}
   .sig-toggle:hover{filter:brightness(1.15);}
-  .sig-toggle.active{color:#04121f;background:var(--accent);}
+  .sig-toggle.active{opacity:1;}
+  .sig-toggle.active:hover{color:#04121f;}
   .sig-toggle .arrow{display:inline-block;transition:transform .3s;font-size:11px;}
   #sigBar.collapsed .sig-toggle .arrow{transform:rotate(-90deg);}
   .sig-list-wrap{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:row;gap:1px;background:var(--line);transition:opacity .3s ease,max-height .35s ease;}
@@ -902,7 +903,7 @@ function buildTooltip(sig){
       const raw=Math.round((v-sig.offset)/(sig.factor||1));
       if(sig.valueTable[raw]!=null) extra=` <span style="color:#9aa4b2">(${sig.valueTable[raw]})</span>`;
     }
-    return `<div style="font-size:12px">${sig.name} = <b>${typeof v==='number'?v.toFixed(4):v}</b> ${sig.unit}${extra}</div>`;
+    return `<div style="font-size:12px">${sig.name} = <b>${typeof v==='number'?fmtSigValue(v, sig):v}</b> ${sig.unit}${extra}</div>`;
   };
 }
 function makeOption(series, sig, stats){
@@ -1436,7 +1437,7 @@ function fitY(chart){
   chart.setOption({yAxis:{min:ymin,max:ymax}});
   clipSeriesY(chart, ymin, ymax);
 }
-function fitAllY(){ charts.forEach(c=>fitY(c)); }
+function fitAllY(){ charts.forEach(c=>fitY(c)); if(pinned != null) refreshPinnedDisplay(); }
 
 /* sync x-axis across charts + custom wheel zoom on axes */
 function syncXAxis(nLo, nHi){
@@ -1509,6 +1510,7 @@ function setupSync(){
       const nHi=anchor+(hi-anchor)*factor;
       src.setOption({yAxis:{min:nLo,max:nHi}});
       clipSeriesY(src, nLo, nHi);
+      if(pinned != null) refreshPinnedDisplay();   /* 纵轴缩放后固定方框跟随曲线 */
     },{passive:false});
   });
   /* x-axis chart: scroll anywhere → X zoom (synced, anchored at mouse) */
@@ -2037,7 +2039,7 @@ window.addEventListener('resize',()=>{ charts.forEach(c=>c.resize()); if(xAxisCh
 /* 发布时间显示：按设备/浏览器所在时区显示对应时间（如 发布于2026-08-12 15:21:00） */
 (function(){
   // 修改时间（UTC），每次更新页面时由开发者同步修改
-  const MOD_UTC = Date.UTC(2026, 7, 13, 1, 39, 12);
+  const MOD_UTC = Date.UTC(2026, 7, 13, 1, 50, 16);
   const d = new Date(MOD_UTC);
   const pad = n => String(n).padStart(2,'0');
   const dateStr = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
