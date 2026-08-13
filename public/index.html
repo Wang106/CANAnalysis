@@ -11,6 +11,7 @@
     --txt:#d6dae3; --txt2:#8b93a3; --accent:#4a9eff; --accent2:#3ddc84;
     --warn:#ffb454; --err:#ff6b6b; --info:#9aa4b2;
     --radius:8px;
+    --col-real:56px; --col-min:48px; --col-max:48px;   /* 侧栏 Real/Min/Max 列宽（可拖动调整） */
     font-family:"Noto Sans CJK SC","Microsoft YaHei","WenQuanYi Micro Hei",system-ui,sans-serif;
   }
   *{box-sizing:border-box;}
@@ -139,17 +140,22 @@
   .cc-side .signame{flex:1;min-width:0;font-weight:400;font-size:12px;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;word-break:normal;cursor:default;}
   .cc-side .msgtip{display:none;position:absolute;left:100%;top:0;z-index:20;background:#0f1115;border:1px solid var(--accent);border-radius:4px;padding:5px 8px;font-size:11px;color:var(--txt2);white-space:nowrap;pointer-events:none;}
   .cc-side:hover .msgtip{display:block;}
-  .cc-side .liveval{width:56px;flex:none;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .cc-side .liveval{width:var(--col-real,56px);flex:none;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .cc-side .liveval .lvlabel{color:var(--txt2);}
   .cc-side .liveval .lvval{color:var(--accent2);}
   .cc-side .liveval .lvunit{color:var(--txt2);}
-  .cc-side .stat{width:48px;flex:none;color:var(--txt2);font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .cc-side .stat{flex:none;color:var(--txt2);font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .cc-side .stat.c-min{width:var(--col-min,48px);}
+  .cc-side .stat.c-max{width:var(--col-max,48px);}
   .cc-side .stat b{color:var(--txt);}
-  /* 侧栏表头：Name / Real / Min / Max（曲线区顶部固定） */
-  .side-head{display:flex;align-items:center;gap:6px;width:var(--cc-side-w,120px);flex-shrink:0;padding:4px 6px;border-right:1px solid var(--line);background:var(--panel2);font-size:10px;font-weight:700;color:var(--txt2);}
-  .side-head .sh-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-  .side-head .sh-real{width:56px;flex:none;}
-  .side-head .sh-min,.side-head .sh-max{width:48px;flex:none;}
+  /* 侧栏表头：Name / Real / Min / Max（位于内容区标题左侧，固定不随滚动） */
+  .side-head{display:flex;align-items:stretch;margin-left:-12px;height:26px;width:var(--cc-side-w,120px);flex-shrink:0;background:var(--panel2);border-right:1px solid var(--line);font-size:10px;font-weight:700;color:var(--txt2);}
+  .side-head .sh-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;padding-left:6px;}
+  .side-head .sh-real{width:var(--col-real,56px);flex:none;display:flex;align-items:center;justify-content:center;white-space:nowrap;}
+  .side-head .sh-min{width:var(--col-min,48px);flex:none;display:flex;align-items:center;justify-content:center;white-space:nowrap;}
+  .side-head .sh-max{width:var(--col-max,48px);flex:none;display:flex;align-items:center;justify-content:center;white-space:nowrap;}
+  .side-head .sh-h{flex:none;width:4px;cursor:col-resize;background:var(--line);align-self:stretch;}
+  .side-head .sh-h:hover{background:var(--accent);}
   /* global chart controls in sig-bar-head */
   .gctrls{display:none;align-items:center;gap:5px;font-size:11px;}
   .gctrls.show{display:flex;}
@@ -1136,7 +1142,7 @@ function autoFitSideWidth(){
   let maxW=0;
   for(const s of sigs){ tmp.textContent=s.name; maxW=Math.max(maxW,tmp.offsetWidth); }
   tmp.remove();
-  const w=Math.max(90, Math.ceil(maxW)+186);   /* 名称宽度 + Real(56)/Min(48)/Max(48) 三列 + 间距与内边距 */
+  const w=Math.max(90, Math.ceil(maxW) + (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--col-real'))||56) + (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--col-min'))||48) + (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--col-max'))||48) + 30);   /* 名称 + Real/Min/Max 三列 + 间距与内边距 */
   document.documentElement.style.setProperty('--cc-side-w', w+'px');
 }
 function renderCharts(){
@@ -1189,10 +1195,36 @@ function renderCharts(){
       xRow.appendChild(xCd);
       xRow.appendChild(el('span','xaxis-unit','时间/s'));
       $('xaxisContainer').appendChild(xRow);
-      // 侧栏表头（Name/Real/Min/Max），固定在曲线区顶部不随滚动
+      // 侧栏表头（Name/Real/Min/Max），位于内容区标题左侧，固定不随滚动
       const sideHead=el('div','side-head');
-      sideHead.innerHTML='<span class="sh-name">Name</span><span class="sh-real">Real</span><span class="sh-min">Min</span><span class="sh-max">Max</span>';
-      $('chartArea').insertAdjacentElement('beforebegin', sideHead);
+      sideHead.innerHTML='<span class="sh-name">Name</span><span class="sh-h" data-col="real"></span><span class="sh-real">Real</span><span class="sh-h" data-col="min"></span><span class="sh-min">Min</span><span class="sh-h" data-col="max"></span><span class="sh-max">Max</span>';
+      $('contentTop').insertBefore(sideHead, $('contentTitle'));
+      /* 拖动表头分隔条调整对应列宽 */
+      sideHead.querySelectorAll('.sh-h').forEach(h=>{
+        h.addEventListener('pointerdown', e=>{
+          e.preventDefault();
+          e.stopPropagation();
+          if(e.button!==0) return;
+          const col=h.dataset.col;
+          const startX=e.clientX;
+          const cur=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--col-'+col))||(col==='real'?56:48);
+          const onMove=ev=>{
+            document.documentElement.style.setProperty('--col-'+col, Math.max(24, cur+(ev.clientX-startX))+'px');
+          };
+          const onUp=()=>{
+            document.removeEventListener('pointermove',onMove);
+            document.removeEventListener('pointerup',onUp);
+            document.removeEventListener('mousemove',onMove);
+            document.removeEventListener('mouseup',onUp);
+            document.body.style.userSelect='';
+          };
+          document.body.style.userSelect='none';
+          document.addEventListener('pointermove',onMove);
+          document.addEventListener('pointerup',onUp);
+          document.addEventListener('mousemove',onMove);
+          document.addEventListener('mouseup',onUp);
+        });
+      });
       xAxisChart=echarts.init(xCd);
       xAxisChart.setOption(makeXAxisOption());
       setupSync();
@@ -1215,7 +1247,7 @@ function renderCharts(){
     const isExt=(sig.messageId & 0x80000000)!==0;
     side.innerHTML = `
       <span class="signame">${sig.name}<span class="msgtip">${sig.messageName} ${fmtId(realId, isExt)}</span></span>
-      ${has?`<span class="liveval"><span class="lvval"></span></span><span class="stat">${fmtSigValue(stats.min, sig)}</span><span class="stat">${fmtSigValue(stats.max, sig)}</span>`:`<span class="liveval"><span class="lvval">无数据</span></span><span class="stat"></span><span class="stat"></span>`}`;
+      ${has?`<span class="liveval"><span class="lvval"></span></span><span class="stat c-min">${fmtSigValue(stats.min, sig)}</span><span class="stat c-max">${fmtSigValue(stats.max, sig)}</span>`:`<span class="liveval"><span class="lvval">无数据</span></span><span class="stat c-min"></span><span class="stat c-max"></span>`}`;
     const body=el('div','cc-body');
     const cd=el('div','chart');
     body.appendChild(cd);
@@ -2251,7 +2283,7 @@ window.addEventListener('resize',()=>{ charts.forEach(c=>c.resize()); if(xAxisCh
 /* 发布时间显示：按设备/浏览器所在时区显示对应时间（如 发布于2026-08-12 15:21:00） */
 (function(){
   // 修改时间（UTC），每次更新页面时由开发者同步修改
-  const MOD_UTC = Date.UTC(2026, 7, 13, 7, 46, 13);
+  const MOD_UTC = Date.UTC(2026, 7, 13, 7, 55, 44);
   const d = new Date(MOD_UTC);
   const pad = n => String(n).padStart(2,'0');
   const dateStr = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
