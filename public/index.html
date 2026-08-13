@@ -148,6 +148,14 @@
   .side-col .stat{flex:none;color:var(--txt2);font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-left:1px solid #4a5566;padding-left:4px;}
   .side-col .stat.c-min{width:var(--col-min,48px);}
   .side-col .stat.c-max{width:var(--col-max,48px);}
+  /* 颜色修改框：预设色方格行 + 更多颜色 */
+  .color-pop{position:fixed;z-index:120;background:var(--panel);border:1px solid var(--accent);border-radius:8px;padding:8px;box-shadow:0 8px 30px rgba(0,0,0,.5);display:none;}
+  .color-pop.show{display:block;}
+  .color-pop .cp-grid{display:flex;gap:4px;flex-wrap:wrap;max-width:220px;}
+  .color-pop .cp-cell{width:20px;height:20px;border-radius:3px;cursor:pointer;border:1px solid rgba(255,255,255,0.25);}
+  .color-pop .cp-cell:hover{border-color:var(--accent);transform:scale(1.1);}
+  .color-pop .cp-more{display:flex;align-items:center;gap:6px;margin-top:7px;font-size:11px;color:var(--txt2);}
+  .color-pop .cp-more input[type=color]{width:22px;height:22px;padding:0;border:none;background:none;cursor:pointer;}
   #anaMinimize{position:absolute;top:6px;right:38px;z-index:6;}
   #anaFullscreen{position:absolute;top:6px;right:10px;z-index:6;}
   #analysisPanel.fullscreen{position:fixed;inset:0;z-index:90;background:var(--bg);height:auto !important;}
@@ -1092,8 +1100,8 @@ function buildTooltip(sig){
     return `<div style="font-size:12px">${sig.name} = <b>${typeof v==='number'?fmtSigValue(v, sig):v}</b> ${sig.unit}${extra}</div>`;
   };
 }
-/* 曲线配色盘：5个高区分度颜色（亮红/亮黄/亮蓝/亮绿/亮紫），按图表顺序循环分配 */
-const CURVE_COLORS=['#ff5252','#ffd700','#4a9eff','#3ddc84','#c77dff'];
+/* 曲线配色盘：10个高区分度颜色，按图表顺序循环分配（1-10、11-20…依次重复） */
+const CURVE_COLORS=['#ff5252','#ffd700','#4a9eff','#3ddc84','#c77dff','#ff8fab','#2dd4bf','#ffb454','#7dd3fc','#a8d15c'];
 function makeOption(series, sig, stats, color){
   const tMin=ascData.tMin, tMax=ascData.tMax;
   return {
@@ -1178,32 +1186,63 @@ function measureColumn(col){
   tmp.remove();
   return Math.ceil(maxW)+6;   /* 含细线边框与内边距余量 */
 }
-/* 点击色块弹出颜色选取框：选色后同步更新色块、信号名称字体与曲线颜色。
-   每次点击新建 input 并调用 showPicker()/click()，可反复多次打开；用完延迟清理不残留 */
-function pickColor(row){
+/* 颜色修改框：一行可选的预设色方格（10个循环色+黑白灰）及更多颜色选择 */
+let colorPop=null;
+function applyColor(row, c){
+  if(!row) return;
+  row._color=c;
+  const sw=row.querySelector('.swatch'); if(sw) sw.style.background=c;
+  const nm=row.querySelector('.signame'); if(nm) nm.style.color=c;
+  const chart=row._chart;
+  if(chart){
+    chart._color=c;
+    if(chart._series){
+      try{ chart.setOption({series:[{lineStyle:{color:c}, itemStyle:{color:c, borderColor:c}}]}); }catch(e){}
+    }
+  }
+}
+function closeColorPop(){
+  if(colorPop) colorPop.classList.remove('show');
+  document.removeEventListener('pointerdown', onPopDown);
+}
+function onPopDown(e){
+  if(colorPop && colorPop.classList.contains('show') && !colorPop.contains(e.target)) closeColorPop();
+}
+function buildColorPop(){
+  const pop=el('div','color-pop');
+  const grid=el('div','cp-grid');
+  CURVE_COLORS.concat(['#ffffff','#9aa4b2','#000000']).forEach(c=>{
+    const cell=el('div','cp-cell');
+    cell.style.background=c;
+    cell.title=c;
+    cell.addEventListener('click', ()=>{
+      applyColor(pop._row, c);
+      closeColorPop();
+    });
+    grid.appendChild(cell);
+  });
+  pop.appendChild(grid);
+  const more=el('div','cp-more');
   const inp=document.createElement('input');
   inp.type='color';
-  inp.value = row._color || '#4a9eff';
-  inp.style.cssText='position:fixed;left:-9999px;top:0;width:0;height:0;opacity:0;';
-  document.body.appendChild(inp);
-  const apply=()=>{
-    const c=inp.value;
-    row._color=c;
-    const sw=row.querySelector('.swatch'); if(sw) sw.style.background=c;
-    const nm=row.querySelector('.signame'); if(nm) nm.style.color=c;
-    const chart=row._chart;
-    if(chart){
-      chart._color=c;
-      if(chart._series){
-        try{ chart.setOption({series:[{lineStyle:{color:c}, itemStyle:{color:c, borderColor:c}}]}); }catch(e){}
-      }
-    }
-  };
-  const cleanup=()=>{ if(inp.isConnected) inp.remove(); };
-  inp.addEventListener('input', apply);
-  inp.addEventListener('change', ()=>{ apply(); setTimeout(cleanup, 100); });
-  window.addEventListener('blur', ()=>{ setTimeout(cleanup, 200); }, {once:true});
-  try{ inp.showPicker(); }catch(e){ try{ inp.click(); }catch(e2){ cleanup(); } }
+  inp.value='#4a9eff';
+  inp.addEventListener('input', ()=>{ applyColor(pop._row, inp.value); });
+  inp.addEventListener('change', ()=>{ applyColor(pop._row, inp.value); closeColorPop(); });
+  more.appendChild(inp);
+  more.appendChild(document.createTextNode('更多颜色'));
+  pop.appendChild(more);
+  document.body.appendChild(pop);
+  return pop;
+}
+function pickColor(row){
+  if(!colorPop) colorPop=buildColorPop();
+  const sw=row.querySelector('.swatch');
+  const r=sw ? sw.getBoundingClientRect() : {left:0,top:0,right:0,bottom:0};
+  colorPop._row=row;
+  colorPop.style.left=Math.max(4, Math.min(r.right+4, window.innerWidth-210))+'px';
+  colorPop.style.top=Math.max(4, r.bottom+4)+'px';
+  colorPop.classList.add('show');
+  document.addEventListener('pointerdown', onPopDown);
 }
 /* 侧栏总宽 = 四列宽度之和 + 左右内边距(12)与列间间距(24)及色块(12)，列宽变化后调用 */
 function updateSideTotal(){
@@ -1329,6 +1368,7 @@ function renderCharts(){
       autoFitSideWidth();   /* 名称列宽度按当前信号中最长名称自动调整 */
       setTimeout(()=>{ charts.forEach(c=>c.resize()); if(xAxisChart)xAxisChart.resize(); }, 100);
       setTimeout(()=>{ charts.forEach(c=>c.resize()); if(xAxisChart)xAxisChart.resize(); }, 300);
+      setTimeout(()=>{ initCrosshairRight(); }, 400);   /* 竖虚线默认显示在所有曲线最右侧 */
       finishBusy();
       return;
     }
@@ -1553,9 +1593,7 @@ function setupCrosshair(){
     labelText.setAttribute('y', ovH - 21);
   };
   const hideCrosshair = ()=>{
-    if(pinned != null) return;                 // 固定状态保持显示
-    ov.classList.remove('show');
-    charts.forEach(c=>{ const lv=c._liveEl; if(lv){ const ve=lv.querySelector('.lvval'); if(ve) ve.textContent=''; } });
+    /* 未固定时鼠标离开曲线区域：竖线保留在鼠标最后位置，不隐藏 */
   };
   document.addEventListener('mousemove',(e)=>{
     const tgt = e.target && e.target.closest ? (e.target.closest('.chart') || e.target.closest('.xaxis-chart')) : null;
@@ -1620,18 +1658,14 @@ function setupCrosshair(){
       if(pinnedChart) drawBox(pinnedChart, pinned, ovRect);
       ov.classList.add('show');
     } else {
-      pinned = null;                           // 取消固定
+      pinned = null;                           // 取消固定：竖线保留在当前位置
       pinnedChart = null;
-      line.setAttribute('display','none');
-      lastT = null;
     }
   });
   document.addEventListener('keydown',(e)=>{
     if(e.key==='Escape' && pinned != null){
-      pinned = null;
+      pinned = null;                           // 取消固定：竖线保留在当前位置
       pinnedChart = null;
-      line.setAttribute('display','none');
-      lastT = null;
     }
   });
   document.addEventListener('mouseleave', hideCrosshair);
@@ -1647,6 +1681,52 @@ function setupCrosshair(){
     pinnedRefreshTimer = setTimeout(()=>{ if(pinned != null) refreshPinnedDisplay(); }, 80);
     setTimeout(()=>{ if(pinned != null) refreshPinnedDisplay(); }, 350);
   }).observe($('analysisWrap'));
+}
+/* 在指定时间/位置绘制十字线显示（竖线+时间标签+Real值），供初始状态与默认位置使用 */
+function drawCrosshairAt(t, lineX){
+  const ov=$('crosshairOverlay');
+  const line=$('chLine');
+  if(!ov || !line) return;
+  const ovRect=ov.getBoundingClientRect();
+  lastT=t; lastOverlayX=lineX;
+  const reg=crosshairRegion(ovRect);
+  applyCrosshairClip(reg);
+  line.setAttribute('display','block');
+  line.setAttribute('x1',lineX);
+  line.setAttribute('x2',lineX);
+  line.setAttribute('y1',reg.top);
+  line.setAttribute('y2',reg.bottom);
+  const labelStr=t.toFixed(3)+'s';
+  const lt=$('chLabelText'), lr=$('chLabelRect');
+  if(lt && lr){
+    lt.textContent=labelStr;
+    const tw=labelStr.length*6.5+10;
+    lr.setAttribute('x',lineX-tw/2);
+    lr.setAttribute('y',reg.bottom-33);
+    lr.setAttribute('width',tw);
+    lr.setAttribute('height',16);
+    lt.setAttribute('x',lineX);
+    lt.setAttribute('y',reg.bottom-21);
+  }
+  charts.forEach(c=>setLiveReal(c,t));
+  ov.classList.add('show');
+}
+/* 生成曲线后：竖虚线默认显示在所有曲线最右侧 */
+function initCrosshairRight(){
+  if(!charts.length || !ascData) return;
+  const ov=$('crosshairOverlay');
+  if(!ov) return;
+  const ovRect=ov.getBoundingClientRect();
+  let lineX=ovRect.width-8;
+  const c0=charts.find(c=>c._series && c._series.length);
+  if(c0){
+    const px=c0.convertToPixel({xAxisIndex:0}, ascData.tMax);
+    if(px!=null && isFinite(px)){
+      const cr=c0.getDom().getBoundingClientRect();
+      lineX=cr.left-ovRect.left+px;
+    }
+  }
+  drawCrosshairAt(ascData.tMax, lineX);
 }
 /* 渲染完成后为每个信号图表创建/重建方框元素 */
 function setupCrosshairBoxes(){
@@ -2382,7 +2462,7 @@ window.addEventListener('resize',()=>{ charts.forEach(c=>c.resize()); if(xAxisCh
 /* 发布时间显示：按设备/浏览器所在时区显示对应时间（如 发布于2026-08-12 15:21:00） */
 (function(){
   // 修改时间（UTC），每次更新页面时由开发者同步修改
-  const MOD_UTC = Date.UTC(2026, 7, 13, 9, 14, 27);
+  const MOD_UTC = Date.UTC(2026, 7, 13, 9, 23, 28);
   const d = new Date(MOD_UTC);
   const pad = n => String(n).padStart(2,'0');
   const dateStr = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
