@@ -137,7 +137,7 @@
   #chartScrollWrap{flex:1;min-height:0;display:flex;flex-direction:row;align-items:stretch;overflow:hidden;}
   .side-col{width:var(--cc-side-w,120px);flex-shrink:0;overflow:hidden;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;}
   .side-col .sc-body{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;}
-  .side-col .sc-row{display:flex;flex-direction:row;align-items:center;gap:6px;flex:none;height:26px;padding:0 6px;overflow:hidden;}
+  .side-col .sc-row{display:flex;flex-direction:row;align-items:center;gap:6px;flex:none;height:22px;padding:0 6px;overflow:hidden;}
   .side-col .swatch{width:12px;height:12px;flex:none;border-radius:2px;cursor:pointer;border:1px solid rgba(255,255,255,0.25);}
   .side-col .signame{width:var(--col-name,80px);flex:none;font-weight:400;font-size:12px;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;word-break:normal;cursor:default;position:relative;}
   .side-col .msgtip{display:none;position:absolute;left:100%;top:0;z-index:20;background:#0f1115;border:1px solid var(--accent);border-radius:4px;padding:5px 8px;font-size:11px;color:var(--txt2);white-space:nowrap;pointer-events:none;}
@@ -1496,6 +1496,7 @@ let pinnedChart = null;         // 固定时悬停的图表实例
 let hoveredChart = null;        // 当前悬停的图表实例
 let lastT = null;               // 最近悬停时间
 let lastOverlayX = 0;           // 最近悬停位置（相对覆盖层）
+let lastClientX = 0, lastClientY = 0;   // 鼠标最近屏幕位置（判断离开方向用）
 /* 曲线显示区域边界（chartArea 顶部 → 底部横轴底部），竖线只在此区域内贯穿 */
 function crosshairRegion(ovRect){
   let top = 0, bottom = ovRect.height;
@@ -1556,7 +1557,7 @@ function setupCrosshair(){
   ov.appendChild(svg);
   $('analysisWrap').appendChild(ov);
 
-  const drawBox = (c, t, ovRect)=>{
+  const drawBox = (c, t, ovRect, boxX)=>{
     const box = c._boxEl;
     if(!box) return;
     const series = c._series;
@@ -1572,7 +1573,8 @@ function setupCrosshair(){
     if(py < 0 || py > ch){ box.setAttribute('display','none'); return; }
     const cr = c.getDom().getBoundingClientRect();
     if(cr.bottom < ovRect.top || cr.top > ovRect.bottom){ box.setAttribute('display','none'); return; }
-    const bx = cr.left - ovRect.left + px;
+    /* 方框与鼠标/竖线永远在同一竖线上：水平位置取 boxX（鼠标X），纵向取数据点 */
+    const bx = (boxX!=null) ? boxX : (cr.left - ovRect.left + px);
     const by = cr.top - ovRect.top + py;
     box.setAttribute('display','block');
     box.setAttribute('x', bx-5);
@@ -1596,6 +1598,7 @@ function setupCrosshair(){
     /* 未固定时鼠标离开曲线区域：竖线保留在鼠标最后位置，不隐藏 */
   };
   document.addEventListener('mousemove',(e)=>{
+    lastClientX=e.clientX; lastClientY=e.clientY;   /* 记录鼠标位置供离开方向判断 */
     const tgt = e.target && e.target.closest ? (e.target.closest('.chart') || e.target.closest('.xaxis-chart')) : null;
     if(!tgt){ hideCrosshair(); return; }
     const rect = tgt.getBoundingClientRect();
@@ -1608,21 +1611,14 @@ function setupCrosshair(){
     lastT = t;
     hoveredChart = tgt.classList.contains('xaxis-chart') ? null : charts.find(c=>c.getDom()===tgt);
     if(pinned != null) return;                 // 已固定：显示保持不变
-    // 吸附到悬停图表最近的数据圆点，竖线实时贴着方框
+    // 吸附最近数据点仅用于时间（Real值/标签），竖线与方框始终与鼠标同一竖线
     let snapT = t;
-    let lineX = e.clientX - ovRect.left;
+    const lineX = e.clientX - ovRect.left;
     if(hoveredChart){
       const series = hoveredChart._series;
       const idx = (series && series.length) ? nearestDataIdx(series, t) : -1;
       const p = series && series[idx];
-      if(p && p[1]!=null){
-        snapT = p[0];
-        const px = hoveredChart.convertToPixel({xAxisIndex:0}, snapT);
-        if(px!=null && isFinite(px)){
-          const cr = hoveredChart.getDom().getBoundingClientRect();
-          lineX = cr.left - ovRect.left + px;   // 与方框同一X位置
-        }
-      }
+      if(p && p[1]!=null) snapT = p[0];
     }
     lastOverlayX = lineX;
     const reg = crosshairRegion(ovRect);        // 竖线仅贯穿曲线显示区域
@@ -1630,7 +1626,7 @@ function setupCrosshair(){
     updateLabel(snapT, lineX, reg.bottom);
     charts.forEach(c=>setLiveReal(c, snapT));
     hideAllBoxes();
-    if(hoveredChart) drawBox(hoveredChart, snapT, ovRect);   // 仅悬停图表显示方框
+    if(hoveredChart) drawBox(hoveredChart, snapT, ovRect, lineX);   // 仅悬停图表显示方框
     line.setAttribute('display','block');      // 竖线实时显示
     line.setAttribute('x1', lineX);
     line.setAttribute('x2', lineX);
@@ -1655,7 +1651,7 @@ function setupCrosshair(){
       updateLabel(pinned, lastOverlayX, reg.bottom);
       charts.forEach(c=>setLiveReal(c, pinned));
       hideAllBoxes();
-      if(pinnedChart) drawBox(pinnedChart, pinned, ovRect);
+      if(pinnedChart) drawBox(pinnedChart, pinned, ovRect, lastOverlayX);
       ov.classList.add('show');
     } else {
       pinned = null;                           // 取消固定：竖线保留在当前位置
@@ -1669,6 +1665,14 @@ function setupCrosshair(){
     }
   });
   document.addEventListener('mouseleave', hideCrosshair);
+  /* 未固定时，鼠标离开曲线区域的方向决定竖线停留位置：左→最左、右→最右、上/下→最后位置 */
+  $('chartArea').addEventListener('mouseleave', ()=>{
+    if(pinned != null) return;
+    const r=$('chartArea').getBoundingClientRect();
+    if(lastClientX < r.left) snapCrosshairToEdge('left');
+    else if(lastClientX > r.right) snapCrosshairToEdge('right');
+    /* 向上/向下离开：竖线保留在鼠标最后位置（不处理） */
+  });
   /* 固定竖线后：页面/图表区滚动时方框跟随数据点移动 */
   $('chartArea').addEventListener('scroll', ()=>{ if(pinned != null) refreshPinnedDisplay(); });
   window.addEventListener('scroll', ()=>{ if(pinned != null) refreshPinnedDisplay(); });
@@ -1728,6 +1732,24 @@ function initCrosshairRight(){
   }
   drawCrosshairAt(ascData.tMax, lineX);
 }
+/* 鼠标向左/右离开曲线区域时，竖线停到曲线最左/最右侧 */
+function snapCrosshairToEdge(side){
+  if(!charts.length || !ascData) return;
+  const ov=$('crosshairOverlay');
+  if(!ov) return;
+  const t = side==='left' ? curXMin : curXMax;
+  const ovRect=ov.getBoundingClientRect();
+  let lineX = side==='left' ? 78 : ovRect.width-8;
+  const c0=charts.find(c=>c._series && c._series.length);
+  if(c0){
+    const px=c0.convertToPixel({xAxisIndex:0}, t);
+    if(px!=null && isFinite(px)){
+      const cr=c0.getDom().getBoundingClientRect();
+      lineX=cr.left-ovRect.left+px;
+    }
+  }
+  drawCrosshairAt(t, lineX);
+}
 /* 渲染完成后为每个信号图表创建/重建方框元素 */
 function setupCrosshairBoxes(){
   const group = $('chBoxGroup');
@@ -1756,14 +1778,7 @@ function refreshPinnedDisplay(){
   const series = pinnedChart._series;
   const idx = series && series.length ? nearestDataIdx(series, pinned) : -1;
   const p = series && series[idx];
-  let lineX = lastOverlayX;
-  if(p && p[1]!=null){
-    const px = pinnedChart.convertToPixel({xAxisIndex:0}, p[0]);
-    if(px!=null && isFinite(px)){
-      const cr = pinnedChart.getDom().getBoundingClientRect();
-      lineX = cr.left - ovRect.left + px;
-    }
-  }
+  const lineX = lastOverlayX;   /* 固定竖线保持在固定时的X位置，方框同X */
   lastOverlayX = lineX;
   const reg = crosshairRegion(ovRect);
   applyCrosshairClip(reg);
@@ -1786,14 +1801,13 @@ function refreshPinnedDisplay(){
   }
   const box = pinnedChart._boxEl;
   if(box && p && p[1]!=null){
-    const px = pinnedChart.convertToPixel({xAxisIndex:0}, p[0]);
     const py = pinnedChart.convertToPixel({yAxisIndex:0}, p[1]);
-    if(px!=null && py!=null && isFinite(px) && isFinite(py)){
+    if(py!=null && isFinite(py)){
       const ch = pinnedChart.getDom().clientHeight;
       if(py < 0 || py > ch){ box.setAttribute('display','none'); return; }
       const cr = pinnedChart.getDom().getBoundingClientRect();
       box.setAttribute('display','block');
-      box.setAttribute('x', cr.left - ovRect.left + px - 5);
+      box.setAttribute('x', lineX - 5);   /* 方框与竖线同一X */
       box.setAttribute('y', cr.top - ovRect.top + py - 5);
     }
   }
@@ -2462,7 +2476,7 @@ window.addEventListener('resize',()=>{ charts.forEach(c=>c.resize()); if(xAxisCh
 /* 发布时间显示：按设备/浏览器所在时区显示对应时间（如 发布于2026-08-12 15:21:00） */
 (function(){
   // 修改时间（UTC），每次更新页面时由开发者同步修改
-  const MOD_UTC = Date.UTC(2026, 7, 13, 9, 23, 28);
+  const MOD_UTC = Date.UTC(2026, 7, 13, 9, 32, 39);
   const d = new Date(MOD_UTC);
   const pad = n => String(n).padStart(2,'0');
   const dateStr = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
