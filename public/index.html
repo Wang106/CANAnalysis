@@ -1120,6 +1120,19 @@ function makeXAxisOption(){
     ]
   };
 }
+/* 曲线区左侧名称列宽度：按当前信号中最长名称自动调整，保证每个信号名完整显示 */
+function autoFitSideWidth(){
+  const sigs=selectedSignals();
+  if(!sigs.length) return;
+  const tmp=document.createElement('span');
+  tmp.style.cssText='position:absolute;visibility:hidden;white-space:nowrap;font:12px "Noto Sans CJK SC","Microsoft YaHei",system-ui,sans-serif;';
+  document.body.appendChild(tmp);
+  let maxW=0;
+  for(const s of sigs){ tmp.textContent=s.name; maxW=Math.max(maxW,tmp.offsetWidth); }
+  tmp.remove();
+  const w=Math.max(90, Math.ceil(maxW)+24);   /* 名称宽度 + 左右内边距与分隔余量，最小90px */
+  document.documentElement.style.setProperty('--cc-side-w', w+'px');
+}
 function renderCharts(){
   disposeCharts();
   const sigs=selectedSignals();
@@ -1178,6 +1191,7 @@ function renderCharts(){
       // 点击"生成曲线"后自动执行X轴和Y轴自适应
       resetZoom();
       fitAllY();
+      autoFitSideWidth();   /* 名称列宽度按当前信号中最长名称自动调整 */
       setTimeout(()=>{ charts.forEach(c=>c.resize()); if(xAxisChart)xAxisChart.resize(); }, 100);
       setTimeout(()=>{ charts.forEach(c=>c.resize()); if(xAxisChart)xAxisChart.resize(); }, 300);
       finishBusy();
@@ -2222,7 +2236,7 @@ window.addEventListener('resize',()=>{ charts.forEach(c=>c.resize()); if(xAxisCh
 /* 发布时间显示：按设备/浏览器所在时区显示对应时间（如 发布于2026-08-12 15:21:00） */
 (function(){
   // 修改时间（UTC），每次更新页面时由开发者同步修改
-  const MOD_UTC = Date.UTC(2026, 7, 13, 6, 19, 25);
+  const MOD_UTC = Date.UTC(2026, 7, 13, 6, 37, 18);
   const d = new Date(MOD_UTC);
   const pad = n => String(n).padStart(2,'0');
   const dateStr = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
