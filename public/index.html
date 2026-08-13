@@ -916,8 +916,7 @@ function makeOption(series, sig, stats){
       axisTick:{show:false},
       splitLine:{show:false}},
     yAxis:{type:'value',name:sig.unit||'',nameTextStyle:{color:'#8b93a3'},
-      axisLine:{lineStyle:{color:'#3a4150'}},
-      axisLabel:{color:'#8b93a3',formatter:v=>fmtSigValue(v, sig)},   /* 纵坐标按 DBC 分辨率精度显示 */
+      axisLine:{lineStyle:{color:'#3a4150'}},axisLabel:{color:'#8b93a3'},
       splitLine:{lineStyle:{color:'#222732'}}},
     dataZoom:[
       {id:'xZoom',type:'inside',xAxisIndex:0,zoomOnMouseWheel:false,moveOnMouseWheel:false,moveOnMouseMove:true,moveOnMouseUp:true,filterMode:'none'},
@@ -946,8 +945,7 @@ function makeEmptyOption(sig){
       axisTick:{show:false},
       splitLine:{show:false}},
     yAxis:{type:'value',name:sig.unit||'',nameTextStyle:{color:'#8b93a3'},
-      axisLine:{lineStyle:{color:'#3a4150'}},
-      axisLabel:{color:'#8b93a3',formatter:v=>fmtSigValue(v, sig)},   /* 纵坐标按 DBC 分辨率精度显示 */
+      axisLine:{lineStyle:{color:'#3a4150'}},axisLabel:{color:'#8b93a3'},
       splitLine:{lineStyle:{color:'#222732'}}},
     dataZoom:[
       {id:'xZoom',type:'inside',xAxisIndex:0,zoomOnMouseWheel:false,moveOnMouseWheel:false,moveOnMouseMove:true,moveOnMouseUp:true,filterMode:'filter'}
@@ -1084,27 +1082,6 @@ function nearestDataIdx(series, t){
   if(idx < 0) return 0;
   if(idx+1 < series.length && series[idx+1][0] - t < t - series[idx][0]) return idx+1;
   return idx;
-}
-/* 依据DBC信号分辨率(factor)确定小数位数：factor=1→0位，factor=0.01→2位 */
-function factorDecimals(factor){
-  if(!factor || factor<=0 || !isFinite(factor)) return 0;
-  const s = String(factor).toLowerCase();
-  const e = s.indexOf('e');
-  if(e >= 0){
-    const m = s.match(/^(\d+(?:\.\d+)?)e([+-]?\d+)$/);
-    if(m){
-      const mantDec = m[1].indexOf('.') >= 0 ? m[1].length - m[1].indexOf('.') - 1 : 0;
-      const exp = parseInt(m[2], 10);
-      return Math.max(0, mantDec - exp);
-    }
-    return 0;
-  }
-  const i = s.indexOf('.');
-  return i < 0 ? 0 : s.length - i - 1;
-}
-function fmtSigValue(v, sig){
-  if(v==null || !isFinite(v)) return '';
-  return v.toFixed(factorDecimals(sig && sig.factor));
 }
 function getSeriesValueAt(c, t){
   const series = c._series;
@@ -1979,7 +1956,7 @@ window.addEventListener('resize',()=>{ charts.forEach(c=>c.resize()); if(xAxisCh
 /* 发布时间显示：按设备/浏览器所在时区显示对应时间（如 发布于2026-08-12 15:21:00） */
 (function(){
   // 修改时间（UTC），每次更新页面时由开发者同步修改
-  const MOD_UTC = Date.UTC(2026, 7, 13, 0, 59, 19);
+  const MOD_UTC = Date.UTC(2026, 7, 13, 1, 6, 58);
   const d = new Date(MOD_UTC);
   const pad = n => String(n).padStart(2,'0');
   const dateStr = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
