@@ -1629,6 +1629,8 @@ function setupCrosshair(){
     if(cr.bottom < ovRect.top || cr.top > ovRect.bottom){ box.setAttribute('display','none'); return; }
     const bx = cr.left - ovRect.left + px;   // 方框精确落在数据圆点上（不随竖线偏移）
     const by = cr.top - ovRect.top + py;
+    box.setAttribute('width','10');          // 保持方框原有大小（切换圆点显示不影响）
+    box.setAttribute('height','10');
     box.setAttribute('display','block');
     box.setAttribute('x', bx-5);
     box.setAttribute('y', by-5);
@@ -1649,7 +1651,7 @@ function setupCrosshair(){
   };
   const hideCrosshair = ()=>{
     /* 未固定时鼠标离开曲线区域：竖线保留在鼠标最后位置，不隐藏 */
-    resetRealColors();   /* 离开：Real数值字体颜色恢复白色 */
+    resetHoverColors();   /* 离开：悬停颜色恢复默认 */
   };
   document.addEventListener('mousemove',(e)=>{
     lastClientX=e.clientX; lastClientY=e.clientY;   /* 记录鼠标位置供离开方向判断 */
@@ -1666,7 +1668,7 @@ function setupCrosshair(){
     const ovRect = ov.getBoundingClientRect();
     lastT = t;
     hoveredChart = tgt.classList.contains('xaxis-chart') ? null : charts.find(c=>c.getDom()===tgt);
-    updateRealColors(hoveredChart);   /* Real数值颜色跟随悬停曲线（固定状态下同样跟随） */
+    updateHoverColors(hoveredChart);   /* 悬停颜色跟随（固定状态下保持默认） */
     if(pinned != null) return;                 // 已固定：显示保持不变
     // 吸附最近数据点仅用于时间（Real值/标签），竖线与方框始终与鼠标同一竖线
     let snapT = t;
@@ -1721,7 +1723,7 @@ function setupCrosshair(){
       charts.forEach(c=>setLiveReal(c, pinned));
       hideAllBoxes();
       if(pinnedChart) drawBox(pinnedChart, pinned, ovRect);
-      resetRealColors();   /* CANalyzer：固定后Real数值保持白色 */
+      resetHoverColors();   /* 固定后悬停颜色保持默认（白色） */
       ov.classList.add('show');
     } else {
       pinned = null;                           // 取消固定：竖线保留在当前位置
@@ -1739,7 +1741,7 @@ function setupCrosshair(){
      上/下边沿离开时按最近移动方向判定（水平主导则吸附边缘，竖直主导则保留最后位置） */
   $('chartArea').addEventListener('mouseleave', (e)=>{
     if(pinned != null) return;
-    if(uiStyle==='canalyzer') resetRealColors();   /* 离开曲线区：Real数值字体颜色恢复白色 */
+    resetHoverColors();   /* 离开曲线区：悬停颜色恢复默认 */
     const r=$('chartArea').getBoundingClientRect();
     if(e.clientY > r.top && e.clientY < r.bottom){
       if(e.clientX <= r.left) snapCrosshairToEdge('left');
@@ -1820,27 +1822,43 @@ function drawBoxAtPoint(c, t, ovRect){
   if(py<0 || py>ch){ box.setAttribute('display','none'); return; }
   const cr=c.getDom().getBoundingClientRect();
   if(cr.bottom<ovRect.top || cr.top>ovRect.bottom){ box.setAttribute('display','none'); return; }
+  box.setAttribute('width','10');   /* 保持方框原有大小 */
+  box.setAttribute('height','10');
   box.setAttribute('display','block');
   box.setAttribute('x', cr.left-ovRect.left+px-5);
   box.setAttribute('y', cr.top-ovRect.top+py-5);
 }
-/* CANalyzer风格：Real数值字体颜色跟随鼠标所在信号曲线颜色；固定后保持白色直到取消固定 */
-function updateRealColors(hoveredChart){
-  if(uiStyle!=='canalyzer') return;
-  if(pinned != null){ resetRealColors(); return; }   /* 竖线固定期间Real数值保持白色 */
-  charts.forEach(c=>{
-    const lv=c._liveEl; if(!lv) return;
-    const ve=lv.querySelector('.lvval'); if(!ve) return;
-    ve.style.color = (c===hoveredChart) ? c._color : '#fff';
-  });
+/* 悬停颜色跟随：CANalyzer风格Real数值颜色跟随曲线；默认风格信号名称变亮蓝；固定/离开恢复 */
+function updateHoverColors(hoveredChart){
+  if(pinned != null){ resetHoverColors(); return; }   /* 竖线固定期间保持默认颜色 */
+  if(uiStyle==='canalyzer'){
+    charts.forEach(c=>{
+      const lv=c._liveEl; if(!lv) return;
+      const ve=lv.querySelector('.lvval'); if(!ve) return;
+      ve.style.color = (c===hoveredChart) ? c._color : '#fff';
+    });
+  } else {
+    charts.forEach(c=>{
+      const side=c._sideEl; if(!side) return;
+      const nm=side.querySelector('.signame'); if(!nm) return;
+      nm.style.color = (c===hoveredChart) ? '#4a9eff' : '#fff';   /* 默认风格：悬停曲线时名称亮蓝，离开恢复白色 */
+    });
+  }
 }
-function resetRealColors(){
-  if(uiStyle!=='canalyzer') return;
-  charts.forEach(c=>{
-    const lv=c._liveEl; if(!lv) return;
-    const ve=lv.querySelector('.lvval'); if(!ve) return;
-    ve.style.color='#fff';
-  });
+function resetHoverColors(){
+  if(uiStyle==='canalyzer'){
+    charts.forEach(c=>{
+      const lv=c._liveEl; if(!lv) return;
+      const ve=lv.querySelector('.lvval'); if(!ve) return;
+      ve.style.color='#fff';
+    });
+  } else {
+    charts.forEach(c=>{
+      const side=c._sideEl; if(!side) return;
+      const nm=side.querySelector('.signame'); if(!nm) return;
+      nm.style.color='#fff';
+    });
+  }
 }
 /* 生成曲线后：竖虚线默认显示在所有曲线最右侧 */
 function initCrosshairRight(){
@@ -1941,6 +1959,8 @@ function refreshPinnedDisplay(){
       const ch = pinnedChart.getDom().clientHeight;
       if(py < 0 || py > ch){ box.setAttribute('display','none'); return; }
       const cr = pinnedChart.getDom().getBoundingClientRect();
+      box.setAttribute('width','10');   /* 保持方框原有大小 */
+      box.setAttribute('height','10');
       box.setAttribute('display','block');
       box.setAttribute('x', cr.left - ovRect.left + px - 5);   /* 方框定在数据圆点上 */
       box.setAttribute('y', cr.top - ovRect.top + py - 5);
@@ -2252,6 +2272,19 @@ $('fileAsc').onchange=async e=>{ const f=e.target.files[0]; if(!f) return; ascFi
 // expose for testing/automation
 window.__can={loadDbcText, loadAscText, renderCharts, selectedSet, get dbc(){return dbcData;}, get asc(){return ascData;}, get charts(){return charts;}};
 $('searchInput').addEventListener('input', ()=>renderSignalList());
+/* 信号选择框收起时，点击搜索输入框自动展开 */
+$('searchInput').addEventListener('focus', ()=>{
+  const bar=$('sigBar');
+  if(bar.classList.contains('collapsed')){
+    bar.classList.remove('collapsed');
+    bar.classList.add('expanded');
+    bar.classList.remove('resized');
+    bar.style.height='';
+    bar.style.flex='';
+    bar.style.transition='';
+    setTimeout(()=>{ charts.forEach(c=>c.resize()); }, 250);
+  }
+});
 /* 样式切换：默认风格(06c2dffb) ↔ CANalyzer风格(最新) */
 $('btnStyleToggle').onclick=()=>{
   uiStyle = uiStyle==='classic' ? 'canalyzer' : 'classic';
@@ -2654,7 +2687,7 @@ window.addEventListener('resize',()=>{ charts.forEach(c=>c.resize()); if(xAxisCh
 /* 发布时间显示：按设备/浏览器所在时区显示对应时间（如 2026-08-14 13:56:46发布） */
 (function(){
   // 修改时间（UTC），每次更新页面时由开发者同步修改
-  const MOD_UTC = Date.UTC(2026, 7, 14, 8, 39, 33);
+  const MOD_UTC = Date.UTC(2026, 7, 14, 9, 29, 21);
   const d = new Date(MOD_UTC);
   const pad = n => String(n).padStart(2,'0');
   const dateStr = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
