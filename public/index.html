@@ -134,8 +134,8 @@
   #content.fullscreen #analysisDivider{display:none !important;}
   #content.fullscreen #analysisPanel{display:none !important;}
   /* 独立信号名称列：与曲线分离，从上往下紧凑排列；表头固定、仅信号行区域滚动 */
-  #chartScrollWrap{flex:1;min-height:0;display:flex;flex-direction:row;align-items:stretch;overflow:hidden;margin-top:8px;}   /* 与标题行保留间隙 */
-  .side-col{width:var(--cc-side-w,120px);flex-shrink:0;overflow:hidden;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;padding-top:4px;}   /* 表头上边沿与右侧曲线显示区域平齐 */
+  #chartScrollWrap{flex:1;min-height:0;display:flex;flex-direction:row;align-items:stretch;overflow:hidden;margin-top:8px;}   /* 与标题行保留固定小间隙（不随滚动变化） */
+  .side-col{width:var(--cc-side-w,120px);flex-shrink:0;overflow:hidden;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;}   /* 表头与曲线卡片顶部平齐（均在滚动区顶部，间隙恒定） */
   .side-col .sc-body{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;}
   .side-col .sc-row{display:flex;flex-direction:row;align-items:center;gap:6px;flex:none;height:22px;padding:0 6px;overflow:hidden;}
   .side-col .swatch{width:12px;height:12px;flex:none;border-radius:2px;cursor:pointer;border:1px solid rgba(255,255,255,0.25);}
@@ -203,11 +203,11 @@
   .issue.warn{border-color:#5a4a20;}
   .issue .tag{color:var(--accent);font-weight:600;}
 
-  #chartArea{padding:21px 0 0;flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;}   /* 顶部21px=侧栏4px间隙+表头16px+边框1px，曲线区上边沿与信号名称列表首行平齐 */
+  #chartArea{padding:0;flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;}   /* 顶部无内边距：与标题行间隙恒定（8px），不随滚动变化 */
   .chart-card{background:var(--panel);border:1px solid var(--line);border-top:none;border-radius:0;margin-bottom:0;overflow:hidden;display:flex;flex-direction:row;flex:1 1 130px;min-height:130px;}
   .chart-card:first-child{border-top:1px solid var(--line);border-radius:var(--radius) var(--radius) 0 0;}
   .chart-card:last-child{border-radius:0;}
-  .xaxis-row{display:flex;flex-direction:row;background:#11141a;border:1px solid var(--line);border-top:none;border-left:none;border-radius:0;overflow:hidden;flex-shrink:0;position:relative;}
+  .xaxis-row{display:flex;flex-direction:row;background:#11141a;border:1px solid var(--line);border-top:none;border-left:none;border-right:none;border-radius:0;overflow:hidden;flex-shrink:0;position:relative;}   /* 去掉左右边框使分割线与上方曲线区分割线严格对齐 */
   .xaxis-row .xaxis-spacer{width:var(--cc-side-w,120px);flex-shrink:0;background:var(--panel2);border-right:1px solid var(--line);}
   .xaxis-row .xaxis-chart{flex:1;min-width:0;height:22px;}
   .xaxis-unit{position:absolute;left:calc(var(--cc-side-w,120px) + 11px);top:2px;line-height:1;font-size:12px;color:var(--txt2);white-space:nowrap;pointer-events:none;}
@@ -1712,13 +1712,18 @@ function setupCrosshair(){
     }
   });
   document.addEventListener('mouseleave', hideCrosshair);
-  /* 未固定时，鼠标离开曲线区域的方向决定竖线停留位置：左→最左、右→最右、上/下→最后位置 */
-  $('chartArea').addEventListener('mouseleave', ()=>{
+  /* 未固定时，鼠标离开曲线区域的方向决定竖线停留位置：
+     几乎水平向左/右离开 → 竖线停在曲线最左/最右侧；从上/下边沿离开 → 保留鼠标最后位置 */
+  $('chartArea').addEventListener('mouseleave', (e)=>{
     if(pinned != null) return;
     const r=$('chartArea').getBoundingClientRect();
-    if(lastClientX < r.left) snapCrosshairToEdge('left');
-    else if(lastClientX > r.right) snapCrosshairToEdge('right');
-    /* 向上/向下离开：竖线保留在鼠标最后位置（不处理） */
+    const dx=Math.abs(e.clientX-(r.left+r.right)/2)/r.width;    /* 水平偏离比例 */
+    const dy=Math.abs(e.clientY-(r.top+r.bottom)/2)/r.height;   /* 竖直偏离比例 */
+    if(dx>dy){   /* 水平方向占主导：平左/平右离开 */
+      if(e.clientX < r.left) snapCrosshairToEdge('left');
+      else if(e.clientX > r.right) snapCrosshairToEdge('right');
+    }
+    /* 竖直方向占主导（上/下边沿离开）：竖线保留在鼠标最后位置 */
   });
   /* 固定竖线后：页面/图表区滚动时方框跟随数据点移动 */
   $('chartArea').addEventListener('scroll', ()=>{ if(pinned != null) refreshPinnedDisplay(); });
@@ -2567,7 +2572,7 @@ window.addEventListener('resize',()=>{ charts.forEach(c=>c.resize()); if(xAxisCh
 /* 发布时间显示：按设备/浏览器所在时区显示对应时间（如 发布于2026-08-12 15:21:00） */
 (function(){
   // 修改时间（UTC），每次更新页面时由开发者同步修改
-  const MOD_UTC = Date.UTC(2026, 7, 14, 5, 7, 50);
+  const MOD_UTC = Date.UTC(2026, 7, 14, 5, 16, 2);
   const d = new Date(MOD_UTC);
   const pad = n => String(n).padStart(2,'0');
   const dateStr = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
