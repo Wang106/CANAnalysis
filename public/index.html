@@ -207,6 +207,9 @@
   .chart-card{background:var(--panel);border:1px solid var(--line);border-top:none;border-radius:0;margin-bottom:0;overflow:hidden;display:flex;flex-direction:row;flex:1 1 130px;min-height:130px;}
   .chart-card:first-child{border-top:1px solid var(--line);border-radius:var(--radius) var(--radius) 0 0;}
   .chart-card:last-child{border-radius:0;}
+  /* CANalyzer风格：曲线显示区域左上角改直角；信号列表左上角改圆弧 */
+  #app:not(.ui-classic) .chart-card:first-child{border-radius:0 var(--radius) 0 0;}
+  #app:not(.ui-classic) .side-head{border-top-left-radius:var(--radius);}
   .xaxis-row{display:flex;flex-direction:row;background:#11141a;border:1px solid var(--line);border-top:none;border-left:none;border-right:none;border-radius:0;overflow:hidden;flex-shrink:0;position:relative;}   /* 去掉左右边框使分割线与上方曲线区分割线严格对齐 */
   .xaxis-row .xaxis-spacer{width:var(--cc-side-w,120px);flex-shrink:0;background:var(--panel2);}
   .xaxis-row .xaxis-chart{flex:1;min-width:0;height:22px;}
@@ -1197,7 +1200,7 @@ function applyColor(row, c){
   if(!row) return;
   row._color=c;
   const sw=row.querySelector('.swatch'); if(sw) sw.style.background=c;
-  const nm=row.querySelector('.signame'); if(nm) nm.style.color=c;
+  /* 信号名称保持白色，仅更新色块与曲线颜色 */
   const chart=row._chart;
   if(chart){
     chart._color=c;
@@ -1444,7 +1447,7 @@ function renderCharts(){
       }
       $('scBody').appendChild(row);
       const nmEl = row.querySelector('.signame');
-      if(nmEl) nmEl.style.color = color;
+      if(nmEl) nmEl.style.color = '#fff';   /* CANalyzer风格：信号名称统一白色 */
       if(has){
         renderCount++;
         const chart=echarts.init(cd);
@@ -1712,11 +1715,13 @@ function setupCrosshair(){
     }
   });
   document.addEventListener('mouseleave', hideCrosshair);
-  /* 未固定时鼠标离开曲线区域：只要不是从上/下边沿离开，竖线一律吸附到最近边缘（左/右） */
+  /* 未固定时鼠标离开曲线区域：竖直主导（上/下边沿）离开→保留最后位置；否则按主方向吸附最近边缘 */
   $('chartArea').addEventListener('mouseleave', (e)=>{
     if(pinned != null) return;
     const r=$('chartArea').getBoundingClientRect();
-    if(e.clientY <= r.top || e.clientY >= r.bottom) return;   /* 上/下边沿离开：竖线保留在鼠标最后位置 */
+    const dx=Math.abs(e.clientX-(r.left+r.right)/2)/(r.width||1);    /* 水平偏离比例 */
+    const dy=Math.abs(e.clientY-(r.top+r.bottom)/2)/(r.height||1);   /* 竖直偏离比例 */
+    if(dx<=dy) return;   /* 竖直主导（上/下边沿离开，含角上快速竖离）：竖线保留在鼠标最后位置 */
     if(e.clientX < (r.left+r.right)/2) snapCrosshairToEdge('left');
     else snapCrosshairToEdge('right');
   });
@@ -2296,10 +2301,9 @@ function reorderChartsBySelection(){
     const sc=$('scBody');
     if(sc) charts.forEach(c=>{ const row=c._rowEl; if(row) sc.appendChild(row); });
   }
-  /* 按新顺序重新分配曲线颜色（默认风格全亮蓝；CANalyzer风格循环取色），信号名同色/白色跟随 */
+  /* 按新顺序重新分配曲线颜色（默认风格全亮蓝；CANalyzer风格循环取色），信号名统一白色 */
   charts.forEach((c,i)=>{
     const color = uiStyle==='classic' ? '#4a9eff' : CURVE_COLORS[i % CURVE_COLORS.length];
-    const nmColor = uiStyle==='classic' ? '#fff' : color;
     c._color=color;
     if(c._series){
       try{ c.setOption({series:[{lineStyle:{color:color}, itemStyle:{color:color, borderColor:color}}]}); }catch(e){}
@@ -2308,7 +2312,7 @@ function reorderChartsBySelection(){
     if(row){
       row._color=color;
       const sw=row.querySelector('.swatch'); if(sw) sw.style.background=color;
-      const nmEl=row.querySelector('.signame'); if(nmEl) nmEl.style.color=nmColor;
+      const nmEl=row.querySelector('.signame'); if(nmEl) nmEl.style.color='#fff';
     }
   });
   /* 竖线固定时方框跟随最新布局 */
@@ -2590,7 +2594,7 @@ window.addEventListener('resize',()=>{ charts.forEach(c=>c.resize()); if(xAxisCh
 /* 发布时间显示：按设备/浏览器所在时区显示对应时间（如 发布于2026-08-12 15:21:00） */
 (function(){
   // 修改时间（UTC），每次更新页面时由开发者同步修改
-  const MOD_UTC = Date.UTC(2026, 7, 14, 5, 37, 37);
+  const MOD_UTC = Date.UTC(2026, 7, 14, 5, 47, 46);
   const d = new Date(MOD_UTC);
   const pad = n => String(n).padStart(2,'0');
   const dateStr = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
