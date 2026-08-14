@@ -115,7 +115,7 @@
   #contentTop .title{font-size:13px;color:var(--txt2);}
   #contentTop .spacer{flex:1;}
   #analysisWrap{flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden;}
-  #xaxisContainer{flex-shrink:0;padding:0 12px;margin-bottom:0;}
+  #xaxisContainer{flex-shrink:0;padding:0;margin-bottom:0;}
   #xaxisContainer:empty{display:none;}
   #analysisDivider{display:none;height:5px;flex-shrink:0;background:var(--line);cursor:row-resize;border-top:1px solid var(--accent);border-bottom:1px solid var(--accent);z-index:5;}
   #analysisDivider.show{display:block;}
@@ -208,7 +208,7 @@
   .chart-card{background:var(--panel);border:1px solid var(--line);border-top:none;border-radius:0;margin-bottom:0;overflow:hidden;display:flex;flex-direction:row;flex:1 1 130px;min-height:130px;}
   .chart-card:first-child{border-top:1px solid var(--line);border-radius:var(--radius) var(--radius) 0 0;}
   .chart-card:last-child{border-radius:0;}
-  .xaxis-row{display:flex;flex-direction:row;background:#11141a;border:1px solid var(--line);border-top:none;border-radius:0;overflow:hidden;flex-shrink:0;position:relative;}
+  .xaxis-row{display:flex;flex-direction:row;background:#11141a;border:1px solid var(--line);border-top:none;border-left:none;border-radius:0;overflow:hidden;flex-shrink:0;position:relative;}
   .xaxis-row .xaxis-spacer{width:var(--cc-side-w,120px);flex-shrink:0;background:var(--panel2);border-right:1px solid var(--line);}
   .xaxis-row .xaxis-chart{flex:1;min-width:0;height:22px;}
   .xaxis-unit{position:absolute;left:calc(var(--cc-side-w,120px) + 11px);top:2px;line-height:1;font-size:12px;color:var(--txt2);white-space:nowrap;pointer-events:none;}
@@ -1391,8 +1391,8 @@ function renderCharts(){
     const has = series.length>0;
     const realId=sig.messageId & 0x1FFFFFFF;
     const isExt=(sig.messageId & 0x80000000)!==0;
-    /* 按图表顺序（上→下）分配曲线颜色，信号名称字体与曲线同色 */
-    const color = CURVE_COLORS[charts.length % CURVE_COLORS.length];
+    /* 分配曲线颜色：默认风格全部亮蓝；CANalyzer风格按顺序循环取色 */
+    const color = uiStyle==='classic' ? '#4a9eff' : CURVE_COLORS[charts.length % CURVE_COLORS.length];
     if(uiStyle==='classic'){
       /* 默认风格（06c2dffb）：信号侧栏内嵌于曲线卡片（名称/Real/min/max 四行） */
       const side=el('div','cc-side');
@@ -1400,7 +1400,7 @@ function renderCharts(){
         <span class="signame">${sig.name}<span class="msgtip">${sig.messageName} ${fmtId(realId, isExt)}</span></span>
         ${has?`<span class="liveval"><span class="lvlabel">Real </span><span class="lvval"></span></span><span class="stat">min ${fmtSigValue(stats.min, sig)}</span><span class="stat">max ${fmtSigValue(stats.max, sig)}</span>`:'<span class="stat" style="color:var(--err)">无数据</span>'}`;
       const nmEl=side.querySelector('.signame');
-      if(nmEl) nmEl.style.color=color;
+      if(nmEl) nmEl.style.color='#fff';   /* 默认风格：信号名称白色字体 */
       const body=el('div','cc-body');
       const cd=el('div','chart');
       body.appendChild(cd);
@@ -2274,9 +2274,10 @@ function reorderChartsBySelection(){
     const sc=$('scBody');
     if(sc) charts.forEach(c=>{ const row=c._rowEl; if(row) sc.appendChild(row); });
   }
-  /* 按新顺序重新分配曲线颜色（1/6/11…亮红、2/7/12…亮黄，依此类推），信号名同色跟随 */
+  /* 按新顺序重新分配曲线颜色（默认风格全亮蓝；CANalyzer风格循环取色），信号名同色/白色跟随 */
   charts.forEach((c,i)=>{
-    const color=CURVE_COLORS[i % CURVE_COLORS.length];
+    const color = uiStyle==='classic' ? '#4a9eff' : CURVE_COLORS[i % CURVE_COLORS.length];
+    const nmColor = uiStyle==='classic' ? '#fff' : color;
     c._color=color;
     if(c._series){
       try{ c.setOption({series:[{lineStyle:{color:color}, itemStyle:{color:color, borderColor:color}}]}); }catch(e){}
@@ -2285,7 +2286,7 @@ function reorderChartsBySelection(){
     if(row){
       row._color=color;
       const sw=row.querySelector('.swatch'); if(sw) sw.style.background=color;
-      const nmEl=row.querySelector('.signame'); if(nmEl) nmEl.style.color=color;
+      const nmEl=row.querySelector('.signame'); if(nmEl) nmEl.style.color=nmColor;
     }
   });
   /* 竖线固定时方框跟随最新布局 */
@@ -2567,7 +2568,7 @@ window.addEventListener('resize',()=>{ charts.forEach(c=>c.resize()); if(xAxisCh
 /* 发布时间显示：按设备/浏览器所在时区显示对应时间（如 发布于2026-08-12 15:21:00） */
 (function(){
   // 修改时间（UTC），每次更新页面时由开发者同步修改
-  const MOD_UTC = Date.UTC(2026, 7, 14, 2, 59, 22);
+  const MOD_UTC = Date.UTC(2026, 7, 14, 3, 54, 57);
   const d = new Date(MOD_UTC);
   const pad = n => String(n).padStart(2,'0');
   const dateStr = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
