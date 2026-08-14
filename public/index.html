@@ -1550,6 +1550,7 @@ let hoveredChart = null;        // 当前悬停的图表实例
 let lastT = null;               // 最近悬停时间
 let lastOverlayX = 0;           // 最近悬停位置（相对覆盖层）
 let lastClientX = 0, lastClientY = 0;   // 鼠标最近屏幕位置（判断离开方向用）
+let moveHist = [];                      // 最近鼠标移动轨迹（用于离开方向判定）
 /* 曲线显示区域边界（chartArea 顶部 → 底部横轴底部），竖线只在此区域内贯穿 */
 function crosshairRegion(ovRect){
   let top = 0, bottom = ovRect.height;
@@ -1652,6 +1653,8 @@ function setupCrosshair(){
   };
   document.addEventListener('mousemove',(e)=>{
     lastClientX=e.clientX; lastClientY=e.clientY;   /* 记录鼠标位置供离开方向判断 */
+    moveHist.push({x:e.clientX,y:e.clientY,t:Date.now()});
+    if(moveHist.length>12) moveHist.shift();
     const tgt = e.target && e.target.closest ? (e.target.closest('.chart') || e.target.closest('.xaxis-chart')) : null;
     if(!tgt){ hideCrosshair(); return; }
     const rect = tgt.getBoundingClientRect();
@@ -1698,6 +1701,18 @@ function setupCrosshair(){
       const reg = crosshairRegion(ovRect);
       applyCrosshairClip(reg);
       line.setAttribute('display','block');
+      /* 竖线吸附到固定时间点的数据圆点位置（与方框同一X） */
+      if(pinnedChart && pinnedChart._series && pinnedChart._series.length){
+        const pidx=nearestDataIdx(pinnedChart._series, pinned);
+        const pp=pinnedChart._series[pidx];
+        if(pp && pp[1]!=null){
+          const ppx=pinnedChart.convertToPixel({xAxisIndex:0}, pp[0]);
+          if(ppx!=null && isFinite(ppx)){
+            const pcr=pinnedChart.getDom().getBoundingClientRect();
+            lastOverlayX = pcr.left - ovRect.left + ppx;
+          }
+        }
+      }
       line.setAttribute('x1', lastOverlayX);
       line.setAttribute('x2', lastOverlayX);
       line.setAttribute('y1', reg.top);
@@ -1706,6 +1721,7 @@ function setupCrosshair(){
       charts.forEach(c=>setLiveReal(c, pinned));
       hideAllBoxes();
       if(pinnedChart) drawBox(pinnedChart, pinned, ovRect);
+      resetRealColors();   /* CANalyzer：固定后Real数值保持白色 */
       ov.classList.add('show');
     } else {
       pinned = null;                           // 取消固定：竖线保留在当前位置
@@ -1719,14 +1735,28 @@ function setupCrosshair(){
     }
   });
   document.addEventListener('mouseleave', hideCrosshair);
-  /* 未固定时鼠标离开曲线区域：以离开点X判定——左/右（含斜向快速离开）吸附最近边缘；X在区域内（上/下边沿）保留最后位置 */
+  /* 未固定时鼠标离开曲线区域：左/右边界离开（含斜向）按X吸附最近边缘；
+     上/下边沿离开时按最近移动方向判定（水平主导则吸附边缘，竖直主导则保留最后位置） */
   $('chartArea').addEventListener('mouseleave', (e)=>{
     if(pinned != null) return;
     if(uiStyle==='canalyzer') resetRealColors();   /* 离开曲线区：Real数值字体颜色恢复白色 */
     const r=$('chartArea').getBoundingClientRect();
-    if(e.clientX <= r.left) snapCrosshairToEdge('left');
-    else if(e.clientX >= r.right) snapCrosshairToEdge('right');
-    /* 离开点X在区域内（上/下边沿离开）：竖线保留在鼠标最后位置 */
+    if(e.clientY > r.top && e.clientY < r.bottom){
+      if(e.clientX <= r.left) snapCrosshairToEdge('left');
+      else if(e.clientX >= r.right) snapCrosshairToEdge('right');
+      return;
+    }
+    /* 上/下边沿离开：按最近移动方向判定（向左滑出但经过上/下边沿时也吸附最左） */
+    const h=moveHist;
+    if(h.length>=2){
+      const a=h[0], b=h[h.length-1];
+      const dx=Math.abs(b.x-a.x), dy=Math.abs(b.y-a.y);
+      if(dx>dy){
+        if(b.x<a.x) snapCrosshairToEdge('left');
+        else if(b.x>a.x) snapCrosshairToEdge('right');
+      }
+    }
+    /* 竖直主导（向上/下离开）：竖线保留在鼠标最后位置 */
   });
   /* 固定竖线后：页面/图表区滚动时方框跟随数据点移动 */
   $('chartArea').addEventListener('scroll', ()=>{ if(pinned != null) refreshPinnedDisplay(); });
@@ -1794,9 +1824,10 @@ function drawBoxAtPoint(c, t, ovRect){
   box.setAttribute('x', cr.left-ovRect.left+px-5);
   box.setAttribute('y', cr.top-ovRect.top+py-5);
 }
-/* CANalyzer风格：Real数值字体颜色跟随鼠标所在信号曲线颜色；离开恢复白色 */
+/* CANalyzer风格：Real数值字体颜色跟随鼠标所在信号曲线颜色；固定后保持白色直到取消固定 */
 function updateRealColors(hoveredChart){
   if(uiStyle!=='canalyzer') return;
+  if(pinned != null){ resetRealColors(); return; }   /* 竖线固定期间Real数值保持白色 */
   charts.forEach(c=>{
     const lv=c._liveEl; if(!lv) return;
     const ve=lv.querySelector('.lvval'); if(!ve) return;
@@ -1874,7 +1905,14 @@ function refreshPinnedDisplay(){
   const series = pinnedChart._series;
   const idx = series && series.length ? nearestDataIdx(series, pinned) : -1;
   const p = series && series[idx];
-  const lineX = lastOverlayX;   /* 固定竖线保持在固定时的X位置，方框同X */
+  let lineX = lastOverlayX;
+  if(p && p[1]!=null){
+    const px = pinnedChart.convertToPixel({xAxisIndex:0}, p[0]);
+    if(px!=null && isFinite(px)){
+      const cr = pinnedChart.getDom().getBoundingClientRect();
+      lineX = cr.left - ovRect.left + px;   /* 竖线跟随固定数据点（缩放/滚动后无偏移） */
+    }
+  }
   lastOverlayX = lineX;
   const reg = crosshairRegion(ovRect);
   applyCrosshairClip(reg);
@@ -2616,7 +2654,7 @@ window.addEventListener('resize',()=>{ charts.forEach(c=>c.resize()); if(xAxisCh
 /* 发布时间显示：按设备/浏览器所在时区显示对应时间（如 2026-08-14 13:56:46发布） */
 (function(){
   // 修改时间（UTC），每次更新页面时由开发者同步修改
-  const MOD_UTC = Date.UTC(2026, 7, 14, 6, 26, 31);
+  const MOD_UTC = Date.UTC(2026, 7, 14, 8, 39, 33);
   const d = new Date(MOD_UTC);
   const pad = n => String(n).padStart(2,'0');
   const dateStr = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
