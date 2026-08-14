@@ -210,7 +210,7 @@
   /* CANalyzer风格：曲线显示区域左上角改直角；信号列表左上角改圆弧 */
   #app:not(.ui-classic) .chart-card:first-child{border-radius:0 var(--radius) 0 0;}
   #app:not(.ui-classic) .side-head{border-top-left-radius:var(--radius);}
-  .xaxis-row{display:flex;flex-direction:row;background:#11141a;border:1px solid var(--line);border-top:none;border-left:none;border-right:none;border-radius:0;overflow:hidden;flex-shrink:0;position:relative;}   /* 去掉左右边框使分割线与上方曲线区分割线严格对齐 */
+  .xaxis-row{display:flex;flex-direction:row;background:var(--panel);border:1px solid var(--line);border-top:none;border-left:none;border-right:none;border-radius:0;overflow:hidden;flex-shrink:0;position:relative;}   /* 背景与曲线卡片一致，分隔条视觉宽度与上方一致 */
   .xaxis-row .xaxis-spacer{width:var(--cc-side-w,120px);flex-shrink:0;background:var(--panel2);}
   .xaxis-row .xaxis-chart{flex:1;min-width:0;height:22px;}
   .xaxis-unit{position:absolute;left:calc(var(--cc-side-w,120px) + 11px);top:2px;line-height:1;font-size:12px;color:var(--txt2);white-space:nowrap;pointer-events:none;}
@@ -218,7 +218,7 @@
   #crosshairOverlay{position:absolute;inset:0;pointer-events:none;z-index:8;display:none;}
   #crosshairOverlay.show{display:block;}
   #crosshairOverlay svg{width:100%;height:100%;}
-  .cc-divider{width:5px;flex-shrink:0;cursor:col-resize;background:var(--line);transition:background .15s;}
+  .cc-divider{width:2.5px;flex-shrink:0;cursor:col-resize;background:var(--line);transition:background .15s;}   /* 分界线宽度=原5px的一半 */
   #analysisWrap.divider-hover .cc-divider{background:var(--accent);}
   .cc-body{flex:1;min-width:0;display:flex;flex-direction:column;}
   .chart{width:100%;height:100%;flex:1;min-height:0;}
@@ -1382,6 +1382,7 @@ function renderCharts(){
       resetZoom();
       fitAllY();
       autoFitSideWidth();   /* 名称列宽度按当前信号中最长名称自动调整 */
+      const si=$('searchInput'); if(si){ si.value=''; renderSignalList(); }   /* 生成完成后清空信号名称输入框 */
       setTimeout(()=>{ charts.forEach(c=>c.resize()); if(xAxisChart)xAxisChart.resize(); }, 100);
       setTimeout(()=>{ charts.forEach(c=>c.resize()); if(xAxisChart)xAxisChart.resize(); }, 300);
       setTimeout(()=>{ initCrosshairRight(); }, 400);   /* 竖虚线默认显示在所有曲线最右侧 */
@@ -1447,7 +1448,7 @@ function renderCharts(){
       }
       $('scBody').appendChild(row);
       const nmEl = row.querySelector('.signame');
-      if(nmEl) nmEl.style.color = '#fff';   /* CANalyzer风格：信号名称统一白色 */
+      if(nmEl) nmEl.style.color = 'var(--txt2)';   /* CANalyzer风格：信号名称颜色与Min/Max一致 */
       if(has){
         renderCount++;
         const chart=echarts.init(cd);
@@ -1646,6 +1647,7 @@ function setupCrosshair(){
   };
   const hideCrosshair = ()=>{
     /* 未固定时鼠标离开曲线区域：竖线保留在鼠标最后位置，不隐藏 */
+    resetRealColors();   /* 离开：Real数值字体颜色恢复白色 */
   };
   document.addEventListener('mousemove',(e)=>{
     lastClientX=e.clientX; lastClientY=e.clientY;   /* 记录鼠标位置供离开方向判断 */
@@ -1660,6 +1662,7 @@ function setupCrosshair(){
     const ovRect = ov.getBoundingClientRect();
     lastT = t;
     hoveredChart = tgt.classList.contains('xaxis-chart') ? null : charts.find(c=>c.getDom()===tgt);
+    updateRealColors(hoveredChart);   /* Real数值颜色跟随悬停曲线（固定状态下同样跟随） */
     if(pinned != null) return;                 // 已固定：显示保持不变
     // 吸附最近数据点仅用于时间（Real值/标签），竖线与方框始终与鼠标同一竖线
     let snapT = t;
@@ -1715,15 +1718,14 @@ function setupCrosshair(){
     }
   });
   document.addEventListener('mouseleave', hideCrosshair);
-  /* 未固定时鼠标离开曲线区域：竖直主导（上/下边沿）离开→保留最后位置；否则按主方向吸附最近边缘 */
+  /* 未固定时鼠标离开曲线区域：以离开点X判定——左/右（含斜向左上/左下快速离开）吸附最近边缘；X在区域内（上/下边沿）保留最后位置 */
   $('chartArea').addEventListener('mouseleave', (e)=>{
     if(pinned != null) return;
+    if(uiStyle==='canalyzer') resetRealColors();   /* 离开曲线区：Real数值字体颜色恢复白色 */
     const r=$('chartArea').getBoundingClientRect();
-    const dx=Math.abs(e.clientX-(r.left+r.right)/2)/(r.width||1);    /* 水平偏离比例 */
-    const dy=Math.abs(e.clientY-(r.top+r.bottom)/2)/(r.height||1);   /* 竖直偏离比例 */
-    if(dx<=dy) return;   /* 竖直主导（上/下边沿离开，含角上快速竖离）：竖线保留在鼠标最后位置 */
-    if(e.clientX < (r.left+r.right)/2) snapCrosshairToEdge('left');
-    else snapCrosshairToEdge('right');
+    if(e.clientX < r.left) snapCrosshairToEdge('left');
+    else if(e.clientX > r.right) snapCrosshairToEdge('right');
+    /* 离开点X在区域内（上/下边沿离开）：竖线保留在鼠标最后位置 */
   });
   /* 固定竖线后：页面/图表区滚动时方框跟随数据点移动 */
   $('chartArea').addEventListener('scroll', ()=>{ if(pinned != null) refreshPinnedDisplay(); });
@@ -1789,6 +1791,23 @@ function drawBoxAtLineX(c, t, ovRect, lineX){
   box.setAttribute('display','block');
   box.setAttribute('x', lineX-5);
   box.setAttribute('y', cr.top-ovRect.top+py-5);
+}
+/* CANalyzer风格：Real数值字体颜色跟随鼠标所在信号曲线颜色；离开恢复白色 */
+function updateRealColors(hoveredChart){
+  if(uiStyle!=='canalyzer') return;
+  charts.forEach(c=>{
+    const lv=c._liveEl; if(!lv) return;
+    const ve=lv.querySelector('.lvval'); if(!ve) return;
+    ve.style.color = (c===hoveredChart) ? c._color : '#fff';
+  });
+}
+function resetRealColors(){
+  if(uiStyle!=='canalyzer') return;
+  charts.forEach(c=>{
+    const lv=c._liveEl; if(!lv) return;
+    const ve=lv.querySelector('.lvval'); if(!ve) return;
+    ve.style.color='#fff';
+  });
 }
 /* 生成曲线后：竖虚线默认显示在所有曲线最右侧 */
 function initCrosshairRight(){
@@ -2312,7 +2331,7 @@ function reorderChartsBySelection(){
     if(row){
       row._color=color;
       const sw=row.querySelector('.swatch'); if(sw) sw.style.background=color;
-      const nmEl=row.querySelector('.signame'); if(nmEl) nmEl.style.color='#fff';
+      const nmEl=row.querySelector('.signame'); if(nmEl) nmEl.style.color='var(--txt2)';
     }
   });
   /* 竖线固定时方框跟随最新布局 */
@@ -2594,7 +2613,7 @@ window.addEventListener('resize',()=>{ charts.forEach(c=>c.resize()); if(xAxisCh
 /* 发布时间显示：按设备/浏览器所在时区显示对应时间（如 发布于2026-08-12 15:21:00） */
 (function(){
   // 修改时间（UTC），每次更新页面时由开发者同步修改
-  const MOD_UTC = Date.UTC(2026, 7, 14, 5, 47, 46);
+  const MOD_UTC = Date.UTC(2026, 7, 14, 5, 56, 46);
   const d = new Date(MOD_UTC);
   const pad = n => String(n).padStart(2,'0');
   const dateStr = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
