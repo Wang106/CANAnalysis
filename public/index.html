@@ -1610,7 +1610,7 @@ function setupCrosshair(){
   ov.appendChild(svg);
   $('analysisWrap').appendChild(ov);
 
-  const drawBox = (c, t, ovRect, boxX)=>{
+  const drawBox = (c, t, ovRect)=>{
     const box = c._boxEl;
     if(!box) return;
     const series = c._series;
@@ -1626,8 +1626,7 @@ function setupCrosshair(){
     if(py < 0 || py > ch){ box.setAttribute('display','none'); return; }
     const cr = c.getDom().getBoundingClientRect();
     if(cr.bottom < ovRect.top || cr.top > ovRect.bottom){ box.setAttribute('display','none'); return; }
-    /* 方框与鼠标/竖线永远在同一竖线上：水平位置取 boxX（鼠标X），纵向取数据点 */
-    const bx = (boxX!=null) ? boxX : (cr.left - ovRect.left + px);
+    const bx = cr.left - ovRect.left + px;   // 方框精确落在数据圆点上（不随竖线偏移）
     const by = cr.top - ovRect.top + py;
     box.setAttribute('display','block');
     box.setAttribute('x', bx-5);
@@ -1681,7 +1680,7 @@ function setupCrosshair(){
     updateLabel(snapT, lineX, reg.bottom);
     charts.forEach(c=>setLiveReal(c, snapT));
     hideAllBoxes();
-    if(hoveredChart) drawBox(hoveredChart, snapT, ovRect, lineX);   // 仅悬停图表显示方框
+    if(hoveredChart) drawBox(hoveredChart, snapT, ovRect);   // 仅悬停图表显示方框（定在数据圆点上）
     line.setAttribute('display','block');      // 竖线实时显示
     line.setAttribute('x1', lineX);
     line.setAttribute('x2', lineX);
@@ -1706,7 +1705,7 @@ function setupCrosshair(){
       updateLabel(pinned, lastOverlayX, reg.bottom);
       charts.forEach(c=>setLiveReal(c, pinned));
       hideAllBoxes();
-      if(pinnedChart) drawBox(pinnedChart, pinned, ovRect, lastOverlayX);
+      if(pinnedChart) drawBox(pinnedChart, pinned, ovRect);
       ov.classList.add('show');
     } else {
       pinned = null;                           // 取消固定：竖线保留在当前位置
@@ -1720,13 +1719,13 @@ function setupCrosshair(){
     }
   });
   document.addEventListener('mouseleave', hideCrosshair);
-  /* 未固定时鼠标离开曲线区域：以离开点X判定——左/右（含斜向左上/左下快速离开）吸附最近边缘；X在区域内（上/下边沿）保留最后位置 */
+  /* 未固定时鼠标离开曲线区域：以离开点X判定——左/右（含斜向快速离开）吸附最近边缘；X在区域内（上/下边沿）保留最后位置 */
   $('chartArea').addEventListener('mouseleave', (e)=>{
     if(pinned != null) return;
     if(uiStyle==='canalyzer') resetRealColors();   /* 离开曲线区：Real数值字体颜色恢复白色 */
     const r=$('chartArea').getBoundingClientRect();
-    if(e.clientX < r.left) snapCrosshairToEdge('left');
-    else if(e.clientX > r.right) snapCrosshairToEdge('right');
+    if(e.clientX <= r.left) snapCrosshairToEdge('left');
+    else if(e.clientX >= r.right) snapCrosshairToEdge('right');
     /* 离开点X在区域内（上/下边沿离开）：竖线保留在鼠标最后位置 */
   });
   /* 固定竖线后：页面/图表区滚动时方框跟随数据点移动 */
@@ -1769,14 +1768,14 @@ function drawCrosshairAt(t, lineX){
     lt.setAttribute('y',reg.bottom-21);
   }
   charts.forEach(c=>setLiveReal(c,t));
-  /* 方框同步停在竖线上（取首个有数据的图表，水平与竖线同一X） */
+  /* 方框精确落在数据圆点上（取首个有数据的图表） */
   charts.forEach(c=>{ if(c._boxEl) c._boxEl.setAttribute('display','none'); });
   const c0=charts.find(c=>c._series && c._series.length);
-  if(c0) drawBoxAtLineX(c0, t, ovRect, lineX);
+  if(c0) drawBoxAtPoint(c0, t, ovRect);
   ov.classList.add('show');
 }
-/* 在指定X（与竖线同一位置）绘制数据点方框 */
-function drawBoxAtLineX(c, t, ovRect, lineX){
+/* 在数据圆点位置绘制方框（边缘停留/初始状态时与竖线同在边缘） */
+function drawBoxAtPoint(c, t, ovRect){
   const box=c._boxEl;
   if(!box) return;
   const series=c._series;
@@ -1784,14 +1783,15 @@ function drawBoxAtLineX(c, t, ovRect, lineX){
   const idx=nearestDataIdx(series, t);
   const p=series[idx];
   if(!p || p[1]==null){ box.setAttribute('display','none'); return; }
+  const px=c.convertToPixel({xAxisIndex:0}, p[0]);
   const py=c.convertToPixel({yAxisIndex:0}, p[1]);
-  if(py==null || !isFinite(py)){ box.setAttribute('display','none'); return; }
+  if(px==null || py==null || !isFinite(px) || !isFinite(py)){ box.setAttribute('display','none'); return; }
   const ch=c.getDom().clientHeight;
   if(py<0 || py>ch){ box.setAttribute('display','none'); return; }
   const cr=c.getDom().getBoundingClientRect();
   if(cr.bottom<ovRect.top || cr.top>ovRect.bottom){ box.setAttribute('display','none'); return; }
   box.setAttribute('display','block');
-  box.setAttribute('x', lineX-5);
+  box.setAttribute('x', cr.left-ovRect.left+px-5);
   box.setAttribute('y', cr.top-ovRect.top+py-5);
 }
 /* CANalyzer风格：Real数值字体颜色跟随鼠标所在信号曲线颜色；离开恢复白色 */
@@ -1897,13 +1897,14 @@ function refreshPinnedDisplay(){
   }
   const box = pinnedChart._boxEl;
   if(box && p && p[1]!=null){
+    const px = pinnedChart.convertToPixel({xAxisIndex:0}, p[0]);
     const py = pinnedChart.convertToPixel({yAxisIndex:0}, p[1]);
-    if(py!=null && isFinite(py)){
+    if(px!=null && py!=null && isFinite(px) && isFinite(py)){
       const ch = pinnedChart.getDom().clientHeight;
       if(py < 0 || py > ch){ box.setAttribute('display','none'); return; }
       const cr = pinnedChart.getDom().getBoundingClientRect();
       box.setAttribute('display','block');
-      box.setAttribute('x', lineX - 5);   /* 方框与竖线同一X */
+      box.setAttribute('x', cr.left - ovRect.left + px - 5);   /* 方框定在数据圆点上 */
       box.setAttribute('y', cr.top - ovRect.top + py - 5);
     }
   }
@@ -2615,7 +2616,7 @@ window.addEventListener('resize',()=>{ charts.forEach(c=>c.resize()); if(xAxisCh
 /* 发布时间显示：按设备/浏览器所在时区显示对应时间（如 2026-08-14 13:56:46发布） */
 (function(){
   // 修改时间（UTC），每次更新页面时由开发者同步修改
-  const MOD_UTC = Date.UTC(2026, 7, 14, 6, 12, 31);
+  const MOD_UTC = Date.UTC(2026, 7, 14, 6, 26, 31);
   const d = new Date(MOD_UTC);
   const pad = n => String(n).padStart(2,'0');
   const dateStr = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
@@ -2630,7 +2631,7 @@ window.addEventListener('resize',()=>{ charts.forEach(c=>c.resize()); if(xAxisCh
     .then(r=>r.json())
     .then(j=>{
       if(j && j.length && j[0] && j[0].sha){
-        el.textContent = j[0].sha;
+        el.textContent = j[0].sha.slice(0,8);   /* 只显示完整提交号前8位 */
         el.title = 'GitHub 提交号 ' + j[0].sha;
       }
     })
