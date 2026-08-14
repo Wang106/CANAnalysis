@@ -134,8 +134,8 @@
   #content.fullscreen #analysisDivider{display:none !important;}
   #content.fullscreen #analysisPanel{display:none !important;}
   /* 独立信号名称列：与曲线分离，从上往下紧凑排列；表头固定、仅信号行区域滚动 */
-  #chartScrollWrap{flex:1;min-height:0;display:flex;flex-direction:row;align-items:stretch;overflow:hidden;}
-  .side-col{width:var(--cc-side-w,120px);flex-shrink:0;overflow:hidden;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;}
+  #chartScrollWrap{flex:1;min-height:0;display:flex;flex-direction:row;align-items:stretch;overflow:hidden;margin-top:8px;}   /* 与标题行保留间隙 */
+  .side-col{width:var(--cc-side-w,120px);flex-shrink:0;overflow:hidden;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;padding-top:4px;}   /* 表头上边沿与右侧曲线显示区域平齐 */
   .side-col .sc-body{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;}
   .side-col .sc-row{display:flex;flex-direction:row;align-items:center;gap:6px;flex:none;height:22px;padding:0 6px;overflow:hidden;}
   .side-col .swatch{width:12px;height:12px;flex:none;border-radius:2px;cursor:pointer;border:1px solid rgba(255,255,255,0.25);}
@@ -183,8 +183,7 @@
   .side-head .sh-min{width:var(--col-min,48px);flex:none;display:flex;align-items:center;justify-content:center;white-space:nowrap;}
   .side-head .sh-max{width:var(--col-max,48px);flex:none;display:flex;align-items:center;justify-content:center;white-space:nowrap;}
   .side-head .sh-h{flex:none;width:7px;cursor:col-resize;background:transparent;align-self:stretch;position:relative;}
-  .side-head .sh-h::before{content:'';position:absolute;left:3px;top:0;bottom:0;width:1px;background:#4a5566;}
-  .side-head .sh-h:hover::before{background:var(--accent);}
+  .side-head .sh-h::before{display:none;}   /* 取消表头间的细竖线（保留拖拽/双击热区） */
   /* global chart controls in sig-bar-head */
   .gctrls{display:none;align-items:center;gap:5px;font-size:11px;}
   .gctrls.show{display:flex;}
@@ -2568,7 +2567,7 @@ window.addEventListener('resize',()=>{ charts.forEach(c=>c.resize()); if(xAxisCh
 /* 发布时间显示：按设备/浏览器所在时区显示对应时间（如 发布于2026-08-12 15:21:00） */
 (function(){
   // 修改时间（UTC），每次更新页面时由开发者同步修改
-  const MOD_UTC = Date.UTC(2026, 7, 14, 3, 54, 57);
+  const MOD_UTC = Date.UTC(2026, 7, 14, 4, 1, 32);
   const d = new Date(MOD_UTC);
   const pad = n => String(n).padStart(2,'0');
   const dateStr = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
