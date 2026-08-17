@@ -1387,7 +1387,9 @@ function renderCharts(){
       const si=$('searchInput'); if(si){ si.value=''; renderSignalList(); }   /* 生成完成后清空信号名称输入框 */
       setTimeout(()=>{ charts.forEach(c=>c.resize()); if(xAxisChart)xAxisChart.resize(); }, 100);
       setTimeout(()=>{ charts.forEach(c=>c.resize()); if(xAxisChart)xAxisChart.resize(); }, 300);
+      setTimeout(()=>{ charts.forEach(c=>c.resize()); if(xAxisChart)xAxisChart.resize(); }, 500);   /* 最终尺寸校正，确保首次渲染不空白 */
       setTimeout(()=>{ initCrosshairRight(); }, 400);   /* 竖虚线默认显示在所有曲线最右侧 */
+      $('chartArea').scrollTop = 0;   /* 曲线区滚动归零 */
       finishBusy();
       return;
     }
@@ -2331,11 +2333,14 @@ $('btnFilterEmpty').onclick=()=>{
 $('btnStart').onclick=()=>{
   renderPickedList();
   const bar=$('sigBar');
+  const wasCollapsed=bar.classList.contains('collapsed');
   bar.classList.remove('expanded');
   bar.classList.add('collapsed');
-  renderCharts();
   $('analysisWrap').scrollTop=0;
-  setTimeout(()=>{ charts.forEach(c=>c.resize()); if(xAxisChart)xAxisChart.resize(); }, 400);
+  /* 等折叠动画结束后再渲染，避免折叠期间图表容器尺寸未定型导致首次曲线空白 */
+  const delay=wasCollapsed?0:230;
+  setTimeout(()=>{ renderCharts(); }, delay);
+  setTimeout(()=>{ charts.forEach(c=>c.resize()); if(xAxisChart)xAxisChart.resize(); }, delay+400);
 };
 /* 信号选择按钮：动作执行中不接收新点击 + 闪烁提示 */
 let sigToggleBusy=false;
@@ -2687,7 +2692,7 @@ window.addEventListener('resize',()=>{ charts.forEach(c=>c.resize()); if(xAxisCh
 /* 发布时间显示：按设备/浏览器所在时区显示对应时间（如 2026-08-14 13:56:46发布） */
 (function(){
   // 修改时间（UTC），每次更新页面时由开发者同步修改
-  const MOD_UTC = Date.UTC(2026, 7, 17, 3, 58, 55);
+  const MOD_UTC = Date.UTC(2026, 7, 17, 5, 33, 27);
   const d = new Date(MOD_UTC);
   const pad = n => String(n).padStart(2,'0');
   const dateStr = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
