@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>CANAnalysis 回归测试</title>
+<style>
+  body{font:14px system-ui,sans-serif;margin:24px;background:#111;color:#ddd}
+  h1{font-size:20px}.pass{color:#55d98b}.fail{color:#ff7474}li{margin:7px 0}
+  iframe{position:absolute;width:1px;height:1px;border:0;left:-9999px}
+</style>
+</head>
+<body>
+<h1>CANAnalysis 回归测试</h1>
+<p id="summary">运行中…</p>
+<ol id="results"></ol>
+<iframe id="app" src="../public/index.html?regression=1"></iframe>
+<script>
+'use strict';
+const tests=[];
+const assert=(condition,message)=>{if(!condition)throw new Error(message);};
+const waitFor=async(check,timeout=5000)=>{
+  const start=Date.now();
+  while(Date.now()-start<timeout){if(check())return;await new Promise(r=>setTimeout(r,25));}
+  throw new Error('等待异步结果超时');
+};
+const record=async(name,fn)=>{
+  try{await fn();tests.push({name,ok:true});}
+  catch(error){tests.push({name,ok:false,error:error.message});}
+};
+document.getElementById('app').addEventListener('load',async()=>{
+  const frame=document.getElementById('app');
+  const win=frame.contentWindow;
+  const doc=frame.contentDocument;
+  const api=win.__can;
+  const sampleDbc=await fetch('../public/sample.dbc').then(r=>r.text());
+  const sampleAsc=await fetch('../public/sample.asc').then(r=>r.text());
+
+  await record('示例文件解析、绘图和分析',async()=>{
+    await api.loadDbcText('sample.dbc',sampleDbc,false);
+    await api.loadAscText('sample.asc',sampleAsc,false);
+    assert(api.dbc.signals.length===7,'DBC 信号数量错误');
+    assert(api.ascFile.sourceOrder.length===1,'示例文件数据源数量错误');
+    assert(api.asc.totalMessages===3430,'ASC 报文数量错误');
+    api.selectedSet.clear();
+    for(const sig of api.dbc.signals)api.selectedSet.add(sig.messageKey+'::'+sig.name);
+    api.renderCharts();
+    await waitFor(()=>api.charts.length===7);
+    assert(api.charts.filter(c=>c._series&&c._series.length).length===7,'曲线生成不完整');
+    assert(api.charts[0].getOption().series[0].sampling==='lttb','LTTB 未启用');
+    api.renderAnalysis(api.dbc.signals);
+    const text=doc.getElementById('analysisPanel').textContent;
+    assert(text.includes('未知ID(DBC未定义) 1'),'未知 ID 分析错误');
+    assert(text.includes('SensorStuck'),'恒定信号分析缺失');
+  });
+
+  await record('无效 ASC 会清空旧状态',async()=>{
+    await api.loadAscText('invalid.asc','not an ASC data frame',false);
+    assert(api.asc===null,'无效 ASC 后 ascData 未清空');
+    assert(api.charts.length===0,'无效 ASC 后旧曲线未清空');
+    assert(doc.getElementById('btnStart').disabled,'无效 ASC 后仍可生成曲线');
+    assert(doc.getElementById('analysisPanel').textContent==='','无效 ASC 后旧分析未清空');
+  });
+
+  await record('ASC 按通道和方向隔离，并拒绝远程帧及变化 DLC',async()=>{
+    const multiAsc=[
+      '0.000 1 100 Rx d 8 01 00 00 00 00 00 00 00',
+      '0.001 2 100 Rx d 8 02 00 00 00 00 00 00 00',
+      '0.002 1 100 Tx d 8 03 00 00 00 00 00 00 00',
+      '0.003 1 100 Rx r 8',
+      '0.004 1 100 Rx d 4 04 00 00 00',
+      '0.005 9 111 Rx d 8 01'
+    ].join('\n');
+    const parsed=await api.parseASC(multiAsc);
+    assert(parsed.sourceOrder.length===3,'通道或方向未隔离');
+    assert(parsed.totalMessages===3,'无效帧被计入有效报文');
+    assert(parsed.rejectedFrames===3,'无效帧计数错误');
+    assert(parsed.sources['1_Rx'].totalMessages===1,'变化 DLC 未被拒绝');
+    await api.loadAscText('multi.asc',multiAsc,false);
+    assert(!doc.getElementById('ascSource').classList.contains('hidden'),'多数据源选择器未显示');
+    assert(doc.getElementById('ascSource').options.length===3,'数据源选项数量错误');
+  });
+
+  await record('DBC 标准复用信号只解码对应分支',async()=>{
+    const dbc=[
+      'VERSION ""','BO_ 256 MuxMsg: 8 ECU',
+      ' SG_ Selector M : 0|8@1+ (1,0) [0|255] "" ECU',
+      ' SG_ BranchA m1 : 8|8@1+ (1,0) [0|255] "" ECU',
+      ' SG_ BranchB m2 : 16|8@1+ (1,0) [0|255] "" ECU'
+    ].join('\n');
+    const asc=[
+      '0.000 1 100 Rx d 8 01 0A 63 00 00 00 00 00',
+      '0.100 1 100 Rx d 8 02 63 14 00 00 00 00 00'
+    ].join('\n');
+    await api.loadDbcText('mux.dbc',dbc,false);
+    await api.loadAscText('mux.asc',asc,false);
+    const a=api.dbc.signals.find(s=>s.name==='BranchA');
+    const b=api.dbc.signals.find(s=>s.name==='BranchB');
+    const as=api.buildSeries(a),bs=api.buildSeries(b);
+    assert(as.length===1&&as[0][1]===10,'m1 分支解码错误');
+    assert(bs.length===1&&bs[0][1]===20,'m2 分支解码错误');
+  });
+
+  await record('DBC 文本不能注入页面 HTML',async()=>{
+    const originalTitle=doc.title;
+    const dbc='VERSION ""\nBO_ 1 <img/src=x/onerror=document.title=\'INJECTED\'>: 8 ECU\n SG_ Safe : 0|8@1+ (1,0) [0|255] "<b>unit</b>" ECU';
+    await api.loadDbcText('untrusted.dbc',dbc,false);
+    await new Promise(r=>setTimeout(r,50));
+    assert(doc.title===originalTitle,'DBC 内容执行了脚本');
+    assert(doc.querySelector('#sigList img')===null,'DBC 内容被解析为 HTML');
+    assert(doc.getElementById('sigList').textContent.includes('<img/src=x'),'报文名未按文本显示');
+  });
+
+  await record('超过 53 位的信号不会静默绘制错误数值',async()=>{
+    const dbc='VERSION ""\nBO_ 256 Wide: 8 ECU\n SG_ Counter64 : 0|64@1+ (1,0) [0|18446744073709551615] "" ECU';
+    const asc='0.000 1 100 Rx d 8 FF FF FF FF FF FF FF FF';
+    await api.loadDbcText('wide.dbc',dbc,false);
+    await api.loadAscText('wide.asc',asc,false);
+    const sig=api.dbc.signals[0];
+    assert(sig.precisionUnsupported,'宽信号未标记精度限制');
+    assert(api.buildSeries(sig).length===0,'宽信号仍被错误绘制');
+  });
+
+  const list=document.getElementById('results');
+  for(const result of tests){
+    const item=document.createElement('li');
+    item.className=result.ok?'pass':'fail';
+    item.textContent=(result.ok?'通过：':'失败：')+result.name+(result.error?' — '+result.error:'');
+    list.appendChild(item);
+  }
+  const passed=tests.filter(t=>t.ok).length;
+  const summary=document.getElementById('summary');
+  summary.className=passed===tests.length?'pass':'fail';
+  summary.textContent=`${passed}/${tests.length} 项通过`;
+  window.__TEST_RESULTS__=tests;
+});
+</script>
+</body>
+</html>
