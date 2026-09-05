@@ -26,7 +26,7 @@
   .file-row button.primary:hover:not(:disabled){color:#04121f;}   /* 悬停统一变黑 */
   button.go{background:var(--accent2);border-color:var(--accent2);color:#042015;font-weight:600;}
   button.go:hover:not(:disabled){filter:brightness(1.1);}
-  input[type=text],input[type=number]{background:var(--panel2);border:1px solid var(--line);color:var(--txt);border-radius:6px;padding:5px 8px;font-size:13px;font-family:inherit;}
+  input[type=text],input[type=number],select{background:var(--panel2);border:1px solid var(--line);color:var(--txt);border-radius:6px;padding:5px 8px;font-size:13px;font-family:inherit;}
   input:focus{outline:none;border-color:var(--accent);}
 
   /* layout */
@@ -45,6 +45,8 @@
   .file-row .finput{flex:1;background:var(--panel2);border:1px solid var(--line);color:var(--txt2);border-radius:6px;padding:5px 10px;font-size:12px;font-family:inherit;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
   .file-row .finput.loaded{color:#c9ced9;}   /* 灰白色 */
   .file-row button{white-space:nowrap;padding:5px 14px;font-size:12px;width:110px;text-align:center;}
+  .file-row .source-select{max-width:210px;font-size:12px;padding:4px 7px;}
+  .file-row .source-select.hidden{display:none;}
 
   /* row 2: signal search & selection (collapsible) */
   #sigBar{background:var(--panel);border-bottom:1px solid var(--line);flex-shrink:0;display:flex;flex-direction:column;transition:flex .2s;}
@@ -278,6 +280,7 @@
       </div>
       <div class="file-row">
         <div class="finput" id="ascInfo">未加载</div>
+        <select id="ascSource" class="source-select hidden" aria-label="ASC 数据源"></select>
         <button id="btnAsc" class="primary">加载ASC文件</button>
       </div>
     </div>
@@ -377,10 +380,15 @@
  * ============================================================ */
 
 const $ = id => document.getElementById(id);
-const el = (tag, cls, html) => { const e=document.createElement(tag); if(cls)e.className=cls; if(html!=null)e.innerHTML=html; return e; };
+const el = (tag, cls, text) => { const e=document.createElement(tag); if(cls)e.className=cls; if(text!=null)e.textContent=text; return e; };
+const escapeHtml = value => String(value == null ? '' : value).replace(/[&<>"']/g, ch=>({
+  '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+}[ch]));
 
 let dbcData = null;     // {messages, signals}
 let ascData = null;     // {map, totalMessages, tMin, tMax, unknownIds, idOrder}
+let ascFileData = null; // {sources, sourceOrder, totalMessages, rejectedFrames}
+let ascFileName = '';
 let charts = [];        // echarts instances
 let xAxisChart = null;  // shared x-axis chart at bottom
 let syncing = false;
@@ -413,6 +421,8 @@ function parseDBC(text, isCancelled){
           if(m && cur){
             const sig = {
               name:m[1], mux:m[2]||null,
+              isMultiplexer:m[2]==='M',
+              muxValue:m[2]&&/^m\d+/.test(m[2])?parseInt(m[2].slice(1),10):null,
               startBit:parseInt(m[3],10), length:parseInt(m[4],10),
               byteOrder:parseInt(m[5],10), isSigned:m[6]==='-',
               factor:parseFloat(m[7]), offset:parseFloat(m[8]),
@@ -421,6 +431,7 @@ function parseDBC(text, isCancelled){
               messageName:cur.name, messageId:cur.id, messageKey:cur.key,
               valueTable:null
             };
+            sig.precisionUnsupported=sig.length>53;
             if(!isFinite(sig.factor)||sig.factor===0) sig.factor=1;
             if(!isFinite(sig.offset)) sig.offset=0;
             if(!isFinite(sig.min)) sig.min=-Infinity;
@@ -451,7 +462,10 @@ function parseDBC(text, isCancelled){
       if(i<lines.length){ setTimeout(step,0); }
       else{
         const signals=[];
-        Object.values(messages).forEach(msg=>msg.signals.forEach(s=>signals.push(s)));
+        Object.values(messages).forEach(msg=>{
+          msg.multiplexer=msg.signals.find(s=>s.isMultiplexer)||null;
+          msg.signals.forEach(s=>signals.push(s));
+        });
         resolve({messages, signals});
       }
     }
@@ -505,15 +519,22 @@ function toPhysical(raw, sig){
   }
   return raw*sig.factor+sig.offset;
 }
+function signalIsActiveAt(sig, data, base, dlc){
+  if(sig.muxValue==null) return true;
+  const msg=dbcData&&dbcData.messages[sig.messageKey];
+  const muxer=msg&&msg.multiplexer;
+  if(!muxer||muxer.precisionUnsupported) return false;
+  return extractRawAt(data,base,dlc,muxer)===sig.muxValue;
+}
 
 /* ---------- ASC parser (async chunked, 可取消) ---------- */
 async function parseASC(text, onProgress, isCancelled){
   const lines = text.split(/\r?\n/);
   const total = lines.length;
-  const map = {};           // key -> {times:[], data:[], dlc, isExt, name?}
-  const idOrder = [];
-  let totalMessages=0, tMin=Infinity, tMax=-Infinity;
-  const ASC_RE = /^\s*([0-9]+\.?[0-9]*(?:e[-+]?[0-9]+)?)\s+(\d+)\s+([0-9A-Fa-f]+)(x?)\s+(Rx|Tx)\s+\S+\s+(\d+)\s*(.*)$/;
+  const sources = {};
+  const sourceOrder = [];
+  let totalMessages=0, rejectedFrames=0;
+  const ASC_RE = /^\s*([0-9]+\.?[0-9]*(?:[eE][-+]?[0-9]+)?)\s+(\d+)\s+([0-9A-Fa-f]+)([xX]?)\s+(Rx|Tx)\s+(\S+)\s+(\d+)\s*(.*)$/;
   const CHUNK=40000;
   let i=0;
   return new Promise(resolve=>{
@@ -531,43 +552,59 @@ async function parseASC(text, onProgress, isCancelled){
         if(!m) continue;
         const t=parseFloat(m[1]);
         if(!isFinite(t)) continue;
+        const channel=m[2];
         const realId=parseInt(m[3],16);
-        const isExt=m[4]==='x';
-        const dlc=parseInt(m[6],10);
-        if(!isFinite(realId)||dlc<=0||dlc>64) continue;
-        const key=realId+'_'+(isExt?'x':'s');
-        let entry=map[key];
-        if(!entry){
-          entry={times:[], data:[], dlc, isExt, realId};
-          map[key]=entry; idOrder.push(key);
-        }
-        const stride=entry.dlc;
-        // parse bytes
-        const rest=m[7]||'';
+        const isExt=m[4].toLowerCase()==='x';
+        const direction=m[5];
+        const frameType=m[6].toLowerCase();
+        const dlc=parseInt(m[7],10);
+        if(frameType!=='d'||!isFinite(realId)||dlc<=0||dlc>64){ rejectedFrames++; continue; }
+        const rest=m[8]||'';
         const toks=rest.split(/\s+/);
-        let bidx=0;
+        const bytes=[];
         for(const tk of toks){
           if(/^[0-9A-Fa-f]{1,2}$/.test(tk)){
-            if(bidx<stride){ entry.data.push(parseInt(tk,16)); bidx++; }
+            if(bytes.length<dlc) bytes.push(parseInt(tk,16));
           }
         }
-        while(bidx<stride){ entry.data.push(0); bidx++; }
+        if(bytes.length!==dlc){ rejectedFrames++; continue; }
+        const sourceKey=channel+'_'+direction;
+        let source=sources[sourceKey];
+        if(!source){
+          source={key:sourceKey,channel,direction,label:`通道 ${channel} · ${direction}`,
+                  map:{},idOrder:[],totalMessages:0,tMin:Infinity,tMax:-Infinity,rejectedFrames:0};
+          sources[sourceKey]=source;
+          sourceOrder.push(sourceKey);
+        }
+        const key=realId+'_'+(isExt?'x':'s');
+        let entry=source.map[key];
+        if(!entry){
+          entry={times:[], data:[], dlc, isExt, realId};
+          source.map[key]=entry; source.idOrder.push(key);
+        }else if(entry.dlc!==dlc){
+          source.rejectedFrames++; rejectedFrames++; continue;
+        }
+        entry.data.push(...bytes);
         entry.times.push(t);
-        if(t<tMin) tMin=t;
-        if(t>tMax) tMax=t;
+        if(t<source.tMin) source.tMin=t;
+        if(t>source.tMax) source.tMax=t;
+        source.totalMessages++;
         totalMessages++;
       }
       if(onProgress) onProgress(i/total);
       if(i<total){ setTimeout(step,0); }
       else {
         // finalize: convert to typed arrays
-        for(const k of idOrder){
-          const e=map[k];
-          e.times=new Float64Array(e.times);
-          e.data=new Uint8Array(e.data);
-          e.count=e.times.length;
+        for(const sk of sourceOrder){
+          const source=sources[sk];
+          for(const k of source.idOrder){
+            const e=source.map[k];
+            e.times=new Float64Array(e.times);
+            e.data=new Uint8Array(e.data);
+            e.count=e.times.length;
+          }
         }
-        resolve({map, totalMessages, tMin, tMax, idOrder});
+        resolve({sources, sourceOrder, totalMessages, rejectedFrames});
       }
     }
     step();
@@ -576,35 +613,39 @@ async function parseASC(text, onProgress, isCancelled){
 
 /* ---------- build series ---------- */
 function buildSeries(sig){
+  if(sig.precisionUnsupported) return [];
   const md=ascData.map[sig.messageKey];
   if(!md) return [];
   const n=md.times.length;
-  const out=new Array(n);
+  const out=[];
   const dlc=md.dlc;
   for(let i=0;i<n;i++){
+    if(!signalIsActiveAt(sig,md.data,i*dlc,dlc)) continue;
     const raw=extractRawAt(md.data, i*dlc, dlc, sig);
-    out[i]=[md.times[i], toPhysical(raw,sig)];
+    out.push([md.times[i], toPhysical(raw,sig)]);
   }
   return out;
 }
 /* 分片异步构建序列：让出主线程，保证取消按钮与页面及时响应 */
 function buildSeriesChunked(sig, cb, check, onCancel){
+  if(sig.precisionUnsupported){ cb([]); return; }
   const md=ascData.map[sig.messageKey];
   if(!md){ cb([]); return; }
   const n=md.times.length;
   const out=new Array(n);
   const dlc=md.dlc;
   const SLICE=50000;
-  let i=0;
+  let i=0, outCount=0;
   function step(){
     if(check && check()){ if(onCancel) onCancel(); return; }
     const end=Math.min(i+SLICE,n);
     for(;i<end;i++){
+      if(!signalIsActiveAt(sig,md.data,i*dlc,dlc)) continue;
       const raw=extractRawAt(md.data, i*dlc, dlc, sig);
-      out[i]=[md.times[i], toPhysical(raw,sig)];
+      out[outCount++]=[md.times[i], toPhysical(raw,sig)];
     }
     if(i<n){ setTimeout(step,0); }
-    else cb(out);
+    else{ out.length=outCount; cb(out); }
   }
   step();
 }
@@ -668,15 +709,23 @@ function computeStatsChunked(series, sig, cb, check, onCancel){
 }
 function analyzeGaps(md){
   if(!md||md.times.length<4) return null;
-  const n=md.times.length; const intervals=[];
-  for(let i=1;i<n;i++) intervals.push(md.times[i]-md.times[i-1]);
+  const n=md.times.length;
+  const sampleLimit=100000;
+  const stride=Math.max(1,Math.ceil((n-1)/sampleLimit));
+  const intervals=[];
+  for(let i=1;i<n;i+=stride){
+    const gap=md.times[i]-md.times[i-1];
+    if(gap>0) intervals.push(gap);
+  }
+  if(!intervals.length) return null;
   const med=median(intervals);
-  let maxGap=0;
-  for(const g of intervals) if(g>maxGap) maxGap=g;
-  // count gaps > 3x median
-  let bigGaps=0;
-  if(med>0){ for(const g of intervals) if(g>med*3) bigGaps++; }
-  return {med, maxGap, bigGaps, n};
+  let maxGap=0,bigGaps=0;
+  for(let i=1;i<n;i++){
+    const gap=md.times[i]-md.times[i-1];
+    if(gap>maxGap) maxGap=gap;
+    if(med>0&&gap>med*3) bigGaps++;
+  }
+  return {med,maxGap,bigGaps,n,sampled:stride>1};
 }
 
 /* ---------- file loading ---------- */
@@ -821,6 +870,22 @@ document.addEventListener('keydown',(e)=>{
   if(busyState && !$('busyOverlay').contains(e.target)){ e.preventDefault(); e.stopPropagation(); }
 }, true);
 function fmtId(realId,isExt){ return '0x'+realId.toString(16).toUpperCase().padStart(isExt?7:3,'0')+(isExt?'x':''); }
+function signalHasData(sig){
+  if(!ascData||!ascData.map[sig.messageKey]||sig.precisionUnsupported) return false;
+  if(sig.muxValue!=null){
+    const msg=dbcData&&dbcData.messages[sig.messageKey];
+    if(!msg||!msg.multiplexer) return false;
+  }
+  return true;
+}
+function signalUnavailableText(sig){
+  if(sig.precisionUnsupported) return '[>53位暂不绘制]';
+  if(sig.muxValue!=null){
+    const msg=dbcData&&dbcData.messages[sig.messageKey];
+    if(!msg||!msg.multiplexer) return '[缺少复用开关]';
+  }
+  return '[无数据]';
+}
 
 /* ---------- signal list UI ---------- */
 function renderSignalList(){
@@ -832,25 +897,31 @@ function renderSignalList(){
   for(const msg of msgs){
     let sigs=msg.signals;
     if(q){ sigs=sigs.filter(s=> (s.name+' '+msg.name+' '+fmtId(msg.realId,msg.isExt)).toLowerCase().includes(q)); }
-    if(filterEmpty){ sigs=sigs.filter(s=> ascData && ascData.map[s.messageKey]); }
+    if(filterEmpty){ sigs=sigs.filter(signalHasData); }
     if(!sigs.length) continue;
     shown+=sigs.length;
     const g=el('div','msg-group');
     const mt=el('div','mtitle');
-    mt.innerHTML=`<span class="arrow">▾</span><span>${msg.name}</span><span class="id">${fmtId(msg.realId,msg.isExt)} · DLC${msg.dlc}</span><span class="cnt">${sigs.length} 信号</span>`;
+    mt.append(
+      el('span','arrow','▾'),
+      el('span','',msg.name),
+      el('span','id',`${fmtId(msg.realId,msg.isExt)} · DLC${msg.dlc}`),
+      el('span','cnt',`${sigs.length} 信号`)
+    );
     const body=el('div');
     for(const s of sigs){
-      const has = ascData && ascData.map[s.messageKey];
+      const has = signalHasData(s);
       const it=el('div','sig-item'+(has?' hasdata':''));
       const cb=document.createElement('input'); cb.type='checkbox'; cb.dataset.key=s.messageKey+'::'+s.name;
       if(selectedSet.has(cb.dataset.key)) cb.checked=true;
       cb.addEventListener('change',()=>{
         if(cb.checked) selectedSet.add(cb.dataset.key); else selectedSet.delete(cb.dataset.key);
+        invalidateSelectionResults();
         updateSelCount();
         renderPickedList();
       });
       const span=el('span','sname',s.name);
-      if(ascData && !has) span.appendChild(el('span','nodata','[无数据]'));
+      if(ascData && !has) span.appendChild(el('span','nodata',signalUnavailableText(s)));
       const unit=el('span','sunit',s.unit?('['+s.unit+']'):'');
       it.append(cb,span,unit);
       it.addEventListener('click',e=>{ if(e.target!==cb){ cb.checked=!cb.checked; cb.dispatchEvent(new Event('change')); } });
@@ -874,14 +945,14 @@ function renderPickedList(){
   picked.appendChild(tmp);
   let maxW=0;
   for(const s of sigs){
-    const has = ascData && ascData.map[s.messageKey];
-    tmp.textContent = has ? s.name : s.name+'[无数据]';
+    const has = signalHasData(s);
+    tmp.textContent = has ? s.name : s.name+signalUnavailableText(s);
     maxW=Math.max(maxW,tmp.offsetWidth);
   }
   tmp.remove();
   const nameMinW=Math.ceil(maxW+6)+'px';
   for(const s of sigs){
-    const has = ascData && ascData.map[s.messageKey];
+    const has = signalHasData(s);
     const it=el('div','sig-item picked'+(has?' hasdata':''));
     const cb=document.createElement('input'); cb.type='checkbox'; cb.dataset.key=s.messageKey+'::'+s.name;
     cb.checked=true;
@@ -897,13 +968,14 @@ function renderPickedList(){
         const leftCb=findLeftCb(cb.dataset.key);
         if(leftCb) leftCb.checked=true;
       }
+      invalidateSelectionResults();
       updateSelCount();
     });
     const realId=s.messageId & 0x1FFFFFFF;
     const isExt=(s.messageId & 0x80000000)!==0;
     const span=el('span','sname',s.name);
     span.style.width=nameMinW;   /* 名称列=最长名称宽度，完整显示且ID列对齐 */
-    if(ascData && !has) span.appendChild(el('span','nodata','[无数据]'));
+    if(ascData && !has) span.appendChild(el('span','nodata',signalUnavailableText(s)));
     const sid=el('span','sid',fmtId(realId,isExt));
     const sright=el('span','sright');
     const unit=el('span','sunit',s.unit?('['+s.unit+']'):'');
@@ -1096,6 +1168,15 @@ function disposeCharts(){
   $('analysisPanel').innerHTML='';
   $('gDots').classList.remove('active');
 }
+function invalidateSelectionResults(){
+  analysisReady=false;
+  $('analysisDivider').classList.remove('show');
+  $('analysisPanel').classList.add('hidden');
+  $('analysisPanel').innerHTML='';
+  $('btnAnalyze').disabled=true;
+  $('btnAnalyze').textContent='报文分析';
+  if(charts.length) $('contentTitle').textContent='信号选择已变化，请重新生成曲线';
+}
 function buildTooltip(sig){
   return params=>{
     const p=params[0];
@@ -1104,9 +1185,9 @@ function buildTooltip(sig){
     let extra='';
     if(sig.valueTable){
       const raw=Math.round((v-sig.offset)/(sig.factor||1));
-      if(sig.valueTable[raw]!=null) extra=` <span style="color:#9aa4b2">(${sig.valueTable[raw]})</span>`;
+      if(sig.valueTable[raw]!=null) extra=` <span style="color:#9aa4b2">(${escapeHtml(sig.valueTable[raw])})</span>`;
     }
-    return `<div style="font-size:12px">${sig.name} = <b>${typeof v==='number'?fmtSigValue(v, sig):v}</b> ${sig.unit}${extra}</div>`;
+    return `<div style="font-size:12px">${escapeHtml(sig.name)} = <b>${escapeHtml(typeof v==='number'?fmtSigValue(v, sig):v)}</b> ${escapeHtml(sig.unit)}${extra}</div>`;
   };
 }
 /* 曲线配色盘：10个高区分度颜色，按图表顺序循环分配（1-10、11-20…依次重复） */
@@ -1134,7 +1215,7 @@ function makeOption(series, sig, stats, color){
     series:[{
       type:'line',data:series,name:sig.name,showSymbol:false,symbol:'circle',symbolSize:4,
       clip:true, connectNulls:false,
-      large:true,progressive:3000,
+      sampling:'lttb',large:true,progressive:3000,
       lineStyle:{width:1.2,color:color||'#4a9eff'},
       itemStyle:{color:color||'#4a9eff',borderColor:color||'#4a9eff'},
       emphasis:{disabled:true}
@@ -1404,7 +1485,7 @@ function renderCharts(){
       /* 默认风格（06c2dffb）：信号侧栏内嵌于曲线卡片（名称/Real/min/max 四行） */
       const side=el('div','cc-side');
       side.innerHTML = `
-        <span class="signame">${sig.name}<span class="msgtip">${sig.messageName} ${fmtId(realId, isExt)}</span></span>
+        <span class="signame">${escapeHtml(sig.name)}<span class="msgtip">${escapeHtml(sig.messageName)} ${fmtId(realId, isExt)}</span></span>
         ${has?`<span class="liveval"><span class="lvlabel">Real </span><span class="lvval"></span></span><span class="stat">min ${fmtSigValue(stats.min, sig)}</span><span class="stat">max ${fmtSigValue(stats.max, sig)}</span>`:'<span class="stat" style="color:var(--err)">无数据</span>'}`;
       const nmEl=side.querySelector('.signame');
       if(nmEl) nmEl.style.color='#fff';   /* 默认风格：信号名称白色字体 */
@@ -1442,7 +1523,7 @@ function renderCharts(){
       const row=el('div','sc-row');
       row._color = color;
       row.innerHTML = `
-        <span class="signame">${sig.name}<span class="msgtip">${sig.messageName} ${fmtId(realId, isExt)}</span></span>
+        <span class="signame">${escapeHtml(sig.name)}<span class="msgtip">${escapeHtml(sig.messageName)} ${fmtId(realId, isExt)}</span></span>
         <span class="swatch" title="点击选择曲线颜色"></span>
         ${has?`<span class="liveval"><span class="lvval"></span></span><span class="stat c-min">${fmtSigValue(stats.min, sig)}</span><span class="stat c-max">${fmtSigValue(stats.max, sig)}</span>`:`<span class="liveval"><span class="lvval">无数据</span></span><span class="stat c-min"></span><span class="stat c-max"></span>`}`;
       const swEl=row.querySelector('.swatch');
@@ -2125,12 +2206,15 @@ function resetZoom(){
 function renderAnalysis(sigs){
   const panel=$('analysisPanel');
   const issues=[];
+  const gapCache=new Map();
+  const reportedGaps=new Set();
   // summary
   const dur=ascData.tMax-ascData.tMin;
   const rate=dur>0?(ascData.totalMessages/dur):0;
   const dbcIds=new Set(Object.keys(dbcData.messages));
   const unknownIds=ascData.idOrder.filter(k=>!dbcIds.has(k));
   let sumHtml=`<div class="a-summary">
+    <span class="chip">数据源 <b>${escapeHtml(ascData.label)}</b></span>
     <span class="chip">报文总数 <b>${ascData.totalMessages.toLocaleString()}</b></span>
     <span class="chip">时间范围 <b>${ascData.tMin.toFixed(3)}–${ascData.tMax.toFixed(3)} s</b> (时长 ${dur.toFixed(3)} s)</span>
     <span class="chip">平均报文率 <b>${rate.toFixed(1)}</b> msg/s</span>
@@ -2145,29 +2229,40 @@ function renderAnalysis(sigs){
   });
   // per-signal analysis
   for(const sig of sigs){
+    if(sig.precisionUnsupported){
+      issues.push({sev:'err',tag:sig.name,text:`信号长度为 ${sig.length} 位，超过浏览器可精确绘制的 53 位整数范围，已跳过以避免显示错误数值`});
+      continue;
+    }
+    const msg=dbcData.messages[sig.messageKey];
+    if(sig.muxValue!=null&&(!msg||!msg.multiplexer)){
+      issues.push({sev:'err',tag:sig.name,text:'DBC 定义了复用分支，但未找到对应的复用开关信号'});
+      continue;
+    }
     const md=ascData.map[sig.messageKey];
     const found = charts.find(c=>c._sig===sig);
     const series = (found && found._series) ? found._series : buildSeries(sig);
-    const st=computeStats(series,sig);
+    const st=(found&&found._stats)?found._stats:computeStats(series,sig);
     if(!md || st.count===0){
-      issues.push({sev:'err', tag:sig.name, text:`信号无数据：报文 ${sig.messageName} 在 ASC 中未出现`});
+      issues.push({sev:'err', tag:sig.name, text:`信号无数据：报文 ${escapeHtml(sig.messageName)} 在 ASC 中未出现`});
       continue;
     }
     // out of range
     if(st.outRange>0 && sig.min!==-Infinity && sig.max!==Infinity){
       const pct=(st.outRange/st.count*100);
-      issues.push({sev: pct>5?'err':'warn', tag:sig.name, text:`${st.outRange} 个采样(${pct.toFixed(1)}%) 超出物理范围 [${sig.min}, ${sig.max}] ${sig.unit}`});
+      issues.push({sev: pct>5?'err':'warn', tag:sig.name, text:`${st.outRange} 个采样(${pct.toFixed(1)}%) 超出物理范围 [${sig.min}, ${sig.max}] ${escapeHtml(sig.unit)}`});
     }
     // constant / stuck
     if(st.count>20 && st.allSame){
-      issues.push({sev:'err', tag:sig.name, text:`信号长时间恒定 = ${st.min} ${sig.unit}（可能传感器故障或信号未更新）`});
+      issues.push({sev:'err', tag:sig.name, text:`信号长时间恒定 = ${st.min} ${escapeHtml(sig.unit)}（可能传感器故障或信号未更新）`});
     } else if(st.count>20 && st.std< (st.max-st.min)*0.0005 && st.max!==st.min){
       issues.push({sev:'warn', tag:sig.name, text:`信号变化极小 (σ=${st.std.toFixed(4)})，近恒定状态`});
     }
     // gaps / dropouts
-    const g=analyzeGaps(md);
-    if(g && g.med>0 && g.maxGap>g.med*3 && g.maxGap>g.med+0.005){
-      issues.push({sev:'warn', tag:sig.name, text:`报文周期约 ${(g.med*1000).toFixed(1)} ms，检测到 ${g.bigGaps} 处丢帧，最大间隔 ${(g.maxGap*1000).toFixed(1)} ms`});
+    if(!gapCache.has(sig.messageKey)) gapCache.set(sig.messageKey,analyzeGaps(md));
+    const g=gapCache.get(sig.messageKey);
+    if(g && !reportedGaps.has(sig.messageKey) && g.med>0 && g.maxGap>g.med*3 && g.maxGap>g.med+0.005){
+      reportedGaps.add(sig.messageKey);
+      issues.push({sev:'warn', tag:sig.messageName, text:`报文周期约 ${(g.med*1000).toFixed(1)} ms，检测到 ${g.bigGaps} 处疑似丢帧，最大间隔 ${(g.maxGap*1000).toFixed(1)} ms${g.sampled?'（周期基于抽样估算）':''}`});
     }
     // extreme value near bounds (possible glitch)
     if(st.count>20 && sig.min!==-Infinity && sig.max!==Infinity){
@@ -2179,7 +2274,7 @@ function renderAnalysis(sigs){
     html+=`<div style="font-size:12px;color:var(--txt2);margin:6px 0;">检测到 ${issues.length} 项分析结果：</div><div class="a-issues">`;
     for(const it of issues){
       const icon = it.sev==='err'?'⛔':'⚠';
-      html+=`<div class="issue ${it.sev}"><span class="sev">${icon}</span><span class="tag">${it.tag}</span><span>${it.text}</span></div>`;
+      html+=`<div class="issue ${it.sev}"><span class="sev">${icon}</span><span class="tag">${escapeHtml(it.tag)}</span><span>${it.text}</span></div>`;
     }
     html+='</div>';
   } else {
@@ -2246,33 +2341,75 @@ async function loadDbcText(name, txt, showBusy){
   }
   finally{ stopLoadTxt(); if(showBusy) finishBusy(); }
 }
+function clearAscState(message){
+  ascFileData=null; ascData=null; ascFileName='';
+  const source=$('ascSource');
+  source.innerHTML=''; source.classList.add('hidden');
+  disposeCharts();
+  renderSignalList(); renderPickedList(); updateSelCount(); updateStartBtn();
+  $('contentTitle').textContent=message||'请加载有效的 ASC 文件';
+}
+function activateAscSource(sourceKey, announce){
+  if(!ascFileData||!ascFileData.sources[sourceKey]) return;
+  ascData=ascFileData.sources[sourceKey];
+  disposeCharts();
+  curXMin=ascData.tMin; curXMax=ascData.tMax;
+  renderSignalList(); renderPickedList(); updateSelCount(); updateStartBtn();
+  $('contentTitle').textContent=`已选择 ${ascData.label}，请选择信号并生成曲线`;
+  if(announce) toast(`已切换至 ${ascData.label}：${ascData.totalMessages.toLocaleString()} 帧`);
+}
+function configureAscSources(parsed){
+  const source=$('ascSource');
+  source.innerHTML='';
+  for(const key of parsed.sourceOrder){
+    const item=parsed.sources[key];
+    const option=document.createElement('option');
+    option.value=key;
+    option.textContent=`${item.label} · ${item.totalMessages.toLocaleString()} 帧`;
+    source.appendChild(option);
+  }
+  source.classList.toggle('hidden',parsed.sourceOrder.length<=1);
+  const first=parsed.sourceOrder[0];
+  source.value=first;
+  activateAscSource(first,false);
+}
 async function loadAscText(name, txt, showBusy){
   hideLoading();
   const token = showBusy ? startBusy('解析 ASC 文件…', ()=>{ token.cancelled=true; }, {immediate:true}) : null;
   try{
-    ascData = await parseASC(txt, null, showBusy ? ()=>token.cancelled : null);
-    if(showBusy && (token.cancelled || !ascData || ascData.cancelled)){
-      ascData=null; $('ascInfo').textContent='未加载'; $('ascInfo').classList.remove('loaded');
+    const parsed = await parseASC(txt, null, showBusy ? ()=>token.cancelled : null);
+    if(showBusy && (token.cancelled || !parsed || parsed.cancelled)){
+      $('ascInfo').textContent=ascFileName||'未加载';
       toast('已取消 ASC 解析'); return;
     }
-    if(ascData.totalMessages===0){ $('ascInfo').textContent='未加载'; $('ascInfo').classList.remove('loaded'); toast('ASC 文件无可识别报文'); return; }
-    /* 已有曲线时保持原显示与坐标范围不变，直到点击"生成曲线"再按新ASC解析显示 */
-    if(!charts.length){ curXMin = ascData.tMin; curXMax = ascData.tMax; }
+    if(parsed.totalMessages===0){
+      $('ascInfo').textContent='未加载'; $('ascInfo').classList.remove('loaded');
+      clearAscState('ASC 文件无可识别数据帧');
+      toast('ASC 文件无可识别数据帧'); return;
+    }
+    ascFileData=parsed; ascFileName=name;
     $('ascInfo').textContent = name;
     $('ascInfo').classList.add('loaded');
-    renderSignalList(); renderPickedList(); updateSelCount(); updateStartBtn();
-    toast(`ASC 已加载：${ascData.totalMessages} 帧`);
+    configureAscSources(parsed);
+    const skipped=parsed.rejectedFrames?`，已跳过 ${parsed.rejectedFrames} 个非数据或无效帧`:'';
+    toast(`ASC 已加载：${parsed.totalMessages.toLocaleString()} 帧${skipped}`);
   }catch(err){
     $('ascInfo').textContent='加载失败'; $('ascInfo').classList.remove('loaded');
+    clearAscState('ASC 解析失败');
     toast('ASC 解析失败：'+err.message);
   }
   finally{ stopLoadTxt(); if(showBusy) finishBusy(); }
 }
+$('ascSource').addEventListener('change',e=>activateAscSource(e.target.value,true));
 $('fileDbc').onchange=async e=>{ const f=e.target.files[0]; if(!f) return; $('btnDbc').classList.remove('primary'); await loadDbcText(f.name, await readText(f), f.size>=50*1024); e.target.value=''; };   /* 仅显示干净文件名（浏览器不提供真实路径） */
 $('fileAsc').onchange=async e=>{ const f=e.target.files[0]; if(!f) return; ascFileSize=f.size; $('btnAsc').classList.remove('primary'); const big=f.size>=50*1024*1024; await loadAscText(f.name, await readText(f, big?p=>showLoading('读取 ASC… '+Math.round(p*100)+'%', p):null), big); e.target.value=''; };   /* 仅显示干净文件名（浏览器不提供真实路径） */
 
 // expose for testing/automation
-window.__can={loadDbcText, loadAscText, renderCharts, selectedSet, get dbc(){return dbcData;}, get asc(){return ascData;}, get charts(){return charts;}};
+window.__can={
+  parseDBC,parseASC,extractRawAt,toPhysical,buildSeries,
+  loadDbcText,loadAscText,activateAscSource,renderCharts,renderAnalysis,selectedSet,
+  get dbc(){return dbcData;},get asc(){return ascData;},get ascFile(){return ascFileData;},get charts(){return charts;}
+};
 $('searchInput').addEventListener('input', ()=>renderSignalList());
 /* 信号选择框收起时，点击搜索输入框自动展开 */
 $('searchInput').addEventListener('focus', ()=>{
@@ -2297,12 +2434,14 @@ $('btnStyleToggle').onclick=()=>{
 $('btnSelectAll').onclick=()=>{
   if(!dbcData) return;
   document.querySelectorAll('#sigList .sig-item input').forEach(cb=>{ cb.checked=true; selectedSet.add(cb.dataset.key); });
+  invalidateSelectionResults();
   updateSelCount();
   renderPickedList();
 };
 $('btnClearAll').onclick=()=>{
   selectedSet.clear();
   document.querySelectorAll('#sigList .sig-item input').forEach(cb=>cb.checked=false);
+  invalidateSelectionResults();
   updateSelCount();
   renderPickedList();
 };
@@ -2314,10 +2453,11 @@ $('btnClearNoData').onclick=()=>{
     const msg=dbcData && dbcData.messages[mk];
     if(!msg) continue;
     const s=msg.signals.find(x=>x.name===sname);
-    if(s && !(ascData && ascData.map[s.messageKey])){ selectedSet.delete(k); removed++; }
+    if(s && !signalHasData(s)){ selectedSet.delete(k); removed++; }
   }
   if(removed>0){
     document.querySelectorAll('#sigList .sig-item input').forEach(cb=>{ if(!selectedSet.has(cb.dataset.key)) cb.checked=false; });
+    invalidateSelectionResults();
     updateSelCount();
     renderPickedList();
     toast(`已清除 ${removed} 个无数据信号`);
@@ -2689,15 +2829,15 @@ $('gXmin').addEventListener('change', applyXRange);
 $('gXmax').addEventListener('change', applyXRange);
 window.addEventListener('resize',()=>{ charts.forEach(c=>c.resize()); if(xAxisChart)xAxisChart.resize(); });
 
-/* 发布时间显示：按设备/浏览器所在时区显示对应时间（如 2026-08-14 13:56:46发布） */
-(function(){
-  // 修改时间（UTC），每次更新页面时由开发者同步修改
-  const MOD_UTC = Date.UTC(2026, 7, 17, 5, 42, 10);
-  const d = new Date(MOD_UTC);
+/* 发布时间显示：优先使用 GitHub 最新提交时间，离线时使用本版本的 UTC 回退时间。 */
+function setReleaseTime(d){
   const pad = n => String(n).padStart(2,'0');
   const dateStr = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
   const timeStr = pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
   $('hmodtime').textContent = dateStr + ' ' + timeStr + '发布';
+}
+(function(){
+  setReleaseTime(new Date(Date.UTC(2026,8,5,8,16,20)));
 })();
 /* GitHub 提交号显示：页面加载时获取该仓库最新提交号，显示在标题与发布时间之间 */
 (function(){
@@ -2709,6 +2849,8 @@ window.addEventListener('resize',()=>{ charts.forEach(c=>c.resize()); if(xAxisCh
       if(j && j.length && j[0] && j[0].sha){
         el.textContent = j[0].sha.slice(0,8);   /* 只显示完整提交号前8位 */
         el.title = 'GitHub 提交号 ' + j[0].sha;
+        const committedAt=j[0].commit&&j[0].commit.committer&&j[0].commit.committer.date;
+        if(committedAt) setReleaseTime(new Date(committedAt));
       }
     })
     .catch(()=>{});
