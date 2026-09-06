@@ -120,6 +120,18 @@ document.getElementById('app').addEventListener('load',async()=>{
     assert(api.buildSeries(sig).length===0,'宽信号仍被错误绘制');
   });
 
+  await record('部署时间选择最新成功的 Workers Build',async()=>{
+    const latest=api.latestSuccessfulDeployment([
+      {name:'Workers Builds: cananalysis',conclusion:'success',completed_at:'2026-09-05T10:00:00Z'},
+      {name:'Workers Builds: cananalysis',conclusion:'failure',completed_at:'2026-09-06T11:00:00Z'},
+      {name:'Other Check',conclusion:'success',completed_at:'2026-09-06T12:00:00Z'},
+      {name:'Workers Builds: cananalysis',conclusion:'success',completed_at:'2026-09-06T11:48:50Z'}
+    ]);
+    assert(latest&&latest.completed_at==='2026-09-06T11:48:50Z','未选择最新成功的 Cloudflare 部署');
+    api.setReleaseTime(new Date(latest.completed_at),'cloudflare');
+    assert(doc.getElementById('hmodtime').dataset.source==='cloudflare','部署时间来源标记错误');
+  });
+
   const list=document.getElementById('results');
   for(const result of tests){
     const item=document.createElement('li');

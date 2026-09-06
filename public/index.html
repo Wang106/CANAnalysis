@@ -2408,6 +2408,7 @@ $('fileAsc').onchange=async e=>{ const f=e.target.files[0]; if(!f) return; ascFi
 window.__can={
   parseDBC,parseASC,extractRawAt,toPhysical,buildSeries,
   loadDbcText,loadAscText,activateAscSource,renderCharts,renderAnalysis,selectedSet,
+  setReleaseTime,latestSuccessfulDeployment,
   get dbc(){return dbcData;},get asc(){return ascData;},get ascFile(){return ascFileData;},get charts(){return charts;}
 };
 $('searchInput').addEventListener('input', ()=>renderSignalList());
@@ -2829,31 +2830,51 @@ $('gXmin').addEventListener('change', applyXRange);
 $('gXmax').addEventListener('change', applyXRange);
 window.addEventListener('resize',()=>{ charts.forEach(c=>c.resize()); if(xAxisChart)xAxisChart.resize(); });
 
-/* 发布时间显示：优先使用 GitHub 最新提交时间，离线时使用本版本的 UTC 回退时间。 */
-function setReleaseTime(d){
+/* 发布时间显示：优先使用 Cloudflare 生产构建完成时间，取不到时回退到代码提交时间。 */
+function setReleaseTime(d, source){
+  if(!d||typeof d.getTime!=='function'||Number.isNaN(d.getTime())) return;
   const pad = n => String(n).padStart(2,'0');
   const dateStr = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
   const timeStr = pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
-  $('hmodtime').textContent = dateStr + ' ' + timeStr + '发布';
+  const el=$('hmodtime');
+  el.textContent = dateStr + ' ' + timeStr + '发布';
+  el.dataset.source=source||'fallback';
+  el.title=source==='cloudflare'?'Cloudflare 生产部署完成时间':'代码提交时间（部署记录不可用时的回退值）';
+}
+function latestSuccessfulDeployment(checkRuns){
+  if(!Array.isArray(checkRuns)) return null;
+  return checkRuns
+    .filter(c=>c&&typeof c.name==='string'&&c.name.startsWith('Workers Builds:')&&c.conclusion==='success'&&c.completed_at)
+    .sort((a,b)=>Date.parse(b.completed_at)-Date.parse(a.completed_at))[0]||null;
 }
 (function(){
-  setReleaseTime(new Date(Date.UTC(2026,8,5,8,16,20)));
+  setReleaseTime(new Date('2026-09-06T12:05:06Z'),'fallback');
 })();
-/* GitHub 提交号显示：页面加载时获取该仓库最新提交号，显示在标题与发布时间之间 */
-(function(){
+/* GitHub 提交号与 Cloudflare 部署时间：部署检查不可用时使用文件提交时间。 */
+(async function(){
   const el=$('hcommit');
   if(!el) return;
-  fetch('https://api.github.com/repos/Wang106/CANAnalysis/commits?path=public/index.html&per_page=1')
-    .then(r=>r.json())
-    .then(j=>{
-      if(j && j.length && j[0] && j[0].sha){
-        el.textContent = j[0].sha.slice(0,8);   /* 只显示完整提交号前8位 */
-        el.title = 'GitHub 提交号 ' + j[0].sha;
-        const committedAt=j[0].commit&&j[0].commit.committer&&j[0].commit.committer.date;
-        if(committedAt) setReleaseTime(new Date(committedAt));
-      }
-    })
-    .catch(()=>{});
+  let committedAt=null;
+  try{
+    const r=await fetch('https://api.github.com/repos/Wang106/CANAnalysis/commits?path=public/index.html&per_page=1');
+    if(!r.ok) throw new Error('GitHub commit request failed');
+    const j=await r.json();
+    if(j&&j.length&&j[0]&&j[0].sha){
+      el.textContent=j[0].sha.slice(0,8);   /* 只显示完整提交号前8位 */
+      el.title='GitHub 提交号 '+j[0].sha;
+      committedAt=j[0].commit&&j[0].commit.committer&&j[0].commit.committer.date;
+    }
+  }catch(e){}
+  try{
+    const r=await fetch('https://api.github.com/repos/Wang106/CANAnalysis/commits/main/check-runs?per_page=100',{
+      headers:{Accept:'application/vnd.github+json'}
+    });
+    if(!r.ok) throw new Error('GitHub checks request failed');
+    const j=await r.json();
+    const deployment=latestSuccessfulDeployment(j&&j.check_runs);
+    if(deployment){ setReleaseTime(new Date(deployment.completed_at),'cloudflare'); return; }
+  }catch(e){}
+  if(committedAt) setReleaseTime(new Date(committedAt),'commit');
 })();
 
 // init
