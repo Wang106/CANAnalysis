@@ -80,6 +80,18 @@ document.getElementById('app').addEventListener('load',async()=>{
     assert(doc.getElementById('ascSource').options.length===3,'数据源选项数量错误');
   });
 
+  await record('大 ASC 解析会主动让出主线程',async()=>{
+    const rows=new Array(40000);
+    for(let i=0;i<rows.length;i++) rows[i]=(i/1000).toFixed(3)+' 1 100 Rx d 8 01 02 03 04 05 06 07 08';
+    let heartbeat=false;
+    setTimeout(()=>{ heartbeat=true; },0);
+    const parsed=await api.parseASC(rows.join('\n'));
+    assert(heartbeat,'解析期间未让出主线程，页面会出现长时间卡顿');
+    assert(parsed.totalMessages===rows.length,'分片解析造成报文丢失');
+    const entry=parsed.sources['1_Rx'].map['256_s'];
+    assert(entry.times instanceof win.Float64Array&&entry.data instanceof win.Uint8Array,'紧凑数组转换错误');
+  });
+
   await record('DBC 标准复用信号只解码对应分支',async()=>{
     const dbc=[
       'VERSION ""','BO_ 256 MuxMsg: 8 ECU',

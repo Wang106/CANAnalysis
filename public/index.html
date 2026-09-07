@@ -99,7 +99,7 @@
   .sig-item .sid{color:var(--txt2);font-size:10px;margin-left:3px;white-space:nowrap;}
   .sig-item .nodata{color:var(--err);font-size:10px;margin-left:3px;}
   .sig-item.pending-remove{opacity:.35;text-decoration:line-through;}
-  .msg-group{margin:6px 0 10px;}
+  .msg-group{margin:6px 0 10px;content-visibility:auto;contain-intrinsic-size:auto 34px;}
   .msg-group .mtitle{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--accent);cursor:pointer;padding:3px 4px;border-radius:4px;user-select:none;}
   .msg-group .mtitle:hover{background:var(--panel2);}
   .msg-group .mtitle .id{color:var(--txt2);font-size:11px;}
@@ -385,6 +385,35 @@ const escapeHtml = value => String(value == null ? '' : value).replace(/[&<>"']/
   '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
 }[ch]));
 
+/* 所有 CPU 密集型任务只连续占用主线程约一帧的一半，随后主动让出控制权。
+ * 相比固定“每批 N 条”，时间预算能同时适配快慢不同的电脑与文件内容。 */
+const WORK_BUDGET_MS = 8;
+const workNow = ()=>performance.now();
+const shouldYield = start=>workNow()-start>=WORK_BUDGET_MS;
+const queueWork = fn=>setTimeout(fn,0);
+const nextPaint = ()=>new Promise(resolve=>requestAnimationFrame(()=>resolve()));
+function debounce(fn, wait){
+  let timer=null;
+  return function(...args){
+    clearTimeout(timer);
+    timer=setTimeout(()=>fn.apply(this,args),wait);
+  };
+}
+function rafThrottle(fn){
+  let queued=false, lastArgs=null, lastThis=null;
+  return function(...args){
+    lastArgs=args; lastThis=this;
+    if(queued) return;
+    queued=true;
+    requestAnimationFrame(()=>{
+      queued=false;
+      const callArgs=lastArgs, callThis=lastThis;
+      lastArgs=lastThis=null;
+      fn.apply(callThis,callArgs);
+    });
+  };
+}
+
 let dbcData = null;     // {messages, signals}
 let ascData = null;     // {map, totalMessages, tMin, tMax, unknownIds, idOrder}
 let ascFileData = null; // {sources, sourceOrder, totalMessages, rejectedFrames}
@@ -393,19 +422,26 @@ let charts = [];        // echarts instances
 let xAxisChart = null;  // shared x-axis chart at bottom
 let syncing = false;
 let lastX = {start:0, end:100};
+const resizeAllCharts=rafThrottle(()=>{
+  charts.forEach(c=>c.resize());
+  if(xAxisChart) xAxisChart.resize();
+});
 
 /* ---------- DBC parser (async chunked, 可取消) ---------- */
-function parseDBC(text, isCancelled){
+function parseDBC(text, isCancelled, onProgress){
   const messages = {};
-  const lines = text.split(/\r?\n/);
   let cur = null;
-  const CHUNK = 50000;
-  let i = 0;
+  let pos = 0;
+  const total = text.length;
   return new Promise(resolve=>{
     function step(){
-      const end = Math.min(i+CHUNK, lines.length);
-      for(; i<end; i++){
-        const line = lines[i].trim();
+      if(isCancelled && isCancelled()){ resolve({cancelled:true}); return; }
+      const started=workNow();
+      do{
+        const nl=text.indexOf('\n',pos);
+        const end=nl<0?total:nl;
+        const line=text.slice(pos,end).replace(/\r$/,'').trim();
+        pos=nl<0?total+1:nl+1;
         if(line.startsWith('BO_ ')){
           const m = line.match(/^BO_\s+(\d+)\s+(\S+)\s*:\s*(\d+)\s*(\S+)/);
           if(m){
@@ -413,7 +449,8 @@ function parseDBC(text, isCancelled){
             const isExt = (id & 0x80000000)!==0;
             const realId = id & 0x1FFFFFFF;
             cur = { id, realId, isExt, key: realId+'_'+(isExt?'x':'s'),
-                    name:m[2], dlc:parseInt(m[3],10), sender:m[4], signals:[] };
+                    name:m[2], dlc:parseInt(m[3],10), sender:m[4], signals:[],
+                    signalByName:Object.create(null) };
             messages[cur.key]=cur;
           }
         } else if(line.startsWith('SG_ ')){
@@ -437,6 +474,7 @@ function parseDBC(text, isCancelled){
             if(!isFinite(sig.min)) sig.min=-Infinity;
             if(!isFinite(sig.max)) sig.max=Infinity;
             cur.signals.push(sig);
+            if(cur.signalByName[sig.name]===undefined) cur.signalByName[sig.name]=sig;
           }
         } else if(line.startsWith('VAL_ ')){
           const m = line.match(/^VAL_\s+(\d+)\s+(\w+)\s+(.*);$/);
@@ -447,7 +485,7 @@ function parseDBC(text, isCancelled){
             const key=realId+'_'+(isExt?'x':'s');
             const msg=messages[key];
             if(msg){
-              const sig=msg.signals.find(s=>s.name===m[2]);
+              const sig=msg.signalByName[m[2]];
               if(sig){
                 const table={};
                 const re=/(-?\d+)\s+"([^"]*)"/g; let pm;
@@ -457,17 +495,33 @@ function parseDBC(text, isCancelled){
             }
           }
         }
-      }
+      }while(pos<=total&&!shouldYield(started));
+      if(onProgress) onProgress(Math.min(pos,total)/(total||1));
+      if(pos<=total){ queueWork(step); return; }
+      finalize();
+    }
+    let messageList=null;
+    const signals=[];
+    let messageIndex=0, signalIndex=0;
+    function finalize(){
+      if(!messageList) messageList=Object.values(messages);
       if(isCancelled && isCancelled()){ resolve({cancelled:true}); return; }
-      if(i<lines.length){ setTimeout(step,0); }
-      else{
-        const signals=[];
-        Object.values(messages).forEach(msg=>{
-          msg.multiplexer=msg.signals.find(s=>s.isMultiplexer)||null;
-          msg.signals.forEach(s=>signals.push(s));
-        });
-        resolve({messages, signals});
+      const started=workNow();
+      while(messageIndex<messageList.length&&!shouldYield(started)){
+        const msg=messageList[messageIndex];
+        if(signalIndex===0) msg.multiplexer=null;
+        while(signalIndex<msg.signals.length&&!shouldYield(started)){
+          const sig=msg.signals[signalIndex++];
+          if(sig.isMultiplexer&&!msg.multiplexer) msg.multiplexer=sig;
+          signals.push(sig);
+        }
+        if(signalIndex>=msg.signals.length){
+          delete msg.signalByName;
+          messageIndex++; signalIndex=0;
+        }
       }
+      if(messageIndex<messageList.length){ queueWork(finalize); return; }
+      resolve({messages, signals});
     }
     step();
   });
@@ -529,20 +583,21 @@ function signalIsActiveAt(sig, data, base, dlc){
 
 /* ---------- ASC parser (async chunked, 可取消) ---------- */
 async function parseASC(text, onProgress, isCancelled){
-  const lines = text.split(/\r?\n/);
-  const total = lines.length;
+  const total = text.length;
   const sources = {};
   const sourceOrder = [];
   let totalMessages=0, rejectedFrames=0;
   const ASC_RE = /^\s*([0-9]+\.?[0-9]*(?:[eE][-+]?[0-9]+)?)\s+(\d+)\s+([0-9A-Fa-f]+)([xX]?)\s+(Rx|Tx)\s+(\S+)\s+(\d+)\s*(.*)$/;
-  const CHUNK=40000;
-  let i=0;
+  let pos=0;
   return new Promise(resolve=>{
     function step(){
       if(isCancelled && isCancelled()){ resolve({cancelled:true}); return; }
-      const end=Math.min(i+CHUNK,total);
-      for(; i<end; i++){
-        const line=lines[i];
+      const started=workNow();
+      do{
+        const nl=text.indexOf('\n',pos);
+        const end=nl<0?total:nl;
+        const line=text.slice(pos,end).replace(/\r$/,'');
+        pos=nl<0?total+1:nl+1;
         if(!line) continue;
         const c=line[0];
         if(c==='/'||c===';'||c==='#'||c===' ') {
@@ -590,22 +645,40 @@ async function parseASC(text, onProgress, isCancelled){
         if(t>source.tMax) source.tMax=t;
         source.totalMessages++;
         totalMessages++;
-      }
-      if(onProgress) onProgress(i/total);
-      if(i<total){ setTimeout(step,0); }
-      else {
-        // finalize: convert to typed arrays
-        for(const sk of sourceOrder){
-          const source=sources[sk];
-          for(const k of source.idOrder){
-            const e=source.map[k];
-            e.times=new Float64Array(e.times);
-            e.data=new Uint8Array(e.data);
-            e.count=e.times.length;
-          }
+      }while(pos<=total&&!shouldYield(started));
+      if(onProgress) onProgress(Math.min(pos,total)/(total||1));
+      if(pos<=total){ queueWork(step); return; }
+      finalize();
+    }
+    let sourceIndex=0, entryIndex=0, copyState=null;
+    function finalize(){
+      if(isCancelled && isCancelled()){ resolve({cancelled:true}); return; }
+      const started=workNow();
+      while(sourceIndex<sourceOrder.length&&!shouldYield(started)){
+        const source=sources[sourceOrder[sourceIndex]];
+        if(entryIndex>=source.idOrder.length){ sourceIndex++; entryIndex=0; continue; }
+        if(!copyState){
+          const entry=source.map[source.idOrder[entryIndex]];
+          copyState={entry,timesSource:entry.times,dataSource:entry.data,
+                     times:new Float64Array(entry.times.length),data:new Uint8Array(entry.data.length),
+                     timeIndex:0,dataIndex:0};
         }
-        resolve({sources, sourceOrder, totalMessages, rejectedFrames});
+        while(copyState.timeIndex<copyState.timesSource.length&&!shouldYield(started)){
+          const end=Math.min(copyState.timeIndex+16384,copyState.timesSource.length);
+          for(;copyState.timeIndex<end;copyState.timeIndex++) copyState.times[copyState.timeIndex]=copyState.timesSource[copyState.timeIndex];
+        }
+        while(copyState.timeIndex>=copyState.timesSource.length&&copyState.dataIndex<copyState.dataSource.length&&!shouldYield(started)){
+          const end=Math.min(copyState.dataIndex+32768,copyState.dataSource.length);
+          for(;copyState.dataIndex<end;copyState.dataIndex++) copyState.data[copyState.dataIndex]=copyState.dataSource[copyState.dataIndex];
+        }
+        if(copyState.timeIndex>=copyState.timesSource.length&&copyState.dataIndex>=copyState.dataSource.length){
+          const entry=copyState.entry;
+          entry.times=copyState.times; entry.data=copyState.data; entry.count=entry.times.length;
+          copyState=null; entryIndex++;
+        }
       }
+      if(sourceIndex<sourceOrder.length){ queueWork(finalize); return; }
+      resolve({sources, sourceOrder, totalMessages, rejectedFrames});
     }
     step();
   });
@@ -634,19 +707,19 @@ function buildSeriesChunked(sig, cb, check, onCancel){
   const n=md.times.length;
   const out=new Array(n);
   const dlc=md.dlc;
-  const SLICE=50000;
   let i=0, outCount=0;
   function step(){
     if(check && check()){ if(onCancel) onCancel(); return; }
-    const end=Math.min(i+SLICE,n);
-    for(;i<end;i++){
+    const started=workNow();
+    do{
       if(!signalIsActiveAt(sig,md.data,i*dlc,dlc)) continue;
       const raw=extractRawAt(md.data, i*dlc, dlc, sig);
       out[outCount++]=[md.times[i], toPhysical(raw,sig)];
-    }
-    if(i<n){ setTimeout(step,0); }
+    }while(++i<n&&!shouldYield(started));
+    if(i<n){ queueWork(step); }
     else{ out.length=outCount; cb(out); }
   }
+  if(!n){ cb([]); return; }
   step();
 }
 
@@ -678,26 +751,25 @@ function computeStats(series, sig){
 function computeStatsChunked(series, sig, cb, check, onCancel){
   const n=series.length;
   if(!n){ cb({count:0}); return; }
-  const SLICE=50000;
   let idx=0, min=Infinity,max=-Infinity,sum=0,outRange=0;
   const first=series[0][1]; let allSame=true;
   function pass1(){
     if(check && check()){ if(onCancel) onCancel(); return; }
-    const end=Math.min(idx+SLICE,n);
-    for(;idx<end;idx++){
+    const started=workNow();
+    do{
       const v=series[idx][1];
       if(v<min)min=v; if(v>max)max=v; sum+=v;
       if(v!==first) allSame=false;
       if(v<sig.min||v>sig.max) outRange++;
-    }
-    if(idx<n){ setTimeout(pass1,0); return; }
+    }while(++idx<n&&!shouldYield(started));
+    if(idx<n){ queueWork(pass1); return; }
     const mean=sum/n;
     idx=0; let sq=0;
     function pass2(){
       if(check && check()){ if(onCancel) onCancel(); return; }
-      const e2=Math.min(idx+SLICE,n);
-      for(;idx<e2;idx++){ const d=series[idx][1]-mean; sq+=d*d; }
-      if(idx<n){ setTimeout(pass2,0); return; }
+      const started=workNow();
+      do{ const d=series[idx][1]-mean; sq+=d*d; }while(++idx<n&&!shouldYield(started));
+      if(idx<n){ queueWork(pass2); return; }
       const std=Math.sqrt(sq/n);
       cb({count:n,min,max,mean,std,outRange,allSame,
           t0:series[0][0],t1:series[n-1][0],
@@ -732,23 +804,48 @@ function analyzeGaps(md){
 function readText(file, onProg){
   return new Promise((resolve,reject)=>{
     const r=new FileReader();
-    r.onload=()=>{
+    r.onload=async()=>{
       const buf=new Uint8Array(r.result);
       /* 自动检测编码：先尝试 UTF-8（fatal 模式），失败则回退 GBK（中文 Windows 常见），
          再失败则回退 Latin-1。解决 DBC 文件中 "℃" 等非 ASCII 字符乱码问题。 */
       try{
-        resolve(new TextDecoder('utf-8',{fatal:true}).decode(buf));
+        resolve(await decodeBytesChunked(buf,'utf-8',true,onProg?p=>onProg(.65+p*.35):null));
       }catch(e){
         try{
-          resolve(new TextDecoder('gbk',{fatal:false}).decode(buf));
+          resolve(await decodeBytesChunked(buf,'gbk',false,onProg?p=>onProg(.65+p*.35):null));
         }catch(e2){
-          resolve(new TextDecoder('latin1',{fatal:false}).decode(buf));
+          try{ resolve(await decodeBytesChunked(buf,'latin1',false,onProg?p=>onProg(.65+p*.35):null)); }
+          catch(e3){ reject(e3); }
         }
       }
     };
     r.onerror=()=>reject(r.error);
-    if(onProg) r.onprogress=e=>onProg(e.loaded/(e.total||1));
+    if(onProg) r.onprogress=e=>onProg(e.loaded/(e.total||1)*.65);
     r.readAsArrayBuffer(file);
+  });
+}
+function decodeBytesChunked(bytes, encoding, fatal, onProgress){
+  return new Promise((resolve,reject)=>{
+    let decoder;
+    try{ decoder=new TextDecoder(encoding,{fatal}); }
+    catch(error){ reject(error); return; }
+    const parts=[];
+    const total=bytes.length;
+    let offset=0;
+    function step(){
+      const started=workNow();
+      try{
+        do{
+          const end=Math.min(offset+512*1024,total);
+          parts.push(decoder.decode(bytes.subarray(offset,end),{stream:end<total}));
+          offset=end;
+        }while(offset<total&&!shouldYield(started));
+      }catch(error){ reject(error); return; }
+      if(onProgress) onProgress(offset/(total||1));
+      if(offset<total){ queueWork(step); return; }
+      resolve(parts.join(''));
+    }
+    step();
   });
 }
 function showLoading(txt, prog){
@@ -893,6 +990,7 @@ function renderSignalList(){
   if(!dbcData){ list.innerHTML='<div class="empty-hint">请先加载 DBC 文件</div>'; $('availCount').textContent='0'; return; }
   const q=$('searchInput').value.trim().toLowerCase();
   const msgs=Object.values(dbcData.messages).sort((a,b)=>a.realId-b.realId);
+  const fragment=document.createDocumentFragment();
   let shown=0;
   for(const msg of msgs){
     let sigs=msg.signals;
@@ -901,6 +999,7 @@ function renderSignalList(){
     if(!sigs.length) continue;
     shown+=sigs.length;
     const g=el('div','msg-group');
+    g.style.containIntrinsicSize=`auto ${34+sigs.length*28}px`;
     const mt=el('div','mtitle');
     mt.append(
       el('span','arrow','▾'),
@@ -928,9 +1027,10 @@ function renderSignalList(){
       body.appendChild(it);
     }
     mt.addEventListener('click',()=>{ body.style.display = body.style.display==='none'?'block':'none'; mt.querySelector('.arrow').textContent = body.style.display==='none'?'▸':'▾'; });
-    g.append(mt,body); list.appendChild(g);
+    g.append(mt,body); fragment.appendChild(g);
   }
-  if(!shown){ list.innerHTML='<div class="empty-hint">无匹配信号</div>'; }
+  if(shown) list.appendChild(fragment);
+  else list.innerHTML='<div class="empty-hint">无匹配信号</div>';
   $('availCount').textContent=shown;
 }
 function renderPickedList(){
@@ -940,16 +1040,14 @@ function renderPickedList(){
   $('pickedCount').textContent=selectedSet.size;
   if(!sigs.length){ picked.innerHTML='<div class="empty-hint">勾选左侧信号后自动出现在此</div>'; return; }
   /* 测量最长名称宽度（无数据信号按"名称+[无数据]"一起计入，避免徽标与ID重叠），名称定宽使ID列对齐 */
-  const tmp=document.createElement('span');
-  tmp.style.cssText='position:absolute;visibility:hidden;white-space:nowrap;font-size:13px;';
-  picked.appendChild(tmp);
+  const ctx=document.createElement('canvas').getContext('2d');
+  ctx.font='13px system-ui,sans-serif';
   let maxW=0;
   for(const s of sigs){
     const has = signalHasData(s);
-    tmp.textContent = has ? s.name : s.name+signalUnavailableText(s);
-    maxW=Math.max(maxW,tmp.offsetWidth);
+    const label=has ? s.name : s.name+signalUnavailableText(s);
+    maxW=Math.max(maxW,ctx.measureText(label).width);
   }
-  tmp.remove();
   const nameMinW=Math.ceil(maxW+6)+'px';
   for(const s of sigs){
     const has = signalHasData(s);
@@ -1466,9 +1564,9 @@ function renderCharts(){
       fitAllY();
       autoFitSideWidth();   /* 名称列宽度按当前信号中最长名称自动调整 */
       const si=$('searchInput'); if(si){ si.value=''; renderSignalList(); }   /* 生成完成后清空信号名称输入框 */
-      setTimeout(()=>{ charts.forEach(c=>c.resize()); if(xAxisChart)xAxisChart.resize(); }, 100);
-      setTimeout(()=>{ charts.forEach(c=>c.resize()); if(xAxisChart)xAxisChart.resize(); }, 300);
-      setTimeout(()=>{ charts.forEach(c=>c.resize()); if(xAxisChart)xAxisChart.resize(); }, 500);   /* 最终尺寸校正，确保首次渲染不空白 */
+      setTimeout(resizeAllCharts,100);
+      setTimeout(resizeAllCharts,300);
+      setTimeout(resizeAllCharts,500);   /* 最终尺寸校正，确保首次渲染不空白 */
       setTimeout(()=>{ initCrosshairRight(); }, 400);   /* 竖虚线默认显示在所有曲线最右侧 */
       $('chartArea').scrollTop = 0;   /* 曲线区滚动归零 */
       finishBusy();
@@ -2322,7 +2420,12 @@ $('fileAsc').addEventListener('cancel',()=>{ stopLoadTxt(); $('ascInfo').textCon
 async function loadDbcText(name, txt, showBusy){
   const token = showBusy ? startBusy('解析 DBC 文件…', ()=>{ token.cancelled=true; }, {immediate:true}) : null;
   try{
-    dbcData = await parseDBC(txt, showBusy ? ()=>token.cancelled : null);
+    if(showBusy) await nextPaint();
+    let lastPct=-1;
+    dbcData = await parseDBC(txt, showBusy ? ()=>token.cancelled : null, showBusy?p=>{
+      const pct=Math.round(p*100);
+      if(pct!==lastPct){ lastPct=pct; $('busyText').textContent=`解析 DBC 文件… ${pct}%`; }
+    }:null);
     if(showBusy && (token.cancelled || !dbcData || dbcData.cancelled)){
       dbcData=null; $('dbcInfo').textContent='未加载'; $('dbcInfo').classList.remove('loaded');
       toast('已取消 DBC 解析'); return;
@@ -2377,7 +2480,12 @@ async function loadAscText(name, txt, showBusy){
   hideLoading();
   const token = showBusy ? startBusy('解析 ASC 文件…', ()=>{ token.cancelled=true; }, {immediate:true}) : null;
   try{
-    const parsed = await parseASC(txt, null, showBusy ? ()=>token.cancelled : null);
+    if(showBusy) await nextPaint();
+    let lastPct=-1;
+    const parsed = await parseASC(txt, showBusy?p=>{
+      const pct=Math.round(p*100);
+      if(pct!==lastPct){ lastPct=pct; $('busyText').textContent=`解析 ASC 文件… ${pct}%`; }
+    }:null, showBusy ? ()=>token.cancelled : null);
     if(showBusy && (token.cancelled || !parsed || parsed.cancelled)){
       $('ascInfo').textContent=ascFileName||'未加载';
       toast('已取消 ASC 解析'); return;
@@ -2401,8 +2509,24 @@ async function loadAscText(name, txt, showBusy){
   finally{ stopLoadTxt(); if(showBusy) finishBusy(); }
 }
 $('ascSource').addEventListener('change',e=>activateAscSource(e.target.value,true));
-$('fileDbc').onchange=async e=>{ const f=e.target.files[0]; if(!f) return; $('btnDbc').classList.remove('primary'); await loadDbcText(f.name, await readText(f), f.size>=50*1024); e.target.value=''; };   /* 仅显示干净文件名（浏览器不提供真实路径） */
-$('fileAsc').onchange=async e=>{ const f=e.target.files[0]; if(!f) return; ascFileSize=f.size; $('btnAsc').classList.remove('primary'); const big=f.size>=50*1024*1024; await loadAscText(f.name, await readText(f, big?p=>showLoading('读取 ASC… '+Math.round(p*100)+'%', p):null), big); e.target.value=''; };   /* 仅显示干净文件名（浏览器不提供真实路径） */
+$('fileDbc').onchange=async e=>{
+  const f=e.target.files[0]; if(!f) return;
+  $('btnDbc').classList.remove('primary');
+  await nextPaint();
+  try{ await loadDbcText(f.name,await readText(f),f.size>=50*1024); }
+  catch(error){ stopLoadTxt(); $('dbcInfo').textContent='读取失败'; toast('DBC 读取失败：'+error.message); }
+  finally{ e.target.value=''; }
+};   /* 仅显示干净文件名（浏览器不提供真实路径） */
+$('fileAsc').onchange=async e=>{
+  const f=e.target.files[0]; if(!f) return;
+  ascFileSize=f.size; $('btnAsc').classList.remove('primary');
+  const big=f.size>=50*1024*1024;
+  if(big) showLoading('读取 ASC… 0%',0);
+  await nextPaint();
+  try{ await loadAscText(f.name,await readText(f,big?p=>showLoading('读取 ASC… '+Math.round(p*100)+'%',p):null),big); }
+  catch(error){ hideLoading(); stopLoadTxt(); $('ascInfo').textContent='读取失败'; toast('ASC 读取失败：'+error.message); }
+  finally{ e.target.value=''; }
+};   /* 仅显示干净文件名（浏览器不提供真实路径） */
 
 // expose for testing/automation
 window.__can={
@@ -2411,7 +2535,7 @@ window.__can={
   setReleaseTime,latestSuccessfulDeployment,
   get dbc(){return dbcData;},get asc(){return ascData;},get ascFile(){return ascFileData;},get charts(){return charts;}
 };
-$('searchInput').addEventListener('input', ()=>renderSignalList());
+$('searchInput').addEventListener('input', debounce(()=>renderSignalList(),120));
 /* 信号选择框收起时，点击搜索输入框自动展开 */
 $('searchInput').addEventListener('focus', ()=>{
   const bar=$('sigBar');
@@ -2422,7 +2546,7 @@ $('searchInput').addEventListener('focus', ()=>{
     bar.style.height='';
     bar.style.flex='';
     bar.style.transition='';
-    setTimeout(()=>{ charts.forEach(c=>c.resize()); }, 250);
+    setTimeout(resizeAllCharts,250);
   }
 });
 /* 样式切换：默认风格(06c2dffb) ↔ CANalyzer风格(最新) */
@@ -2481,7 +2605,7 @@ $('btnStart').onclick=()=>{
   /* 等折叠动画结束后再渲染，避免折叠期间图表容器尺寸未定型导致首次曲线空白 */
   const delay=wasCollapsed?0:230;
   setTimeout(()=>{ renderCharts(); }, delay);
-  setTimeout(()=>{ charts.forEach(c=>c.resize()); if(xAxisChart)xAxisChart.resize(); }, delay+400);
+  setTimeout(resizeAllCharts,delay+400);
 };
 /* 信号选择按钮：动作执行中不接收新点击 + 闪烁提示 */
 let sigToggleBusy=false;
@@ -2510,7 +2634,7 @@ $('sigToggle').onclick=()=>{
   bar.style.height='';
   bar.style.flex='';
   bar.style.transition='';
-  setTimeout(()=>{ charts.forEach(c=>c.resize()); }, 250);
+  setTimeout(resizeAllCharts,250);
   } finally {
     sigToggleBusy=false;
   }
@@ -2572,7 +2696,7 @@ function showAnalysisPanel(){
   $('chartScrollWrap').style.height=(half-2)+'px';
   $('analysisPanel').style.flex='none';
   $('analysisPanel').style.height=(half-2)+'px';
-  setTimeout(()=>{ charts.forEach(c=>c.resize()); if(xAxisChart)xAxisChart.resize(); }, 50);
+  setTimeout(resizeAllCharts,50);
   syncAnalysisBtns(true);
 }
 function hideAnalysisPanel(){
@@ -2582,7 +2706,7 @@ function hideAnalysisPanel(){
   $('chartScrollWrap').style.height='';
   $('analysisPanel').style.flex='';
   $('analysisPanel').style.height='';
-  setTimeout(()=>{ charts.forEach(c=>c.resize()); if(xAxisChart)xAxisChart.resize(); }, 50);
+  setTimeout(resizeAllCharts,50);
   syncAnalysisBtns(false);
 }
 function runAnalysis(){
@@ -2615,7 +2739,7 @@ function enterFullscreen(mode){
   fsMode = mode;
   document.body.classList.add('fs-on');
   updateFsIcons();
-  setTimeout(()=>{ charts.forEach(c=>c.resize()); if(xAxisChart)xAxisChart.resize(); }, 60);
+  setTimeout(resizeAllCharts,60);
 }
 function exitFullscreen(){
   if(!fsMode) return;
@@ -2624,7 +2748,7 @@ function exitFullscreen(){
   fsMode = null;
   document.body.classList.remove('fs-on');
   updateFsIcons();
-  setTimeout(()=>{ charts.forEach(c=>c.resize()); if(xAxisChart)xAxisChart.resize(); }, 60);
+  setTimeout(resizeAllCharts,60);
 }
 function toggleChartsFullscreen(){ fsMode==='charts' ? exitFullscreen() : enterFullscreen('charts'); }
 function toggleAnalysisFullscreen(){ fsMode==='analysis' ? exitFullscreen() : enterFullscreen('analysis'); }
@@ -2657,8 +2781,7 @@ document.addEventListener('keydown',(e)=>{
     if(newPanelH<40) newPanelH=40;
     $('chartScrollWrap').style.height=newChartH+'px';
     $('analysisPanel').style.height=newPanelH+'px';
-    charts.forEach(c=>c.resize());
-    if(xAxisChart) xAxisChart.resize();
+    resizeAllCharts();
   });
   document.addEventListener('mouseup',()=>{
     if(!dragging) return;
@@ -2689,8 +2812,7 @@ document.addEventListener('keydown',(e)=>{
     bar.classList.add('resized');
     bar.style.height=newH+'px';
     bar.style.flex='none';
-    charts.forEach(c=>c.resize());
-    if(xAxisChart) xAxisChart.resize();
+    resizeAllCharts();
   });
   document.addEventListener('mouseup',()=>{
     if(!dragging) return;
@@ -2720,8 +2842,7 @@ document.addEventListener('keydown',(e)=>{
     if(w<60) w=60;
     if(w>400) w=400;
     document.documentElement.style.setProperty('--cc-side-w', w+'px');
-    charts.forEach(c=>c.resize());
-    if(xAxisChart) xAxisChart.resize();
+    resizeAllCharts();
   });
   document.addEventListener('mouseup',()=>{
     if(!dragging) return;
@@ -2770,8 +2891,7 @@ document.addEventListener('keydown',(e)=>{
       if(w<60) w=60;
       if(w>400) w=400;
       document.documentElement.style.setProperty('--cc-side-w', w+'px');
-      charts.forEach(c=>c.resize());
-      if(xAxisChart) xAxisChart.resize();
+      resizeAllCharts();
     } else {
       document.documentElement.style.setProperty('--col-max', Math.max(24, measureColumn('max'))+'px');
       updateSideTotal();
@@ -2828,7 +2948,7 @@ function applyXRange(){
 }
 $('gXmin').addEventListener('change', applyXRange);
 $('gXmax').addEventListener('change', applyXRange);
-window.addEventListener('resize',()=>{ charts.forEach(c=>c.resize()); if(xAxisChart)xAxisChart.resize(); });
+window.addEventListener('resize',resizeAllCharts,{passive:true});
 
 /* 发布时间显示：优先使用 Cloudflare 生产构建完成时间，取不到时回退到代码提交时间。 */
 function setReleaseTime(d, source){
@@ -2848,7 +2968,7 @@ function latestSuccessfulDeployment(checkRuns){
     .sort((a,b)=>Date.parse(b.completed_at)-Date.parse(a.completed_at))[0]||null;
 }
 (function(){
-  setReleaseTime(new Date('2026-09-06T12:05:06Z'),'fallback');
+  setReleaseTime(new Date('2026-09-07T13:01:43Z'),'fallback');
 })();
 /* GitHub 提交号与 Cloudflare 部署时间：部署检查不可用时使用文件提交时间。 */
 (async function(){

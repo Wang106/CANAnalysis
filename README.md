@@ -62,7 +62,7 @@ npx wrangler deploy
 
 - 纯 HTML + JavaScript，无后端依赖
 - [ECharts 5.5](https://echarts.apache.org/) 用于波形绘制
-- 支持大文件（百万级报文）解析，使用 TypedArray 紧凑存储与 LTTB 降采样渲染
+- 支持大文件（百万级报文）解析，采用约 8 ms 自适应时间片保持界面响应，并使用 TypedArray 紧凑存储与 LTTB 降采样渲染
 
 ## 数据兼容性说明
 
