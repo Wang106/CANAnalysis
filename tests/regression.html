@@ -144,6 +144,16 @@ document.getElementById('app').addEventListener('load',async()=>{
     assert(doc.getElementById('hmodtime').dataset.source==='cloudflare','部署时间来源标记错误');
   });
 
+  await record('顶部栏目导航顺序、当前页与占位状态正确',async()=>{
+    const nav=doc.getElementById('topNav');
+    const items=Array.from(nav.querySelectorAll('.nav-item'));
+    assert(items.map(item=>item.textContent).join('|')==='首页|CAN报文解析|格式转换|27930报文分析|J939分析|友情链接|关于本站','栏目顺序或标题错误');
+    assert(items[1].getAttribute('aria-current')==='page'&&items[1].classList.contains('active'),'CAN报文解析未标记为当前栏目');
+    assert(nav.querySelectorAll('a').length===0,'暂未开放栏目不应创建跳转链接');
+    assert(items.filter((item,index)=>index!==1&&item.getAttribute('aria-disabled')==='true').length===6,'未开放栏目缺少禁用语义');
+    assert(win.getComputedStyle(nav).height==='12px','导航栏默认未处于收缩状态');
+  });
+
   const list=document.getElementById('results');
   for(const result of tests){
     const item=document.createElement('li');
