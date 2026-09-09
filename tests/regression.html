@@ -144,7 +144,7 @@ document.getElementById('app').addEventListener('load',async()=>{
     assert(doc.getElementById('hmodtime').dataset.source==='cloudflare','部署时间来源标记错误');
   });
 
-  await record('顶部栏目导航启动高亮、当前页与占位提示正确',async()=>{
+  await record('顶部横条启动高亮、当前页与占位提示正确',async()=>{
     const nav=doc.getElementById('topNav');
     const items=Array.from(nav.querySelectorAll('.nav-item'));
     assert(items.map(item=>item.textContent).join('|')==='首页|CAN报文解析|格式转换|27930报文分析|J939分析|友情链接|关于本站','栏目顺序或标题错误');
@@ -152,8 +152,10 @@ document.getElementById('app').addEventListener('load',async()=>{
     assert(nav.querySelectorAll('a').length===0,'暂未开放栏目不应创建跳转链接');
     assert(items.filter((item,index)=>index!==1&&item.getAttribute('aria-disabled')==='true').length===6,'未开放栏目缺少禁用语义');
     assert(win.getComputedStyle(nav).height==='12px','导航栏默认未处于收缩状态');
+    const navStyle=win.getComputedStyle(nav);
     const peekStyle=win.getComputedStyle(nav.querySelector('.nav-peek'));
-    assert(win.matchMedia('(prefers-reduced-motion: reduce)').matches||peekStyle.animationName==='navPeekIntro'&&peekStyle.animationDuration==='1s','栏目导航缺少 1 秒启动高亮过渡');
+    assert(win.matchMedia('(prefers-reduced-motion: reduce)').matches||navStyle.animationName==='navBarIntro'&&navStyle.animationDuration==='1s','顶部横条缺少 1 秒背景色高亮过渡');
+    assert(peekStyle.animationName==='none','“栏目导航”文字不应执行颜色动画');
     items[0].dispatchEvent(new win.MouseEvent('click',{bubbles:true,clientX:80,clientY:8}));
     const notice=doc.getElementById('navNotice');
     assert(notice.classList.contains('show'),'点击未开放栏目后未显示鼠标旁提示');
