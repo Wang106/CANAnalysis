@@ -35,6 +35,11 @@ document.getElementById('app').addEventListener('load',async()=>{
   const sampleDbc=await fetch('../public/sample.dbc').then(r=>r.text());
   const sampleAsc=await fetch('../public/sample.asc').then(r=>r.text());
 
+  await record('初始提交号与已选信号提示可见',async()=>{
+    assert(/^[0-9a-f]{8}$/i.test(doc.getElementById('hcommit').textContent.trim()),'左上角未显示 8 位提交号');
+    assert(doc.getElementById('sigPicked').textContent.trim()==='请先加载DBC文件','已选信号区域初始提示错误');
+  });
+
   await record('示例文件解析、绘图和分析',async()=>{
     await api.loadDbcText('sample.dbc',sampleDbc,false);
     await api.loadAscText('sample.asc',sampleAsc,false);
@@ -167,9 +172,10 @@ document.getElementById('app').addEventListener('load',async()=>{
     assert(nav.querySelectorAll('a').length===0,'暂未开放栏目不应创建跳转链接');
     assert(items.filter((item,index)=>index!==1&&item.getAttribute('aria-disabled')==='true').length===6,'未开放栏目缺少禁用语义');
     assert(win.getComputedStyle(nav).height==='12px','导航栏默认未处于收缩状态');
-    const navStyle=win.getComputedStyle(nav);
+    const leftSweep=win.getComputedStyle(nav,'::before');
+    const rightSweep=win.getComputedStyle(nav,'::after');
     const peekStyle=win.getComputedStyle(nav.querySelector('.nav-peek'));
-    assert(win.matchMedia('(prefers-reduced-motion: reduce)').matches||navStyle.animationName==='navBarIntro'&&navStyle.animationDuration==='1s','顶部横条缺少 1 秒背景色高亮过渡');
+    assert(win.matchMedia('(prefers-reduced-motion: reduce)').matches||leftSweep.animationName==='navSweepLeft'&&rightSweep.animationName==='navSweepRight'&&leftSweep.animationDuration==='1s'&&rightSweep.animationDuration==='1s','顶部横条缺少左右向中心聚拢的 1 秒亮色动画');
     assert(peekStyle.animationName==='none','“栏目导航”文字不应执行颜色动画');
     items[0].dispatchEvent(new win.MouseEvent('click',{bubbles:true,clientX:80,clientY:8}));
     const notice=doc.getElementById('navNotice');

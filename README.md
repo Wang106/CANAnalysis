@@ -81,7 +81,7 @@ python3 -m http.server 8000
 
 访问 `http://127.0.0.1:8000/tests/regression.html`，页面应显示全部测试通过。
 
-版本变更与回滚基线见 [`CHANGELOG.md`](CHANGELOG.md)。
+版本变更与回滚基线见 [`CHANGELOG.md`](CHANGELOG.md)。部署时由 `public/version.json` 保存页面代码提交号，避免 GitHub 公共 API 限流导致版本信息空白。
 
 ## 许可
 

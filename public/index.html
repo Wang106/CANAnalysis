@@ -33,12 +33,16 @@
   #app{display:flex;flex-direction:column;height:100%;overflow:hidden;}
 
   /* site navigation: a slim discovery strip at rest, expanded as an overlay on hover/focus */
-  #topNav{position:relative;height:12px;flex:0 0 12px;z-index:40;background:var(--panel2);border-bottom:1px solid var(--line);outline:none;overflow:visible;animation:navBarIntro 1s ease-out both;}
-  @keyframes navBarIntro{0%{background-color:var(--accent);}100%{background-color:var(--panel2);}}
-  .nav-peek{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:4px;color:var(--txt2);font-size:9px;line-height:1;letter-spacing:1px;transition:opacity .16s ease;}
+  #topNav{position:relative;height:12px;flex:0 0 12px;z-index:40;background:var(--panel2);border-bottom:1px solid var(--line);outline:none;overflow:visible;}
+  #topNav::before,#topNav::after{content:"";position:absolute;top:0;bottom:0;width:32%;z-index:0;pointer-events:none;opacity:0;will-change:transform,opacity;background:linear-gradient(90deg,transparent 0%,rgba(74,158,255,.2) 28%,var(--accent) 50%,rgba(74,158,255,.2) 72%,transparent 100%);}
+  #topNav::before{left:0;animation:navSweepLeft 1s ease-out both;}
+  #topNav::after{right:0;animation:navSweepRight 1s ease-out both;}
+  @keyframes navSweepLeft{0%{transform:translateX(-50%);opacity:0;}12%{opacity:1;}72%{transform:translateX(106.25%);opacity:1;}100%{transform:translateX(106.25%);opacity:0;}}
+  @keyframes navSweepRight{0%{transform:translateX(50%);opacity:0;}12%{opacity:1;}72%{transform:translateX(-106.25%);opacity:1;}100%{transform:translateX(-106.25%);opacity:0;}}
+  .nav-peek{position:absolute;inset:0;z-index:1;display:flex;align-items:center;justify-content:center;gap:4px;color:var(--txt2);font-size:9px;line-height:1;letter-spacing:1px;transition:opacity .16s ease;}
   .nav-peek::before,.nav-peek::after{content:"";width:32px;height:1px;background:linear-gradient(90deg,transparent,var(--accent));opacity:.7;}
   .nav-peek::after{background:linear-gradient(90deg,var(--accent),transparent);}
-  .top-nav-inner{position:absolute;top:0;left:0;width:100%;height:44px;display:flex;align-items:center;justify-content:center;gap:4px;padding:5px 14px;background:rgba(23,26,33,.98);border-bottom:1px solid var(--accent);box-shadow:0 8px 22px rgba(0,0,0,.36);opacity:0;transform:translateY(-34px);pointer-events:none;transition:transform .2s ease,opacity .16s ease;overflow-x:auto;overflow-y:hidden;white-space:nowrap;scrollbar-width:thin;}
+  .top-nav-inner{position:absolute;top:0;left:0;z-index:2;width:100%;height:44px;display:flex;align-items:center;justify-content:center;gap:4px;padding:5px 14px;background:rgba(23,26,33,.98);border-bottom:1px solid var(--accent);box-shadow:0 8px 22px rgba(0,0,0,.36);opacity:0;transform:translateY(-34px);pointer-events:none;transition:transform .2s ease,opacity .16s ease;overflow-x:auto;overflow-y:hidden;white-space:nowrap;scrollbar-width:thin;}
   #topNav:hover .nav-peek,#topNav:focus-within .nav-peek{opacity:0;}
   #topNav:hover .top-nav-inner,#topNav:focus-within .top-nav-inner{opacity:1;transform:translateY(0);pointer-events:auto;}
   .nav-item{position:relative;display:inline-flex;align-items:center;justify-content:center;height:32px;padding:0 15px;border-radius:6px;color:var(--txt2);font-size:13px;line-height:1;user-select:none;cursor:default;transition:color .15s ease,background .15s ease;}
@@ -51,7 +55,7 @@
     .nav-item{padding:0 11px;font-size:12px;}
   }
   @media (prefers-reduced-motion:reduce){
-    #topNav{animation:none;}
+    #topNav::before,#topNav::after{animation:none;display:none;}
     .nav-peek,.top-nav-inner{transition:none;}
   }
 
@@ -309,7 +313,7 @@
       <img src="icon.png" class="icon" alt="icon" />
       <div class="htitle-wrap">
         <span class="htitle">CAN报文解析</span>
-        <span class="hcommit" id="hcommit"></span>
+        <span class="hcommit" id="hcommit" title="GitHub 提交号 47dede52c5cd20d5733cace81d2c9a7c1e6456a2">47dede52</span>
         <span class="hmodtime" id="hmodtime"></span>
       </div>
     </div>
@@ -347,7 +351,7 @@
       <div class="sig-col">
         <div class="sig-col-head">已选信号<button id="btnClearNoData" class="col-btn">清空无数据信号</button><button id="btnClearAll" class="col-btn">清空</button><span class="cnt" id="pickedCount">0</span></div>
         <div class="sig-col-body" id="sigPicked">
-          <div class="empty-hint">勾选左侧信号后自动出现在此</div>
+          <div class="empty-hint">请先加载DBC文件</div>
         </div>
       </div>
     </div>
@@ -1076,7 +1080,7 @@ function renderSignalList(){
 }
 function renderPickedList(){
   const picked=$('sigPicked'); picked.innerHTML='';
-  if(!dbcData){ picked.innerHTML='<div class="empty-hint">请先加载 DBC 文件</div>'; $('pickedCount').textContent='0'; return; }
+  if(!dbcData){ picked.innerHTML='<div class="empty-hint">请先加载DBC文件</div>'; $('pickedCount').textContent='0'; return; }
   const sigs=selectedSignals();
   $('pickedCount').textContent=selectedSet.size;
   if(!sigs.length){ picked.innerHTML='<div class="empty-hint">勾选左侧信号后自动出现在此</div>'; return; }
@@ -3028,22 +3032,25 @@ function latestSuccessfulDeployment(checkRuns){
     .sort((a,b)=>Date.parse(b.completed_at)-Date.parse(a.completed_at))[0]||null;
 }
 (function(){
-  setReleaseTime(new Date('2026-09-09T11:21:10Z'),'fallback');
+  setReleaseTime(new Date('2026-09-09T11:24:55Z'),'fallback');
 })();
-/* GitHub 提交号与 Cloudflare 部署时间：部署检查不可用时使用文件提交时间。 */
-(async function(){
+function setCommitDisplay(commit, source){
   const el=$('hcommit');
-  if(!el) return;
+  if(!el||typeof commit!=='string'||!commit.trim()) return;
+  const normalized=commit.trim();
+  el.textContent=normalized.slice(0,8);
+  el.dataset.source=source||'manifest';
+  el.title='GitHub 提交号 '+normalized+(source==='manifest'?'（站点版本清单）':'');
+}
+/* 提交号优先读取同源版本清单，避免 GitHub 公共 API 限流时显示为空。 */
+(async function(){
   let committedAt=null;
   try{
-    const r=await fetch('https://api.github.com/repos/Wang106/CANAnalysis/commits?path=public/index.html&per_page=1');
-    if(!r.ok) throw new Error('GitHub commit request failed');
-    const j=await r.json();
-    if(j&&j.length&&j[0]&&j[0].sha){
-      el.textContent=j[0].sha.slice(0,8);   /* 只显示完整提交号前8位 */
-      el.title='GitHub 提交号 '+j[0].sha;
-      committedAt=j[0].commit&&j[0].commit.committer&&j[0].commit.committer.date;
-    }
+    const r=await fetch('version.json',{cache:'no-store'});
+    if(!r.ok) throw new Error('Version manifest request failed');
+    const metadata=await r.json();
+    setCommitDisplay(metadata&&metadata.commit,'manifest');
+    committedAt=metadata&&metadata.committedAt;
   }catch(e){}
   try{
     const r=await fetch('https://api.github.com/repos/Wang106/CANAnalysis/commits/main/check-runs?per_page=100',{
