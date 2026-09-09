@@ -144,6 +144,21 @@ document.getElementById('app').addEventListener('load',async()=>{
     assert(doc.getElementById('hmodtime').dataset.source==='cloudflare','部署时间来源标记错误');
   });
 
+  await record('左上角三行信息异步更新时尺寸保持稳定',async()=>{
+    const wrap=doc.querySelector('.htitle-wrap');
+    const commit=doc.getElementById('hcommit');
+    const release=doc.getElementById('hmodtime');
+    const headerRight=doc.querySelector('.header-right');
+    const originalCommit=commit.textContent,originalRelease=release.textContent;
+    commit.textContent=''; release.textContent='';
+    const before={wrapW:wrap.offsetWidth,wrapH:wrap.offsetHeight,rightX:headerRight.getBoundingClientRect().x,headerH:doc.getElementById('header').offsetHeight};
+    commit.textContent='12345678'; release.textContent='2026-09-09 19:21:10发布';
+    const after={wrapW:wrap.offsetWidth,wrapH:wrap.offsetHeight,rightX:headerRight.getBoundingClientRect().x,headerH:doc.getElementById('header').offsetHeight};
+    commit.textContent=originalCommit; release.textContent=originalRelease;
+    assert(before.wrapW===132&&before.wrapH===46,'三行文字区域未固定为 132×46 px');
+    assert(JSON.stringify(before)===JSON.stringify(after),'提交码或部署时间更新导致头部布局跳动');
+  });
+
   await record('顶部横条启动高亮、当前页与占位提示正确',async()=>{
     const nav=doc.getElementById('topNav');
     const items=Array.from(nav.querySelectorAll('.nav-item'));
