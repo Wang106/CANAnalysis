@@ -40,6 +40,16 @@ document.getElementById('app').addEventListener('load',async()=>{
     assert(doc.getElementById('sigPicked').textContent.trim()==='请先加载DBC文件','已选信号区域初始提示错误');
   });
 
+  await record('左上角本地图标预加载且占位固定',async()=>{
+    const icon=doc.querySelector('.header-left .icon');
+    const preload=doc.querySelector('link[rel="preload"][as="image"][href="icon.png"]');
+    assert(icon&&icon.getAttribute('src')==='icon.png','左上角图标未使用本地资源');
+    assert(icon.getAttribute('width')==='38'&&icon.getAttribute('height')==='38','图标缺少固定宽高属性');
+    assert(icon.loading==='eager'&&icon.getAttribute('decoding')==='sync','图标未启用启动阶段优先加载与同步解码');
+    assert(preload&&preload.getAttribute('fetchpriority')==='high','本地图标缺少高优先级预加载');
+    assert(icon.getBoundingClientRect().width===38&&icon.getBoundingClientRect().height===38,'图标实际占位不是 38×38 px');
+  });
+
   await record('示例文件解析、绘图和分析',async()=>{
     await api.loadDbcText('sample.dbc',sampleDbc,false);
     await api.loadAscText('sample.asc',sampleAsc,false);
