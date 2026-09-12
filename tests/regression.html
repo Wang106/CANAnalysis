@@ -147,6 +147,30 @@ document.getElementById('app').addEventListener('load',async()=>{
     assert(api.buildSeries(sig).length===0,'宽信号仍被错误绘制');
   });
 
+  await record('DBC 的零缩放因子保持常量物理值',async()=>{
+    const dbc='VERSION ""\nBO_ 256 Constant: 1 ECU\n SG_ Fixed : 0|8@1+ (0,12.5) [12.5|12.5] "V" ECU';
+    const parsed=await api.parseDBC(dbc);
+    const sig=parsed.signals[0];
+    assert(sig.factor===0,'factor=0 被错误替换');
+    assert(api.toPhysical(255,sig)===12.5,'零缩放因子未生成恒定物理值');
+  });
+
+  await record('超出实际帧 DLC 的信号不会被补零绘制',async()=>{
+    const dbc='VERSION ""\nBO_ 256 ShortFrame: 1 ECU\n SG_ BeyondDlc : 8|8@1+ (1,0) [0|255] "" ECU';
+    const asc='0.000 1 100 Rx d 1 AA';
+    await api.loadDbcText('short.dbc',dbc,false);
+    await api.loadAscText('short.asc',asc,false);
+    assert(api.buildSeries(api.dbc.signals[0]).length===0,'帧外位被当作零值绘制');
+  });
+
+  await record('无有效信号的 DBC 会清空旧状态',async()=>{
+    await api.loadDbcText('invalid.dbc','VERSION ""\nCM_ "no messages or signals";',false);
+    assert(api.dbc===null,'无效 DBC 被保留为已加载状态');
+    assert(doc.getElementById('dbcInfo').textContent==='未加载','无效 DBC 仍显示为已加载');
+    assert(doc.getElementById('sigList').textContent.includes('请先加载 DBC 文件'),'无效 DBC 后未恢复初始提示');
+    assert(doc.getElementById('btnStart').disabled,'无效 DBC 后仍可生成曲线');
+  });
+
   await record('部署时间选择最新成功的 Workers Build',async()=>{
     const latest=api.latestSuccessfulDeployment([
       {name:'Workers Builds: cananalysis',conclusion:'success',completed_at:'2026-09-05T10:00:00Z'},
