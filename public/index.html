@@ -641,106 +641,165 @@ function signalIsActiveAt(sig, data, base, dlc){
 }
 
 /* ---------- ASC parser (async chunked, 可取消) ---------- */
-async function parseASC(text, onProgress, isCancelled){
-  const total = text.length;
+const ASC_RE = /^\s*([0-9]+\.?[0-9]*(?:[eE][-+]?[0-9]+)?)\s+(\d+)\s+([0-9A-Fa-f]+)([xX]?)\s+(Rx|Tx)\s+(\S+)\s+(\d+)\s*(.*)$/;
+const ASC_BUFFER_FRAMES = 8192;
+function createASCCollector(){
   const sources = {};
   const sourceOrder = [];
   let totalMessages=0, rejectedFrames=0;
-  const ASC_RE = /^\s*([0-9]+\.?[0-9]*(?:[eE][-+]?[0-9]+)?)\s+(\d+)\s+([0-9A-Fa-f]+)([xX]?)\s+(Rx|Tx)\s+(\S+)\s+(\d+)\s*(.*)$/;
-  let pos=0;
-  return new Promise(resolve=>{
-    function step(){
-      if(isCancelled && isCancelled()){ resolve({cancelled:true}); return; }
-      const started=workNow();
-      do{
-        const nl=text.indexOf('\n',pos);
-        const end=nl<0?total:nl;
-        const line=text.slice(pos,end).replace(/\r$/,'');
-        pos=nl<0?total+1:nl+1;
-        if(!line) continue;
-        const c=line[0];
-        if(c==='/'||c===';'||c==='#'||c===' ') {
-          // still try regex for indented lines
-        }
-        const m=line.match(ASC_RE);
-        if(!m) continue;
-        const t=parseFloat(m[1]);
-        if(!isFinite(t)) continue;
-        const channel=m[2];
-        const realId=parseInt(m[3],16);
-        const isExt=m[4].toLowerCase()==='x';
-        const direction=m[5];
-        const frameType=m[6].toLowerCase();
-        const dlc=parseInt(m[7],10);
-        if(frameType!=='d'||!isFinite(realId)||dlc<=0||dlc>64){ rejectedFrames++; continue; }
-        const rest=m[8]||'';
-        const toks=rest.split(/\s+/);
-        const bytes=[];
-        for(const tk of toks){
-          if(/^[0-9A-Fa-f]{1,2}$/.test(tk)){
-            if(bytes.length<dlc) bytes.push(parseInt(tk,16));
-          }
-        }
-        if(bytes.length!==dlc){ rejectedFrames++; continue; }
-        const sourceKey=channel+'_'+direction;
-        let source=sources[sourceKey];
-        if(!source){
-          source={key:sourceKey,channel,direction,label:`通道 ${channel} · ${direction}`,
-                  map:{},idOrder:[],totalMessages:0,tMin:Infinity,tMax:-Infinity,rejectedFrames:0};
-          sources[sourceKey]=source;
-          sourceOrder.push(sourceKey);
-        }
-        const key=realId+'_'+(isExt?'x':'s');
-        let entry=source.map[key];
-        if(!entry){
-          entry={times:[], data:[], dlc, isExt, realId};
-          source.map[key]=entry; source.idOrder.push(key);
-        }else if(entry.dlc!==dlc){
-          source.rejectedFrames++; rejectedFrames++; continue;
-        }
-        entry.data.push(...bytes);
-        entry.times.push(t);
-        if(t<source.tMin) source.tMin=t;
-        if(t>source.tMax) source.tMax=t;
-        source.totalMessages++;
-        totalMessages++;
-      }while(pos<=total&&!shouldYield(started));
-      if(onProgress) onProgress(Math.min(pos,total)/(total||1));
-      if(pos<=total){ queueWork(step); return; }
-      finalize();
+  function flushEntry(entry){
+    if(!entry.times.length) return;
+    entry.timeBlocks.push(Float64Array.from(entry.times));
+    entry.dataBlocks.push(Uint8Array.from(entry.data));
+    entry.times.length=0;
+    entry.data.length=0;
+  }
+  function addLine(line){
+    if(!line) return;
+    const m=line.replace(/\r$/,'').match(ASC_RE);
+    if(!m) return;
+    const t=parseFloat(m[1]);
+    if(!isFinite(t)) return;
+    const channel=m[2];
+    const realId=parseInt(m[3],16);
+    const isExt=m[4].toLowerCase()==='x';
+    const direction=m[5];
+    const frameType=m[6].toLowerCase();
+    const dlc=parseInt(m[7],10);
+    if(frameType!=='d'||!isFinite(realId)||dlc<=0||dlc>64){ rejectedFrames++; return; }
+    const toks=(m[8]||'').split(/\s+/);
+    const bytes=[];
+    for(const tk of toks){
+      if(/^[0-9A-Fa-f]{1,2}$/.test(tk)&&bytes.length<dlc) bytes.push(parseInt(tk,16));
     }
+    if(bytes.length!==dlc){ rejectedFrames++; return; }
+    const sourceKey=channel+'_'+direction;
+    let source=sources[sourceKey];
+    if(!source){
+      source={key:sourceKey,channel,direction,label:`通道 ${channel} · ${direction}`,
+              map:{},idOrder:[],totalMessages:0,tMin:Infinity,tMax:-Infinity,rejectedFrames:0};
+      sources[sourceKey]=source;
+      sourceOrder.push(sourceKey);
+    }
+    const key=realId+'_'+(isExt?'x':'s');
+    let entry=source.map[key];
+    if(!entry){
+      entry={times:[],data:[],timeBlocks:[],dataBlocks:[],count:0,dlc,isExt,realId};
+      source.map[key]=entry; source.idOrder.push(key);
+    }else if(entry.dlc!==dlc){
+      source.rejectedFrames++; rejectedFrames++; return;
+    }
+    entry.data.push(...bytes);
+    entry.times.push(t);
+    entry.count++;
+    if(entry.times.length>=ASC_BUFFER_FRAMES) flushEntry(entry);
+    if(t<source.tMin) source.tMin=t;
+    if(t>source.tMax) source.tMax=t;
+    source.totalMessages++;
+    totalMessages++;
+  }
+  return {sources,sourceOrder,addLine,flushEntry,
+          get totalMessages(){return totalMessages;},get rejectedFrames(){return rejectedFrames;}};
+}
+function finalizeASC(collector, isCancelled){
+  return new Promise(resolve=>{
     let sourceIndex=0, entryIndex=0, copyState=null;
     function finalize(){
       if(isCancelled && isCancelled()){ resolve({cancelled:true}); return; }
       const started=workNow();
-      while(sourceIndex<sourceOrder.length&&!shouldYield(started)){
-        const source=sources[sourceOrder[sourceIndex]];
+      while(sourceIndex<collector.sourceOrder.length&&!shouldYield(started)){
+        const source=collector.sources[collector.sourceOrder[sourceIndex]];
         if(entryIndex>=source.idOrder.length){ sourceIndex++; entryIndex=0; continue; }
         if(!copyState){
           const entry=source.map[source.idOrder[entryIndex]];
-          copyState={entry,timesSource:entry.times,dataSource:entry.data,
-                     times:new Float64Array(entry.times.length),data:new Uint8Array(entry.data.length),
-                     timeIndex:0,dataIndex:0};
+          collector.flushEntry(entry);
+          copyState={entry,times:new Float64Array(entry.count),data:new Uint8Array(entry.count*entry.dlc),
+                     blockIndex:0,timeOffset:0,dataOffset:0};
         }
-        while(copyState.timeIndex<copyState.timesSource.length&&!shouldYield(started)){
-          const end=Math.min(copyState.timeIndex+16384,copyState.timesSource.length);
-          for(;copyState.timeIndex<end;copyState.timeIndex++) copyState.times[copyState.timeIndex]=copyState.timesSource[copyState.timeIndex];
+        while(copyState.blockIndex<copyState.entry.timeBlocks.length&&!shouldYield(started)){
+          const tb=copyState.entry.timeBlocks[copyState.blockIndex];
+          const db=copyState.entry.dataBlocks[copyState.blockIndex];
+          copyState.times.set(tb,copyState.timeOffset);
+          copyState.data.set(db,copyState.dataOffset);
+          copyState.timeOffset+=tb.length;
+          copyState.dataOffset+=db.length;
+          copyState.blockIndex++;
         }
-        while(copyState.timeIndex>=copyState.timesSource.length&&copyState.dataIndex<copyState.dataSource.length&&!shouldYield(started)){
-          const end=Math.min(copyState.dataIndex+32768,copyState.dataSource.length);
-          for(;copyState.dataIndex<end;copyState.dataIndex++) copyState.data[copyState.dataIndex]=copyState.dataSource[copyState.dataIndex];
-        }
-        if(copyState.timeIndex>=copyState.timesSource.length&&copyState.dataIndex>=copyState.dataSource.length){
+        if(copyState.blockIndex>=copyState.entry.timeBlocks.length){
           const entry=copyState.entry;
           entry.times=copyState.times; entry.data=copyState.data; entry.count=entry.times.length;
+          delete entry.timeBlocks; delete entry.dataBlocks;
           copyState=null; entryIndex++;
         }
       }
-      if(sourceIndex<sourceOrder.length){ queueWork(finalize); return; }
-      resolve({sources, sourceOrder, totalMessages, rejectedFrames});
+      if(sourceIndex<collector.sourceOrder.length){ queueWork(finalize); return; }
+      resolve({sources:collector.sources,sourceOrder:collector.sourceOrder,
+               totalMessages:collector.totalMessages,rejectedFrames:collector.rejectedFrames});
     }
-    step();
+    finalize();
   });
+}
+async function parseASC(text, onProgress, isCancelled){
+  const total=text.length;
+  const collector=createASCCollector();
+  let pos=0;
+  while(pos<=total){
+    if(isCancelled&&isCancelled()) return {cancelled:true};
+    const started=workNow();
+    do{
+      const nl=text.indexOf('\n',pos);
+      const end=nl<0?total:nl;
+      collector.addLine(text.slice(pos,end));
+      pos=nl<0?total+1:nl+1;
+    }while(pos<=total&&!shouldYield(started));
+    if(onProgress) onProgress(Math.min(pos,total)/(total||1));
+    if(pos<=total) await new Promise(resolve=>queueWork(resolve));
+  }
+  return finalizeASC(collector,isCancelled);
+}
+function readBlobBuffer(blob){
+  if(blob&&typeof blob.arrayBuffer==='function') return blob.arrayBuffer();
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=()=>resolve(reader.result);
+    reader.onerror=()=>reject(reader.error||new Error('文件切片读取失败'));
+    reader.readAsArrayBuffer(blob);
+  });
+}
+async function parseASCFile(file, onProgress, isCancelled, chunkBytes){
+  const size=file&&Number(file.size)||0;
+  const chunkSize=Math.max(32,chunkBytes||2*1024*1024);
+  const collector=createASCCollector();
+  const decoder=new TextDecoder('utf-8');
+  let offset=0,carry='';
+  while(offset<size){
+    if(isCancelled&&isCancelled()) return {cancelled:true};
+    const end=Math.min(offset+chunkSize,size);
+    const bytes=new Uint8Array(await readBlobBuffer(file.slice(offset,end)));
+    const text=carry+decoder.decode(bytes,{stream:end<size});
+    let pos=0;
+    while(pos<text.length){
+      const started=workNow();
+      let nl;
+      do{
+        nl=text.indexOf('\n',pos);
+        if(nl<0) break;
+        collector.addLine(text.slice(pos,nl));
+        pos=nl+1;
+      }while(pos<text.length&&!shouldYield(started));
+      if(nl<0) break;
+      if(pos<text.length) await new Promise(resolve=>queueWork(resolve));
+      if(isCancelled&&isCancelled()) return {cancelled:true};
+    }
+    carry=text.slice(pos);
+    offset=end;
+    if(onProgress) onProgress(offset/(size||1));
+    await new Promise(resolve=>queueWork(resolve));
+  }
+  carry+=decoder.decode();
+  if(carry) collector.addLine(carry);
+  if(onProgress) onProgress(1);
+  return finalizeASC(collector,isCancelled);
 }
 
 /* ---------- build series ---------- */
@@ -2504,7 +2563,11 @@ $('fileDbc').addEventListener('cancel',()=>{
   $('dbcInfo').textContent=dbcFileName||'未加载';
   $('dbcInfo').classList.toggle('loaded',!!dbcData);
 });
-$('fileAsc').addEventListener('cancel',()=>{ stopLoadTxt(); $('ascInfo').textContent='未加载'; $('ascInfo').classList.remove('loaded'); });
+$('fileAsc').addEventListener('cancel',()=>{
+  stopLoadTxt();
+  $('ascInfo').textContent=ascFileName||'未加载';
+  $('ascInfo').classList.toggle('loaded',!!ascFileData);
+});
 
 async function loadDbcText(name, txt, showBusy){
   const token = showBusy ? startBusy('解析 DBC 文件…', ()=>{ token.cancelled=true; }, {immediate:true}) : null;
@@ -2581,6 +2644,20 @@ function configureAscSources(parsed){
   source.value=first;
   activateAscSource(first,false);
 }
+function applyParsedAsc(name, parsed){
+  if(parsed.totalMessages===0){
+    $('ascInfo').textContent='未加载'; $('ascInfo').classList.remove('loaded');
+    clearAscState('ASC 文件无可识别数据帧');
+    toast('ASC 文件无可识别数据帧'); return false;
+  }
+  ascFileData=parsed; ascFileName=name;
+  $('ascInfo').textContent=name;
+  $('ascInfo').classList.add('loaded');
+  configureAscSources(parsed);
+  const skipped=parsed.rejectedFrames?`，已跳过 ${parsed.rejectedFrames} 个非数据或无效帧`:'';
+  toast(`ASC 已加载：${parsed.totalMessages.toLocaleString()} 帧${skipped}`);
+  return true;
+}
 async function loadAscText(name, txt, showBusy){
   hideLoading();
   const token = showBusy ? startBusy('解析 ASC 文件…', ()=>{ token.cancelled=true; }, {immediate:true}) : null;
@@ -2595,23 +2672,39 @@ async function loadAscText(name, txt, showBusy){
       $('ascInfo').textContent=ascFileName||'未加载';
       toast('已取消 ASC 解析'); return;
     }
-    if(parsed.totalMessages===0){
-      $('ascInfo').textContent='未加载'; $('ascInfo').classList.remove('loaded');
-      clearAscState('ASC 文件无可识别数据帧');
-      toast('ASC 文件无可识别数据帧'); return;
-    }
-    ascFileData=parsed; ascFileName=name;
-    $('ascInfo').textContent = name;
-    $('ascInfo').classList.add('loaded');
-    configureAscSources(parsed);
-    const skipped=parsed.rejectedFrames?`，已跳过 ${parsed.rejectedFrames} 个非数据或无效帧`:'';
-    toast(`ASC 已加载：${parsed.totalMessages.toLocaleString()} 帧${skipped}`);
+    applyParsedAsc(name,parsed);
   }catch(err){
     $('ascInfo').textContent='加载失败'; $('ascInfo').classList.remove('loaded');
     clearAscState('ASC 解析失败');
     toast('ASC 解析失败：'+err.message);
   }
   finally{ stopLoadTxt(); if(showBusy) finishBusy(); }
+}
+async function loadAscFile(file, showBusy){
+  hideLoading();
+  const token=showBusy?startBusy('读取并解析 ASC 文件…',()=>{ token.cancelled=true; },{immediate:true}):null;
+  try{
+    if(showBusy) await nextPaint();
+    let lastPct=-1;
+    const parsed=await parseASCFile(file,p=>{
+      if(!showBusy) return;
+      const pct=Math.round(p*100);
+      if(pct!==lastPct){ lastPct=pct; $('busyText').textContent=`读取并解析 ASC 文件… ${pct}%`; }
+    },showBusy?()=>token.cancelled:null);
+    if(showBusy&&(token.cancelled||!parsed||parsed.cancelled)){
+      $('ascInfo').textContent=ascFileName||'未加载';
+      $('ascInfo').classList.toggle('loaded',!!ascFileData);
+      toast('已取消 ASC 解析'); return;
+    }
+    applyParsedAsc(file.name,parsed);
+  }catch(err){
+    $('ascInfo').textContent='加载失败'; $('ascInfo').classList.remove('loaded');
+    clearAscState('ASC 读取或解析失败');
+    toast('ASC 读取或解析失败：'+err.message);
+  }finally{
+    stopLoadTxt();
+    if(showBusy) finishBusy();
+  }
 }
 $('ascSource').addEventListener('change',e=>activateAscSource(e.target.value,true));
 $('fileDbc').onchange=async e=>{
@@ -2622,21 +2715,28 @@ $('fileDbc').onchange=async e=>{
   catch(error){ stopLoadTxt(); $('dbcInfo').textContent='读取失败'; toast('DBC 读取失败：'+error.message); }
   finally{ e.target.value=''; }
 };   /* 仅显示干净文件名（浏览器不提供真实路径） */
-$('fileAsc').onchange=async e=>{
-  const f=e.target.files[0]; if(!f) return;
+async function handleAscFileSelection(e){
+  const input=e.currentTarget;
+  if(input._handlingFileSelection) return;
+  const f=input.files&&input.files[0]; if(!f) return;
+  input._handlingFileSelection=true;
   ascFileSize=f.size; $('btnAsc').classList.remove('primary');
   const big=f.size>=50*1024*1024;
-  if(big) showLoading('读取 ASC… 0%',0);
+  stopLoadTxt();
+  $('ascInfo').textContent=`${f.name}（读取中）`;
+  $('ascInfo').classList.remove('loaded');
   await nextPaint();
-  try{ await loadAscText(f.name,await readText(f,big?p=>showLoading('读取 ASC… '+Math.round(p*100)+'%',p):null),big); }
-  catch(error){ hideLoading(); stopLoadTxt(); $('ascInfo').textContent='读取失败'; toast('ASC 读取失败：'+error.message); }
-  finally{ e.target.value=''; }
-};   /* 仅显示干净文件名（浏览器不提供真实路径） */
+  try{ await loadAscFile(f,big); }
+  finally{ input.value=''; input._handlingFileSelection=false; }
+}
+/* iOS 某些版本只可靠触发 input，桌面浏览器通常还会继续触发 change；状态位避免重复解析。 */
+$('fileAsc').addEventListener('input',handleAscFileSelection);
+$('fileAsc').addEventListener('change',handleAscFileSelection);   /* 仅显示干净文件名（浏览器不提供真实路径） */
 
 // expose for testing/automation
 window.__can={
-  parseDBC,parseASC,extractRawAt,toPhysical,buildSeries,
-  loadDbcText,loadAscText,activateAscSource,renderCharts,renderAnalysis,selectedSet,
+  parseDBC,parseASC,parseASCFile,extractRawAt,toPhysical,buildSeries,
+  loadDbcText,loadAscText,loadAscFile,activateAscSource,renderCharts,renderAnalysis,selectedSet,
   setReleaseTime,latestSuccessfulDeployment,signalFitsDlc,
   get dbc(){return dbcData;},get asc(){return ascData;},get ascFile(){return ascFileData;},get charts(){return charts;}
 };
