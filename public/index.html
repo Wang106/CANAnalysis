@@ -389,8 +389,9 @@
   </div>
 </div>
 
-<input type="file" id="fileDbc" accept=".dbc" style="display:none" />
-<input type="file" id="fileAsc" accept=".asc" style="display:none" />
+<!-- 不使用 accept 限制：iOS 文件选择器无法可靠识别 .dbc/.asc 自定义扩展名，内容仍由解析器校验。 -->
+<input type="file" id="fileDbc" style="display:none" />
+<input type="file" id="fileAsc" style="display:none" />
 <div id="toast"></div>
 <div id="navNotice" role="status" aria-live="polite"></div>
 <div id="loadingOverlay"><div class="spin"></div><div class="txt" id="loadTxt">解析中…</div><div id="progressBar"><div></div></div></div>
