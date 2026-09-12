@@ -40,6 +40,13 @@ document.getElementById('app').addEventListener('load',async()=>{
     assert(doc.getElementById('sigPicked').textContent.trim()==='请先加载DBC文件','已选信号区域初始提示错误');
   });
 
+  await record('iPhone 文件选择器不限制自定义扩展名',async()=>{
+    const dbcInput=doc.getElementById('fileDbc');
+    const ascInput=doc.getElementById('fileAsc');
+    assert(!dbcInput.hasAttribute('accept'),'DBC 文件仍受系统扩展名过滤');
+    assert(!ascInput.hasAttribute('accept'),'ASC 文件仍受系统扩展名过滤');
+  });
+
   await record('左上角本地图标预加载且占位固定',async()=>{
     const icon=doc.querySelector('.header-left .icon');
     const preload=doc.querySelector('link[rel="preload"][as="image"][href="icon.png"]');
