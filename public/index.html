@@ -235,6 +235,17 @@
   .issue.err{border-color:#5a2a2a;}
   .issue.warn{border-color:#5a4a20;}
   .issue .tag{color:var(--accent);font-weight:600;}
+  .msg-stat-section{margin:10px 0 12px;}
+  .msg-stat-title{margin:0 0 6px;font-size:14px;color:var(--txt);}
+  .msg-stat-subtitle{margin:0 0 7px;font-size:12px;color:var(--accent);font-weight:600;}
+  .msg-stat-scroll{max-width:100%;overflow-x:auto;border:1px solid var(--line);border-radius:6px;-webkit-overflow-scrolling:touch;}
+  .msg-stat-table{width:100%;min-width:720px;border-collapse:collapse;background:var(--panel);font-size:12px;font-variant-numeric:tabular-nums;}
+  .msg-stat-table th,.msg-stat-table td{padding:6px 9px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap;}
+  .msg-stat-table th{position:sticky;top:0;z-index:1;background:var(--panel2);color:var(--txt2);font-weight:600;}
+  .msg-stat-table th:first-child,.msg-stat-table th:nth-child(2),.msg-stat-table td:first-child,.msg-stat-table td:nth-child(2){text-align:left;}
+  .msg-stat-table tbody tr:last-child td{border-bottom:0;}
+  .msg-stat-table tbody tr:hover{background:rgba(74,158,255,.06);}
+  .msg-stat-note{margin-top:5px;font-size:10px;color:var(--txt2);}
 
   #chartArea{padding:0;flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;}   /* 顶部无内边距：与标题行间隙恒定（8px），不随滚动变化 */
   .chart-card{background:var(--panel);border:1px solid var(--line);border-top:none;border-radius:0;margin-bottom:0;overflow:hidden;display:flex;flex-direction:row;flex:1 1 130px;min-height:130px;}
@@ -2534,6 +2545,47 @@ function resetZoom(){
 }
 
 /* ---------- analysis panel ---------- */
+function messageIntervalStats(source){
+  if(!source||!source.map||!Array.isArray(source.idOrder)) return [];
+  const rows=[];
+  for(const key of source.idOrder){
+    const entry=source.map[key];
+    if(!entry) continue;
+    const times=entry.times||[];
+    const frameCount=times.length;
+    let avgIntervalMs=null,minIntervalMs=null,maxIntervalMs=null;
+    if(frameCount>1){
+      let sum=0,min=Infinity,max=-Infinity;
+      for(let i=1;i<frameCount;i++){
+        const interval=(times[i]-times[i-1])*1000;
+        sum+=interval;
+        if(interval<min) min=interval;
+        if(interval>max) max=interval;
+      }
+      avgIntervalMs=sum/(frameCount-1);
+      minIntervalMs=min;
+      maxIntervalMs=max;
+    }
+    rows.push({key,realId:entry.realId,isExt:entry.isExt,frameCount,avgIntervalMs,minIntervalMs,maxIntervalMs});
+  }
+  rows.sort((a,b)=>a.realId-b.realId||Number(a.isExt)-Number(b.isExt));
+  return rows;
+}
+function formatIntervalMs(value){
+  return value==null||!Number.isFinite(value)?'—':value.toFixed(3);
+}
+function renderMessageIntervalTable(){
+  const rows=messageIntervalStats(ascData);
+  let html='<section class="msg-stat-section"><h3 class="msg-stat-title">报文统计</h3><h4 class="msg-stat-subtitle">1. 帧间隔（时间差）统计</h4><div class="msg-stat-scroll"><table class="msg-stat-table"><thead><tr><th>CAN ID</th><th>报文名称</th><th>总帧数</th><th>平均帧间隔/ms</th><th>最小帧间隔/ms</th><th>最大帧间隔/ms</th></tr></thead><tbody>';
+  for(const row of rows){
+    const msg=dbcData&&dbcData.messages[row.key];
+    const name=msg&&msg.name?msg.name:'DBC未定义';
+    html+=`<tr><td>${fmtId(row.realId,row.isExt)}</td><td>${escapeHtml(name)}</td><td>${row.frameCount.toLocaleString()}</td><td>${formatIntervalMs(row.avgIntervalMs)}</td><td>${formatIntervalMs(row.minIntervalMs)}</td><td>${formatIntervalMs(row.maxIntervalMs)}</td></tr>`;
+  }
+  if(!rows.length) html+='<tr><td colspan="6">当前数据源没有可统计的报文</td></tr>';
+  html+='</tbody></table></div><div class="msg-stat-note">帧间隔按当前通道与方向内、同一 CAN ID 的相邻时间戳计算；单帧报文显示“—”。</div></section>';
+  return html;
+}
 function renderAnalysis(sigs){
   const panel=$('analysisPanel');
   const issues=[];
@@ -2604,7 +2656,7 @@ function renderAnalysis(sigs){
       // detect single-point spikes beyond range then back
     }
   }
-  let html=sumHtml;
+  let html=sumHtml+renderMessageIntervalTable();
   if(issues.length){
     html+=`<div style="font-size:12px;color:var(--txt2);margin:6px 0;">检测到 ${issues.length} 项分析结果：</div><div class="a-issues">`;
     for(const it of issues){
@@ -2849,7 +2901,7 @@ $('fileAsc').addEventListener('change',handleAscFileSelection);   /* 仅显示�
 window.__can={
   parseDBC,parseASC,parseASCFile,extractRawAt,toPhysical,buildSeries,
   loadDbcText,loadAscText,loadAscFile,activateAscSource,renderCharts,renderAnalysis,selectedSet,
-  setReleaseTime,latestSuccessfulDeployment,signalFitsDlc,setYTargetChart,applyYRange,
+  setReleaseTime,latestSuccessfulDeployment,signalFitsDlc,setYTargetChart,applyYRange,messageIntervalStats,
   get dbc(){return dbcData;},get asc(){return ascData;},get ascFile(){return ascFileData;},get charts(){return charts;}
 };
 $('searchInput').addEventListener('input', debounce(()=>renderSignalList(),120));
