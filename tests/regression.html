@@ -75,6 +75,28 @@ document.getElementById('app').addEventListener('load',async()=>{
     assert(text.includes('SensorStuck'),'恒定信号分析缺失');
   });
 
+  await record('移动端生成曲线后自动释放顶部空间并保留全部工具',async()=>{
+    const app=doc.getElementById('app');
+    const sigBar=doc.getElementById('sigBar');
+    const toolbar=doc.getElementById('contentTop');
+    assert(app.classList.contains('mobile-charts'),'生成曲线后未进入移动端紧凑模式');
+    assert(sigBar.classList.contains('collapsed'),'生成曲线后信号选择区未自动收起');
+    assert(win.getComputedStyle(toolbar).overflowX==='auto','曲线工具栏不能横向滚动查看右侧控件');
+    assert(doc.getElementById('gYmin')&&doc.getElementById('gYmax'),'移动端工具栏缺少 Y 轴范围输入框');
+  });
+
+  await record('移动端可调整信号列宽并手动设置当前曲线Y轴',async()=>{
+    const divider=doc.querySelector('.chart-card .cc-divider');
+    assert(divider&&win.getComputedStyle(divider).touchAction==='none','信号列分隔条未启用触摸拖动');
+    assert(divider.getBoundingClientRect().width>=8,'移动端分隔条触摸热区过窄');
+    api.setYTargetChart(api.charts[0]);
+    doc.getElementById('gYmin').value='-5';
+    doc.getElementById('gYmax').value='105';
+    assert(api.applyYRange(),'有效的 Y 轴范围未被应用');
+    const yAxis=api.charts[0].getOption().yAxis[0];
+    assert(yAxis.min===-5&&yAxis.max===105,'当前曲线 Y 轴范围与输入值不一致');
+  });
+
   await record('无效 ASC 会清空旧状态',async()=>{
     await api.loadAscText('invalid.asc','not an ASC data frame',false);
     assert(api.asc===null,'无效 ASC 后 ascData 未清空');

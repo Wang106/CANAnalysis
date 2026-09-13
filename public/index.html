@@ -31,7 +31,7 @@
   input:focus{outline:none;border-color:var(--accent);}
 
   /* layout */
-  #app{display:flex;flex-direction:column;height:100%;overflow:hidden;}
+  #app{display:flex;flex-direction:column;height:100%;height:100dvh;overflow:hidden;}
 
   /* site navigation: a slim discovery strip at rest, expanded as an overlay on hover/focus */
   #topNav{position:relative;height:12px;flex:0 0 12px;z-index:40;background:var(--panel2);border-bottom:1px solid var(--line);outline:none;overflow:visible;}
@@ -223,6 +223,7 @@
   .gctrls input[type=number]{width:96px;padding:2px 4px;font-size:11px;}
   .gctrls button{padding:3px 8px;font-size:11px;}
   .gctrls button.active{background:var(--accent);border-color:var(--accent);color:#04121f;}
+  .mobile-y-controls{display:none;align-items:center;gap:5px;}
   .a-summary{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;}
   .chip{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:5px 10px;font-size:12px;}
   .chip b{color:var(--accent);font-weight:600;}
@@ -292,6 +293,50 @@
   #confirmOverlay .box{background:var(--panel);border:1px solid var(--accent);border-radius:12px;padding:22px 36px;display:flex;flex-direction:column;align-items:center;gap:16px;box-shadow:0 8px 30px rgba(0,0,0,.5);}
   #confirmOverlay .txt{font-size:14px;color:var(--txt);}
   #confirmOverlay .row{display:flex;gap:12px;}
+
+  /* iPhone：生成曲线后压缩顶部区域，工具栏可横向滑动，桌面布局保持不变。 */
+  @media (max-width:760px), (max-height:520px){
+    #app.mobile-charts #header{padding:3px 6px;gap:6px;}
+    #app.mobile-charts .header-left{gap:6px;}
+    #app.mobile-charts .header-left .icon{display:none;}
+    #app.mobile-charts .header-left .htitle-wrap{width:96px;flex-basis:96px;}
+    #app.mobile-charts .header-left .htitle{font-size:14px;letter-spacing:0;}
+    #app.mobile-charts .file-row{gap:4px;}
+    #app.mobile-charts .file-row button{width:88px;padding:4px 5px;font-size:11px;}
+    #app.mobile-charts .file-row .finput{padding:4px 6px;font-size:11px;}
+    #app.mobile-charts .file-row .source-select{max-width:116px;padding:3px 4px;font-size:11px;}
+    #app.mobile-charts #sigBar.collapsed .sig-bar-head{padding:4px 6px;gap:5px;flex-wrap:nowrap;}
+    #app.mobile-charts #sigBar.collapsed #searchInput,
+    #app.mobile-charts #sigBar.collapsed .selstat,
+    #app.mobile-charts #sigBar.collapsed #help{display:none;}
+    #app.mobile-charts #sigBar.collapsed .sig-bar-head > span[style]{display:none;}
+    #app.mobile-charts #sigBar.collapsed .sig-toggle{padding:4px 8px;font-size:0;white-space:nowrap;}
+    #app.mobile-charts #sigBar.collapsed .sig-toggle::after{content:"信号";font-size:11px;}
+    #app.mobile-charts #sigBar.collapsed .sig-toggle .arrow{font-size:10px;}
+    #app.mobile-charts #sigBar.collapsed #btnAnalyze,
+    #app.mobile-charts #sigBar.collapsed #btnStart{padding:4px 9px;font-size:11px;}
+    #contentTop{padding:4px 6px;min-height:34px;gap:5px;overflow-x:auto;overflow-y:hidden;white-space:nowrap;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+    #contentTop::-webkit-scrollbar{display:none;}
+    #contentTop .title,#contentTop .spacer{display:none;}
+    .style-toggle{flex:0 0 auto;width:46px;margin:0;padding:3px 5px;font-size:0;}
+    .style-toggle::after{content:"风格";font-size:11px;}
+    .gctrls.show{display:flex;flex:0 0 auto;min-width:max-content;}
+    .gctrls input[type=number]{width:78px;}
+    .mobile-y-controls{display:inline-flex;}
+    #gFitX,#gFitY{font-size:0;padding-left:7px;padding-right:7px;}
+    #gFitX::after{content:"X自适应";font-size:11px;}
+    #gFitY::after{content:"Y自适应";font-size:11px;}
+    #chartScrollWrap{margin-top:4px;}
+    .cc-divider{width:10px;touch-action:none;background:linear-gradient(90deg,transparent 0 38%,var(--line) 38% 62%,transparent 62%);}
+    #analysisWrap.divider-hover .cc-divider{background:linear-gradient(90deg,transparent 0 38%,var(--accent) 38% 62%,transparent 62%);}
+    .chart-card.y-target{box-shadow:inset 0 0 0 1px var(--accent);}
+  }
+  @media (max-height:520px){
+    #app.mobile-charts .header-left{display:none;}
+    #app.mobile-charts #header{padding-top:2px;padding-bottom:2px;}
+    #app.mobile-charts .file-row button{width:82px;}
+    #app.mobile-charts #sigBar.collapsed .sig-bar-head{padding-top:3px;padding-bottom:3px;}
+  }
 </style>
 </head>
 <body>
@@ -314,7 +359,7 @@
       <img src="icon.png" class="icon" alt="CAN报文解析" width="38" height="38" loading="eager" decoding="sync" fetchpriority="high" />
       <div class="htitle-wrap">
         <span class="htitle">CAN报文解析</span>
-        <span class="hcommit" id="hcommit" title="GitHub 提交号 868d48245e15c475d920c5cf7f0deb010f04a94f">868d4824</span>
+        <span class="hcommit" id="hcommit" title="GitHub 提交号 9910bca1fdec1349ce299bc3298cf435760c8a3b">9910bca1</span>
         <span class="hmodtime" id="hmodtime"></span>
       </div>
     </div>
@@ -367,6 +412,11 @@
         <span class="glbl">X:</span>
         <input type="number" id="gXmin" placeholder="min" step="any" />
         <input type="number" id="gXmax" placeholder="max" step="any" />
+        <span class="mobile-y-controls">
+          <span class="glbl">Y:</span>
+          <input type="number" id="gYmin" placeholder="当前曲线 min" step="any" aria-label="当前曲线 Y 轴最小值" />
+          <input type="number" id="gYmax" placeholder="当前曲线 max" step="any" aria-label="当前曲线 Y 轴最大值" />
+        </span>
         <button id="gFitX">X轴自适应</button>
         <button id="gFitY">Y轴自适应</button>
         <button id="gDots">圆点</button>
@@ -467,6 +517,7 @@ let ascData = null;     // {map, totalMessages, tMin, tMax, unknownIds, idOrder}
 let ascFileData = null; // {sources, sourceOrder, totalMessages, rejectedFrames}
 let ascFileName = '';
 let charts = [];        // echarts instances
+let yTargetChart = null; // 移动端 Y 范围输入作用于最后点选的曲线
 let xAxisChart = null;  // shared x-axis chart at bottom
 let syncing = false;
 let lastX = {start:0, end:100};
@@ -1374,7 +1425,8 @@ function disposeCharts(){
   if(cvo){ cvo.classList.remove('show'); const l=cvo.querySelector('#chLine'); if(l) l.setAttribute('display','none'); }
   if(xAxisChart){try{xAxisChart.dispose();}catch(e){} xAxisChart=null;}
   charts.forEach(c=>{try{c.dispose();}catch(e){}});
-  charts=[]; $('chartArea').innerHTML='';
+  charts=[]; yTargetChart=null; $('chartArea').innerHTML='';
+  $('app').classList.remove('mobile-charts');
   const sb=$('scBody'); if(sb) sb.innerHTML='';   /* 清空独立信号名称列 */
   const sh=document.querySelector('.side-head'); if(sh) sh.remove();   /* 移除侧栏表头 */
   $('xaxisContainer').innerHTML='';
@@ -1575,11 +1627,29 @@ function autoFitSideWidth(){
   tmp.remove();
   if(uiStyle==='classic'){
     /* 默认风格（06c2dffb）：侧栏总宽 = 最长名称 + 内边距余量 */
-    document.documentElement.style.setProperty('--cc-side-w', Math.max(90, Math.ceil(maxW)+24)+'px');
+    let width=Math.max(90, Math.ceil(maxW)+24);
+    if(window.matchMedia('(max-width:760px), (max-height:520px)').matches){
+      width=Math.min(width, Math.max(96, Math.floor(window.innerWidth*0.42)));
+    }
+    document.documentElement.style.setProperty('--cc-side-w', width+'px');
   } else {
     document.documentElement.style.setProperty('--col-name', Math.max(40, Math.ceil(maxW))+'px');
     updateSideTotal();
+    if(window.matchMedia('(max-width:760px), (max-height:520px)').matches){
+      document.documentElement.style.setProperty('--cc-side-w', Math.max(96, Math.floor(window.innerWidth*0.48))+'px');
+    }
   }
+}
+function applyMobileChartMode(){
+  const mobile=window.matchMedia('(max-width:760px), (max-height:520px)').matches;
+  $('app').classList.toggle('mobile-charts', mobile&&charts.length>0);
+  if(!mobile||!charts.length) return;
+  const bar=$('sigBar');
+  bar.classList.remove('expanded','resized');
+  bar.classList.add('collapsed');
+  bar.style.height='';
+  bar.style.flex='';
+  bar.style.transition='';
 }
 function renderCharts(){
   disposeCharts();
@@ -1684,6 +1754,8 @@ function renderCharts(){
       resetZoom();
       fitAllY();
       autoFitSideWidth();   /* 名称列宽度按当前信号中最长名称自动调整 */
+      setupYTargetControls();
+      applyMobileChartMode();
       const si=$('searchInput'); if(si){ si.value=''; renderSignalList(); }   /* 生成完成后清空信号名称输入框 */
       setTimeout(resizeAllCharts,100);
       setTimeout(resizeAllCharts,300);
@@ -2308,8 +2380,48 @@ function fitY(chart){
   ymax=center+halfRange*1.2;
   chart.setOption({yAxis:{min:ymin,max:ymax}});
   clipSeriesY(chart, ymin, ymax);
+  if(chart===yTargetChart) updateYInputs(chart);
 }
 function fitAllY(){ charts.forEach(c=>fitY(c)); if(pinned != null) refreshPinnedDisplay(); }
+
+function updateYInputs(chart){
+  const minEl=$('gYmin'), maxEl=$('gYmax');
+  if(!minEl||!maxEl||!chart) return;
+  const option=chart.getOption();
+  const axis=option.yAxis&&option.yAxis[0];
+  if(!axis) return;
+  minEl.value=axis.min==null?'':String(axis.min);
+  maxEl.value=axis.max==null?'':String(axis.max);
+  const name=chart._sig&&chart._sig.name||'当前曲线';
+  minEl.title=name+' Y 轴最小值';
+  maxEl.title=name+' Y 轴最大值';
+}
+function setYTargetChart(chart){
+  if(!chart||!charts.includes(chart)) return false;
+  yTargetChart=chart;
+  document.querySelectorAll('.chart-card.y-target').forEach(card=>card.classList.remove('y-target'));
+  const card=chart.getDom().closest('.chart-card');
+  if(card) card.classList.add('y-target');
+  updateYInputs(chart);
+  return true;
+}
+function applyYRange(){
+  if(!yTargetChart&&charts.length) setYTargetChart(charts[0]);
+  if(!yTargetChart) return false;
+  const lo=parseFloat($('gYmin').value);
+  const hi=parseFloat($('gYmax').value);
+  if(!Number.isFinite(lo)||!Number.isFinite(hi)||lo>=hi) return false;
+  yTargetChart.setOption({yAxis:{min:lo,max:hi}});
+  clipSeriesY(yTargetChart,lo,hi);
+  if(pinned!=null) refreshPinnedDisplay();
+  return true;
+}
+function setupYTargetControls(){
+  charts.forEach(chart=>{
+    chart.getDom().addEventListener('pointerdown',()=>setYTargetChart(chart),{passive:true});
+  });
+  if(charts.length) setYTargetChart(charts[0]);
+}
 
 /* sync x-axis across charts + custom wheel zoom on axes */
 function syncXAxis(nLo, nHi){
@@ -2737,7 +2849,7 @@ $('fileAsc').addEventListener('change',handleAscFileSelection);   /* 仅显示�
 window.__can={
   parseDBC,parseASC,parseASCFile,extractRawAt,toPhysical,buildSeries,
   loadDbcText,loadAscText,loadAscFile,activateAscSource,renderCharts,renderAnalysis,selectedSet,
-  setReleaseTime,latestSuccessfulDeployment,signalFitsDlc,
+  setReleaseTime,latestSuccessfulDeployment,signalFitsDlc,setYTargetChart,applyYRange,
   get dbc(){return dbcData;},get asc(){return ascData;},get ascFile(){return ascFileData;},get charts(){return charts;}
 };
 $('searchInput').addEventListener('input', debounce(()=>renderSignalList(),120));
@@ -3029,32 +3141,39 @@ document.addEventListener('keydown',(e)=>{
 /* 曲线区左侧信号名列与曲线之间的分界线：可左右拖动调整侧栏宽度（含横轴分隔线） */
 (function(){
   const wrapEl=$('analysisWrap');
-  let dragging=false, startX=0, startW=120;
-  wrapEl.addEventListener('mousedown',(e)=>{
+  let dragging=false, pointerId=null, startX=0, startW=120;
+  wrapEl.addEventListener('pointerdown',(e)=>{
     const div=e.target.closest('.cc-divider');
-    if(!div) return;
+    if(!div||e.button!==0) return;
     dragging=true;
+    pointerId=e.pointerId;
     startX=e.clientX;
     const side=document.querySelector('.cc-side') || document.getElementById('sideCol');
     startW=side?side.offsetWidth:120;
+    if(div.setPointerCapture) try{ div.setPointerCapture(pointerId); }catch(_){ }
     document.body.style.cursor='col-resize';
     document.body.style.userSelect='none';
     e.preventDefault();
   });
-  document.addEventListener('mousemove',(e)=>{
-    if(!dragging) return;
+  document.addEventListener('pointermove',(e)=>{
+    if(!dragging||e.pointerId!==pointerId) return;
     let w=startW+(e.clientX-startX);
     if(w<60) w=60;
-    if(w>400) w=400;
+    const maxW=window.matchMedia('(max-width:760px), (max-height:520px)').matches
+      ? Math.max(120,Math.floor(window.innerWidth*0.72)) : 400;
+    if(w>maxW) w=maxW;
     document.documentElement.style.setProperty('--cc-side-w', w+'px');
     resizeAllCharts();
   });
-  document.addEventListener('mouseup',()=>{
-    if(!dragging) return;
+  const stopDrag=(e)=>{
+    if(!dragging||(e&&e.pointerId!==pointerId)) return;
     dragging=false;
+    pointerId=null;
     document.body.style.cursor='';
     document.body.style.userSelect='';
-  });
+  };
+  document.addEventListener('pointerup',stopDrag);
+  document.addEventListener('pointercancel',stopDrag);
   /* 悬停任一分隔线：所有分隔线同时高亮 */
   let hoverCnt=0;
   wrapEl.addEventListener('mouseover',(e)=>{
@@ -3153,7 +3272,9 @@ function applyXRange(){
 }
 $('gXmin').addEventListener('change', applyXRange);
 $('gXmax').addEventListener('change', applyXRange);
-window.addEventListener('resize',resizeAllCharts,{passive:true});
+$('gYmin').addEventListener('change', applyYRange);
+$('gYmax').addEventListener('change', applyYRange);
+window.addEventListener('resize',()=>{ applyMobileChartMode(); resizeAllCharts(); },{passive:true});
 
 /* 发布时间显示：优先使用 Cloudflare 生产构建完成时间，取不到时回退到代码提交时间。 */
 function setReleaseTime(d, source){
@@ -3173,7 +3294,7 @@ function latestSuccessfulDeployment(checkRuns){
     .sort((a,b)=>Date.parse(b.completed_at)-Date.parse(a.completed_at))[0]||null;
 }
 (function(){
-  setReleaseTime(new Date('2026-09-12T16:57:05Z'),'fallback');
+  setReleaseTime(new Date('2026-09-13T08:34:42Z'),'fallback');
 })();
 function setCommitDisplay(commit, source){
   const el=$('hcommit');
