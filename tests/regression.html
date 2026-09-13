@@ -73,6 +73,27 @@ document.getElementById('app').addEventListener('load',async()=>{
     const text=doc.getElementById('analysisPanel').textContent;
     assert(text.includes('未知ID(DBC未定义) 1'),'未知 ID 分析错误');
     assert(text.includes('SensorStuck'),'恒定信号分析缺失');
+    const table=doc.querySelector('#analysisPanel .msg-stat-table');
+    assert(table,'报文统计未显示帧间隔表格');
+    assert(table.textContent.includes('平均帧间隔')&&table.textContent.includes('最小帧间隔')&&table.textContent.includes('最大帧间隔'),'帧间隔表格字段不完整');
+  });
+
+  await record('帧间隔按CAN ID统计且单帧不伪造间隔',async()=>{
+    const parsed=await api.parseASC([
+      '0.000 1 100 Rx d 1 01',
+      '0.010 1 100 Rx d 1 02',
+      '0.025 1 100 Rx d 1 03',
+      '0.030 1 200 Rx d 1 04'
+    ].join('\n'));
+    const rows=api.messageIntervalStats(parsed.sources['1_Rx']);
+    assert(rows.length===2,'未按 CAN ID 分行统计');
+    const periodic=rows.find(row=>row.realId===0x100);
+    const single=rows.find(row=>row.realId===0x200);
+    assert(periodic.frameCount===3,'总帧数统计错误');
+    assert(Math.abs(periodic.avgIntervalMs-12.5)<1e-9,'平均帧间隔统计错误');
+    assert(Math.abs(periodic.minIntervalMs-10)<1e-9,'最小帧间隔统计错误');
+    assert(Math.abs(periodic.maxIntervalMs-15)<1e-9,'最大帧间隔统计错误');
+    assert(single.frameCount===1&&single.avgIntervalMs===null&&single.minIntervalMs===null&&single.maxIntervalMs===null,'单帧报文被错误计算出帧间隔');
   });
 
   await record('移动端生成曲线后自动释放顶部空间并保留全部工具',async()=>{
