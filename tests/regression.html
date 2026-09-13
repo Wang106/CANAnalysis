@@ -40,6 +40,13 @@ document.getElementById('app').addEventListener('load',async()=>{
     assert(doc.getElementById('sigPicked').textContent.trim()==='请先加载DBC文件','已选信号区域初始提示错误');
   });
 
+  await record('iPhone 文件选择器不限制自定义扩展名',async()=>{
+    const dbcInput=doc.getElementById('fileDbc');
+    const ascInput=doc.getElementById('fileAsc');
+    assert(!dbcInput.hasAttribute('accept'),'DBC 文件仍受系统扩展名过滤');
+    assert(!ascInput.hasAttribute('accept'),'ASC 文件仍受系统扩展名过滤');
+  });
+
   await record('左上角本地图标预加载且占位固定',async()=>{
     const icon=doc.querySelector('.header-left .icon');
     const preload=doc.querySelector('link[rel="preload"][as="image"][href="icon.png"]');
@@ -107,6 +114,27 @@ document.getElementById('app').addEventListener('load',async()=>{
     assert(entry.times instanceof win.Float64Array&&entry.data instanceof win.Uint8Array,'紧凑数组转换错误');
   });
 
+  await record('大型 ASC 文件会分片读取并跨片拼接数据行',async()=>{
+    const text=[
+      '0.000 1 100 Rx d 8 01 02 03 04 05 06 07 08',
+      '0.001 1 100 Rx d 8 11 12 13 14 15 16 17 18',
+      '0.002 1 100 Rx d 8 21 22 23 24 25 26 27 28',
+      '0.003 1 100 Rx d 8 31 32 33 34 35 36 37 38'
+    ].join('\n');
+    const bytes=new TextEncoder().encode(text);
+    let slices=0;
+    const file={
+      size:bytes.length,
+      slice(start,end){ slices++; return new Blob([bytes.slice(start,end)]); }
+    };
+    const parsed=await api.parseASCFile(file,null,null,37);
+    assert(slices>1,'大型 ASC 未按切片读取');
+    assert(parsed.totalMessages===4,'跨切片的数据行解析不完整');
+    const entry=parsed.sources['1_Rx'].map['256_s'];
+    assert(entry.times.length===4&&entry.data.length===32,'分片读取后的紧凑数组错误');
+    assert(entry.data[8]===0x11&&entry.data[31]===0x38,'切片边界导致数据字节损坏');
+  });
+
   await record('DBC 标准复用信号只解码对应分支',async()=>{
     const dbc=[
       'VERSION ""','BO_ 256 MuxMsg: 8 ECU',
@@ -145,6 +173,30 @@ document.getElementById('app').addEventListener('load',async()=>{
     const sig=api.dbc.signals[0];
     assert(sig.precisionUnsupported,'宽信号未标记精度限制');
     assert(api.buildSeries(sig).length===0,'宽信号仍被错误绘制');
+  });
+
+  await record('DBC 的零缩放因子保持常量物理值',async()=>{
+    const dbc='VERSION ""\nBO_ 256 Constant: 1 ECU\n SG_ Fixed : 0|8@1+ (0,12.5) [12.5|12.5] "V" ECU';
+    const parsed=await api.parseDBC(dbc);
+    const sig=parsed.signals[0];
+    assert(sig.factor===0,'factor=0 被错误替换');
+    assert(api.toPhysical(255,sig)===12.5,'零缩放因子未生成恒定物理值');
+  });
+
+  await record('超出实际帧 DLC 的信号不会被补零绘制',async()=>{
+    const dbc='VERSION ""\nBO_ 256 ShortFrame: 1 ECU\n SG_ BeyondDlc : 8|8@1+ (1,0) [0|255] "" ECU';
+    const asc='0.000 1 100 Rx d 1 AA';
+    await api.loadDbcText('short.dbc',dbc,false);
+    await api.loadAscText('short.asc',asc,false);
+    assert(api.buildSeries(api.dbc.signals[0]).length===0,'帧外位被当作零值绘制');
+  });
+
+  await record('无有效信号的 DBC 会清空旧状态',async()=>{
+    await api.loadDbcText('invalid.dbc','VERSION ""\nCM_ "no messages or signals";',false);
+    assert(api.dbc===null,'无效 DBC 被保留为已加载状态');
+    assert(doc.getElementById('dbcInfo').textContent==='未加载','无效 DBC 仍显示为已加载');
+    assert(doc.getElementById('sigList').textContent.includes('请先加载 DBC 文件'),'无效 DBC 后未恢复初始提示');
+    assert(doc.getElementById('btnStart').disabled,'无效 DBC 后仍可生成曲线');
   });
 
   await record('部署时间选择最新成功的 Workers Build',async()=>{
