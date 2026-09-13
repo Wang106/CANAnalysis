@@ -35,6 +35,16 @@ document.getElementById('app').addEventListener('load',async()=>{
   const sampleDbc=await fetch('../public/sample.dbc').then(r=>r.text());
   const sampleAsc=await fetch('../public/sample.asc').then(r=>r.text());
 
+  await record('关于本站页面包含功能介绍与双收款码预留位',async()=>{
+    const html=await fetch('../public/aboutus.html').then(r=>{if(!r.ok)throw new Error('页面文件不存在');return r.text();});
+    const about=new DOMParser().parseFromString(html,'text/html');
+    assert(about.title.includes('关于本站'),'页面标题错误');
+    assert(about.querySelector('[data-feature-list]'),'缺少网页功能介绍');
+    assert(about.querySelector('[data-qr="wechat"]'),'缺少微信二维码预留位');
+    assert(about.querySelector('[data-qr="alipay"]'),'缺少支付宝二维码预留位');
+    assert(about.querySelector('a[href="/"]'),'缺少返回 CAN 分析工具的入口');
+  });
+
   await record('初始提交号与已选信号提示可见',async()=>{
     assert(/^[0-9a-f]{8}$/i.test(doc.getElementById('hcommit').textContent.trim()),'左上角未显示 8 位提交号');
     assert(doc.getElementById('sigPicked').textContent.trim()==='请先加载DBC文件','已选信号区域初始提示错误');
