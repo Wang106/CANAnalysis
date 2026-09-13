@@ -35,14 +35,19 @@ document.getElementById('app').addEventListener('load',async()=>{
   const sampleDbc=await fetch('../public/sample.dbc').then(r=>r.text());
   const sampleAsc=await fetch('../public/sample.asc').then(r=>r.text());
 
-  await record('关于本站页面包含功能介绍与双收款码预留位',async()=>{
+  await record('关于本站页面包含功能介绍、双收款码预留位与一致的栏目导航',async()=>{
     const html=await fetch('../public/aboutus.html').then(r=>{if(!r.ok)throw new Error('页面文件不存在');return r.text();});
     const about=new DOMParser().parseFromString(html,'text/html');
     assert(about.title.includes('关于本站'),'页面标题错误');
     assert(about.querySelector('[data-feature-list]'),'缺少网页功能介绍');
     assert(about.querySelector('[data-qr="wechat"]'),'缺少微信二维码预留位');
     assert(about.querySelector('[data-qr="alipay"]'),'缺少支付宝二维码预留位');
-    assert(about.querySelector('a[href="/"]'),'缺少返回 CAN 分析工具的入口');
+    const aboutNav=about.getElementById('topNav');
+    const aboutItems=Array.from(aboutNav?.querySelectorAll('.nav-item')||[]);
+    assert(aboutItems.map(item=>item.textContent).join('|')==='首页|CAN报文解析|格式转换|27930报文分析|J939分析|友情链接|关于本站','关于本站栏目顺序或标题与主页面不一致');
+    assert(aboutItems[6].getAttribute('aria-current')==='page'&&aboutItems[6].classList.contains('active'),'关于本站未标记为当前栏目');
+    assert(aboutNav.querySelector('a.nav-item[href="/"]')?.textContent==='CAN报文解析','关于本站导航缺少返回 CAN 报文解析的链接');
+    assert(aboutItems.filter(item=>item.classList.contains('pending')&&item.getAttribute('aria-disabled')==='true').length===5,'关于本站未开放栏目缺少禁用语义');
   });
 
   await record('初始提交号与已选信号提示可见',async()=>{
@@ -284,8 +289,9 @@ document.getElementById('app').addEventListener('load',async()=>{
     const items=Array.from(nav.querySelectorAll('.nav-item'));
     assert(items.map(item=>item.textContent).join('|')==='首页|CAN报文解析|格式转换|27930报文分析|J939分析|友情链接|关于本站','栏目顺序或标题错误');
     assert(items[1].getAttribute('aria-current')==='page'&&items[1].classList.contains('active'),'CAN报文解析未标记为当前栏目');
-    assert(nav.querySelectorAll('a').length===0,'暂未开放栏目不应创建跳转链接');
-    assert(items.filter((item,index)=>index!==1&&item.getAttribute('aria-disabled')==='true').length===6,'未开放栏目缺少禁用语义');
+    const aboutLink=nav.querySelector('a.nav-item[href="/aboutus"]');
+    assert(aboutLink?.textContent==='关于本站','主页面导航缺少关于本站链接');
+    assert(items.filter(item=>item.classList.contains('pending')&&item.getAttribute('aria-disabled')==='true').length===5,'未开放栏目缺少禁用语义');
     assert(win.getComputedStyle(nav).height==='12px','导航栏默认未处于收缩状态');
     const leftSweep=win.getComputedStyle(nav,'::before');
     const rightSweep=win.getComputedStyle(nav,'::after');
