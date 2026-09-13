@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0f1115">
+  <meta name="description" content="CANAnalysis 是一款在浏览器本地解析 DBC 与 ASC 文件的 CAN 报文分析工具。">
+  <title>关于本站 · CANAnalysis</title>
+  <link rel="icon" href="icon.png" type="image/png">
+  <style>
+    :root{
+      --bg:#0f1115;
+      --panel:#171a21;
+      --panel2:#1d212b;
+      --line:#2a2f3a;
+      --text:#d6dae3;
+      --muted:#8b93a3;
+      --blue:#4a9eff;
+      --green:#3ddc84;
+      --wechat:#20c56d;
+      --alipay:#1677ff;
+      color-scheme:dark;
+      font-family:"Noto Sans CJK SC","Microsoft YaHei","PingFang SC",system-ui,sans-serif;
+    }
+    *{box-sizing:border-box;}
+    html{scroll-behavior:smooth;}
+    body{
+      margin:0;
+      min-height:100vh;
+      min-height:100dvh;
+      color:var(--text);
+      background:
+        radial-gradient(circle at 12% 4%,rgba(74,158,255,.13),transparent 30rem),
+        radial-gradient(circle at 92% 26%,rgba(61,220,132,.08),transparent 27rem),
+        var(--bg);
+    }
+    a{color:inherit;text-decoration:none;}
+    .shell{width:min(1080px,calc(100% - 32px));margin:0 auto;}
+    .topbar{
+      position:sticky;
+      top:0;
+      z-index:10;
+      border-bottom:1px solid rgba(42,47,58,.85);
+      background:rgba(15,17,21,.82);
+      backdrop-filter:blur(14px);
+      -webkit-backdrop-filter:blur(14px);
+    }
+    .topbar-inner{height:62px;display:flex;align-items:center;justify-content:space-between;gap:16px;}
+    .brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:.3px;}
+    .brand img{width:34px;height:34px;border-radius:50%;background:#fff;box-shadow:0 0 0 1px var(--line);}
+    .brand small{display:block;margin-top:1px;color:var(--muted);font-size:10px;font-weight:500;letter-spacing:.8px;}
+    .back-link{
+      display:inline-flex;
+      align-items:center;
+      gap:7px;
+      min-height:36px;
+      padding:0 13px;
+      border:1px solid var(--line);
+      border-radius:8px;
+      background:var(--panel2);
+      font-size:12px;
+      transition:border-color .16s ease,transform .16s ease;
+    }
+    .back-link:hover{border-color:var(--blue);transform:translateY(-1px);}
+    main{padding:72px 0 44px;}
+    .hero{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(260px,.6fr);align-items:center;gap:54px;padding-bottom:74px;}
+    .eyebrow{display:inline-flex;align-items:center;gap:7px;color:var(--green);font-size:12px;font-weight:700;letter-spacing:1px;}
+    .eyebrow::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 14px rgba(61,220,132,.8);}
+    h1{margin:18px 0 20px;max-width:720px;font-size:clamp(38px,7vw,72px);line-height:1.06;letter-spacing:-2px;color:#f3f6fb;}
+    .hero-copy{max-width:680px;margin:0;color:#aeb5c3;font-size:clamp(15px,2vw,18px);line-height:1.9;}
+    .hero-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:28px;}
+    .primary-link,.secondary-link{display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:0 18px;border-radius:8px;font-size:13px;font-weight:700;}
+    .primary-link{background:var(--blue);color:#071523;box-shadow:0 10px 28px rgba(74,158,255,.2);}
+    .secondary-link{border:1px solid var(--line);background:rgba(29,33,43,.75);}
+    .signal-card{position:relative;min-height:280px;border:1px solid var(--line);border-radius:18px;background:linear-gradient(145deg,rgba(29,33,43,.94),rgba(23,26,33,.82));overflow:hidden;box-shadow:0 22px 60px rgba(0,0,0,.25);}
+    .signal-card::before{content:"CAN SIGNAL";position:absolute;top:18px;left:20px;color:var(--muted);font:10px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:2px;}
+    .signal-grid{position:absolute;inset:52px 18px 18px;background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:38px 38px;border-radius:9px;opacity:.68;}
+    .signal-svg{position:absolute;inset:48px 14px 15px;width:calc(100% - 28px);height:calc(100% - 63px);filter:drop-shadow(0 0 8px rgba(74,158,255,.25));}
+    .signal-meta{position:absolute;right:20px;top:16px;color:var(--blue);font:11px/1 ui-monospace,SFMono-Regular,Menlo,monospace;}
+    .section-kicker{margin:0 0 8px;color:var(--blue);font-size:11px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;}
+    h2{margin:0;font-size:clamp(26px,4vw,38px);line-height:1.2;color:#f0f3f8;}
+    .section-intro{max-width:700px;margin:14px 0 0;color:var(--muted);font-size:14px;line-height:1.8;}
+    .features{padding:68px 0;border-top:1px solid var(--line);}
+    .feature-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:30px;}
+    .feature-card{min-height:190px;padding:24px;border:1px solid var(--line);border-radius:12px;background:rgba(23,26,33,.78);}
+    .feature-index{display:flex;align-items:center;justify-content:space-between;margin-bottom:34px;color:var(--blue);font:11px/1 ui-monospace,SFMono-Regular,Menlo,monospace;}
+    .feature-index::after{content:"";width:34px;height:1px;background:currentColor;opacity:.55;}
+    .feature-card h3{margin:0 0 9px;font-size:17px;color:#eef2f8;}
+    .feature-card p{margin:0;color:var(--muted);font-size:13px;line-height:1.75;}
+    .privacy-strip{display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:center;margin-top:14px;padding:20px 24px;border:1px solid rgba(61,220,132,.24);border-radius:12px;background:rgba(61,220,132,.045);}
+    .privacy-icon{display:grid;place-items:center;width:42px;height:42px;border-radius:10px;background:rgba(61,220,132,.13);color:var(--green);font-size:20px;}
+    .privacy-strip strong{display:block;margin-bottom:4px;color:#e7f8ee;font-size:14px;}
+    .privacy-strip span{color:var(--muted);font-size:12px;line-height:1.6;}
+    .support{padding:68px 0 34px;border-top:1px solid var(--line);}
+    .support-head{display:flex;align-items:end;justify-content:space-between;gap:28px;}
+    .support-note{max-width:420px;margin:0;color:var(--muted);font-size:12px;line-height:1.7;text-align:right;}
+    .pay-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin-top:30px;}
+    .pay-card{margin:0;padding:26px;border:1px solid var(--line);border-radius:14px;background:linear-gradient(145deg,rgba(29,33,43,.9),rgba(23,26,33,.8));text-align:center;}
+    .pay-card figcaption{margin-bottom:18px;}
+    .pay-name{display:block;font-size:16px;font-weight:700;color:#f0f3f8;}
+    .pay-desc{display:block;margin-top:5px;color:var(--muted);font-size:11px;}
+    .qr-placeholder{position:relative;display:grid;place-items:center;width:min(270px,100%);aspect-ratio:1;margin:0 auto;border:1px dashed #485061;border-radius:12px;background:repeating-linear-gradient(45deg,rgba(255,255,255,.016) 0 10px,transparent 10px 20px);overflow:hidden;}
+    .qr-placeholder::before,.qr-placeholder::after{content:"";position:absolute;width:30px;height:30px;border-color:var(--qr-color);opacity:.8;}
+    .qr-placeholder::before{top:14px;left:14px;border-top:2px solid;border-left:2px solid;}
+    .qr-placeholder::after{right:14px;bottom:14px;border-right:2px solid;border-bottom:2px solid;}
+    .qr-placeholder.wechat{--qr-color:var(--wechat);}
+    .qr-placeholder.alipay{--qr-color:var(--alipay);}
+    .qr-image{display:block;width:min(270px,100%);aspect-ratio:1;margin:0 auto;border-radius:12px;object-fit:contain;background:#fff;}
+    .qr-copy{max-width:180px;color:var(--muted);font-size:12px;line-height:1.7;}
+    .qr-copy strong{display:block;margin-bottom:5px;color:var(--qr-color);font-size:13px;}
+    .support-foot{margin:16px 0 0;text-align:center;color:#6f7786;font-size:10px;}
+    footer{padding:24px 0 calc(30px + env(safe-area-inset-bottom));border-top:1px solid var(--line);color:#6f7786;font-size:11px;}
+    .footer-inner{display:flex;justify-content:space-between;gap:18px;}
+    @media (max-width:760px){
+      .shell{width:min(100% - 24px,1080px);}
+      .topbar-inner{height:56px;}
+      .brand small{display:none;}
+      .back-link{padding:0 10px;font-size:11px;}
+      main{padding-top:44px;}
+      .hero{grid-template-columns:1fr;gap:34px;padding-bottom:52px;}
+      h1{font-size:43px;letter-spacing:-1.5px;}
+      .signal-card{min-height:220px;}
+      .features,.support{padding:50px 0;}
+      .feature-grid,.pay-grid{grid-template-columns:1fr;}
+      .feature-card{min-height:0;}
+      .support-head{display:block;}
+      .support-note{margin-top:12px;text-align:left;}
+      .pay-card{padding:20px;}
+      .footer-inner{display:block;line-height:1.8;}
+    }
+    @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto;}.back-link{transition:none;}}
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="shell topbar-inner">
+      <a class="brand" href="/" aria-label="返回 CANAnalysis 首页">
+        <img src="icon.png" width="34" height="34" alt="">
+        <span>CANAnalysis<small>CAN DATA WORKSPACE</small></span>
+      </a>
+      <a class="back-link" href="/"><span aria-hidden="true">←</span> 返回分析工具</a>
+    </div>
+  </header>
+
+  <main class="shell">
+    <section class="hero" aria-labelledby="hero-title">
+      <div>
+        <span class="eyebrow">纯前端 · 本地分析</span>
+        <h1 id="hero-title">让 CAN 报文<br>更容易看懂</h1>
+        <p class="hero-copy">CANAnalysis 是一款面向测试与工程人员的浏览器工具。加载 DBC 与 ASC 文件后，即可完成信号解码、曲线查看和报文统计，不需要安装软件，也不依赖后端服务。</p>
+        <div class="hero-actions">
+          <a class="primary-link" href="/">开始分析 CAN 报文</a>
+          <a class="secondary-link" href="#support">支持本站</a>
+        </div>
+      </div>
+      <div class="signal-card" aria-label="CAN 信号曲线示意图">
+        <span class="signal-meta">0x180 · Rx</span>
+        <div class="signal-grid"></div>
+        <svg class="signal-svg" viewBox="0 0 420 220" preserveAspectRatio="none" role="img" aria-hidden="true">
+          <path d="M0 164 L38 164 L38 118 L78 118 L78 142 L120 142 L120 72 L168 72 L168 102 L215 102 L215 42 L268 42 L268 86 L318 86 L318 58 L366 58 L366 24 L420 24" fill="none" stroke="#4a9eff" stroke-width="3" vector-effect="non-scaling-stroke"/>
+          <path d="M0 188 C45 188 52 176 88 176 S142 194 182 160 S247 126 284 144 S350 120 420 108" fill="none" stroke="#3ddc84" stroke-width="2" opacity=".78" vector-effect="non-scaling-stroke"/>
+        </svg>
+      </div>
+    </section>
+
+    <section class="features" data-feature-list aria-labelledby="features-title">
+      <p class="section-kicker">What it does</p>
+      <h2 id="features-title">从原始报文到可读结果</h2>
+      <p class="section-intro">工具围绕日常 CAN 测试场景设计，尽量让文件加载、信号筛选、曲线观察和异常定位保持在同一个工作区中。</p>
+      <div class="feature-grid">
+        <article class="feature-card">
+          <div class="feature-index">01 / FILES</div>
+          <h3>DBC 与大型 ASC 解析</h3>
+          <p>识别报文、信号、单位和数值定义，并以分片方式处理大型 ASC 日志，降低移动设备读取文件时的内存压力。</p>
+        </article>
+        <article class="feature-card">
+          <div class="feature-index">02 / SIGNALS</div>
+          <h3>信号筛选与曲线查看</h3>
+          <p>按名称或报文搜索信号，生成同步时间轴曲线，支持缩放、自适应范围、实时值观察和多种列表风格。</p>
+        </article>
+        <article class="feature-card">
+          <div class="feature-index">03 / ANALYSIS</div>
+          <h3>报文统计与异常提示</h3>
+          <p>按 CAN ID 汇总帧数与帧间隔，结合 DBC 检查未知报文、信号越界、长时间恒定及疑似丢帧等现象。</p>
+        </article>
+        <article class="feature-card">
+          <div class="feature-index">04 / DEVICES</div>
+          <h3>手机与电脑均可使用</h3>
+          <p>响应式界面适配 iPhone 横竖屏、平板和桌面浏览器，现场测试与办公分析可以使用同一套工具。</p>
+        </article>
+      </div>
+      <div class="privacy-strip">
+        <span class="privacy-icon" aria-hidden="true">⌁</span>
+        <div><strong>文件留在你的设备中</strong><span>DBC 与 ASC 的读取、解析和绘图均在当前浏览器本地完成，本站不会主动上传你的 CAN 数据文件。</span></div>
+      </div>
+    </section>
+
+    <section class="support" id="support" aria-labelledby="support-title">
+      <div class="support-head">
+        <div><p class="section-kicker">Support</p><h2 id="support-title">支持这个小工具</h2></div>
+        <p class="support-note">如果它帮你节省了排查时间，可以自愿支持后续维护。支持与否不会影响任何功能的使用。</p>
+      </div>
+      <div class="pay-grid">
+        <figure class="pay-card" data-qr="wechat">
+          <figcaption><span class="pay-name">微信</span><span class="pay-desc">微信扫一扫支持</span></figcaption>
+          <!-- 后续将下方占位元素替换为微信收款码图片，例如：<img class="qr-image" src="wechat-pay.png" alt="微信收款二维码"> -->
+          <div class="qr-placeholder wechat" role="img" aria-label="微信收款二维码图片预留位置">
+            <span class="qr-copy"><strong>微信二维码预留位</strong>建议使用清晰的正方形二维码图片</span>
+          </div>
+        </figure>
+        <figure class="pay-card" data-qr="alipay">
+          <figcaption><span class="pay-name">支付宝</span><span class="pay-desc">支付宝扫一扫支持</span></figcaption>
+          <!-- 后续将下方占位元素替换为支付宝收款码图片，例如：<img class="qr-image" src="alipay-pay.png" alt="支付宝收款二维码"> -->
+          <div class="qr-placeholder alipay" role="img" aria-label="支付宝收款二维码图片预留位置">
+            <span class="qr-copy"><strong>支付宝二维码预留位</strong>建议使用清晰的正方形二维码图片</span>
+          </div>
+        </figure>
+      </div>
+      <p class="support-foot">请在付款前核对收款方信息。二维码图片将在后续版本中补充。</p>
+    </section>
+  </main>
+
+  <footer>
+    <div class="shell footer-inner"><span>© 2026 CANAnalysis</span><span>为更高效的 CAN 数据排查而设计</span></div>
+  </footer>
+</body>
+</html>
