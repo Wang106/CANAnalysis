@@ -50,6 +50,47 @@ document.getElementById('app').addEventListener('load',async()=>{
     assert(aboutItems.filter(item=>item.classList.contains('pending')&&item.getAttribute('aria-disabled')==='true').length===5,'关于本站未开放栏目缺少禁用语义');
   });
 
+  for(const page of ['index.html','aboutus.html']){
+    await record(page+' 导航启动展开、延时收起及交互关闭',async()=>{
+      const probe=document.createElement('iframe');
+      probe.style.width='390px';
+      const loaded=new Promise(resolve=>probe.addEventListener('load',resolve,{once:true}));
+      probe.src='../public/'+page;
+      document.body.appendChild(probe);
+      try{
+        await loaded;
+        const view=probe.contentWindow, pageDoc=probe.contentDocument;
+        const nav=pageDoc.getElementById('topNav');
+        const peek=nav.querySelector('.nav-peek');
+        const links=nav.querySelector('.top-nav-inner');
+        assert(nav.classList.contains('nav-open'),'进入页面未默认展开');
+        await new Promise(resolve=>setTimeout(resolve,1100));
+        assert(!nav.classList.contains('nav-open'),'1 秒后未自动收起');
+        assert(links.inert,'收起的导航仍可被键盘访问');
+        assert(nav.classList.contains('nav-sweep'),'收起时未播放聚拢亮光');
+        nav.dispatchEvent(new view.PointerEvent('pointerenter',{pointerType:'mouse'}));
+        assert(nav.classList.contains('nav-open'),'鼠标进入未展开');
+        nav.dispatchEvent(new view.PointerEvent('pointerleave',{pointerType:'mouse'}));
+        assert(!nav.classList.contains('nav-open'),'鼠标离开未收起');
+        peek.click();
+        assert(nav.classList.contains('nav-open'),'点击栏目导航未展开');
+        pageDoc.body.dispatchEvent(new view.PointerEvent('pointerdown',{bubbles:true,pointerType:'touch'}));
+        assert(!nav.classList.contains('nav-open'),'触摸页面其他位置未收起');
+        peek.focus();
+        peek.click();
+        pageDoc.body.click();
+        assert(!nav.classList.contains('nav-open'),'焦点停留后点击外部仍未收起');
+        peek.click();
+        nav.dispatchEvent(new view.KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
+        assert(!nav.classList.contains('nav-open'),'Escape 未收起');
+        if(page==='aboutus.html'){
+          assert(!pageDoc.querySelector('.back-link'),'返回分析工具按钮未移除');
+          assert(!pageDoc.querySelector('.primary-link'),'开始分析 CAN 报文按钮未移除');
+        }
+      }finally{probe.remove();}
+    });
+  }
+
   await record('初始提交号与已选信号提示可见',async()=>{
     assert(/^[0-9a-f]{8}$/i.test(doc.getElementById('hcommit').textContent.trim()),'左上角未显示 8 位提交号');
     assert(doc.getElementById('sigPicked').textContent.trim()==='请先加载DBC文件','已选信号区域初始提示错误');
@@ -292,6 +333,8 @@ document.getElementById('app').addEventListener('load',async()=>{
     const aboutLink=nav.querySelector('a.nav-item[href="/aboutus"]');
     assert(aboutLink?.textContent==='关于本站','主页面导航缺少关于本站链接');
     assert(items.filter(item=>item.classList.contains('pending')&&item.getAttribute('aria-disabled')==='true').length===5,'未开放栏目缺少禁用语义');
+    nav.dispatchEvent(new win.PointerEvent('pointerenter',{pointerType:'mouse'}));
+    nav.dispatchEvent(new win.PointerEvent('pointerleave',{pointerType:'mouse'}));
     assert(win.getComputedStyle(nav).height==='12px','导航栏默认未处于收缩状态');
     const leftSweep=win.getComputedStyle(nav,'::before');
     const rightSweep=win.getComputedStyle(nav,'::after');
