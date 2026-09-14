@@ -52,7 +52,7 @@ document.getElementById('app').addEventListener('load',async()=>{
   });
 
   for(const page of ['index.html','aboutus.html','convert.html']){
-    await record(page+' 导航启动展开、延时收起及交互关闭',async()=>{
+    await record(page+' 导航固定及 CAN 生成曲线后收起',async()=>{
       const probe=document.createElement('iframe');
       probe.style.width='390px';
       const loaded=new Promise(resolve=>probe.addEventListener('load',resolve,{once:true}));
@@ -66,24 +66,21 @@ document.getElementById('app').addEventListener('load',async()=>{
         const links=nav.querySelector('.top-nav-inner');
         assert(nav.classList.contains('nav-open'),'进入页面未默认展开');
         await new Promise(resolve=>setTimeout(resolve,1100));
-        assert(!nav.classList.contains('nav-open'),'1 秒后未自动收起');
-        assert(links.inert,'收起的导航仍可被键盘访问');
-        assert(nav.classList.contains('nav-sweep'),'收起时未播放聚拢亮光');
-        nav.dispatchEvent(new view.PointerEvent('pointerenter',{pointerType:'mouse'}));
-        assert(nav.classList.contains('nav-open'),'鼠标进入未展开');
+        assert(nav.classList.contains('nav-open')&&nav.classList.contains('nav-fixed'),'导航未保持固定展开');
+        assert(!links.inert,'固定导航不能被键盘访问');
         nav.dispatchEvent(new view.PointerEvent('pointerleave',{pointerType:'mouse'}));
-        assert(!nav.classList.contains('nav-open'),'鼠标离开未收起');
-        peek.click();
-        assert(nav.classList.contains('nav-open'),'点击栏目导航未展开');
         pageDoc.body.dispatchEvent(new view.PointerEvent('pointerdown',{bubbles:true,pointerType:'touch'}));
-        assert(!nav.classList.contains('nav-open'),'触摸页面其他位置未收起');
-        peek.focus();
-        peek.click();
-        pageDoc.body.click();
-        assert(!nav.classList.contains('nav-open'),'焦点停留后点击外部仍未收起');
-        peek.click();
-        nav.dispatchEvent(new view.KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
-        assert(!nav.classList.contains('nav-open'),'Escape 未收起');
+        assert(nav.classList.contains('nav-open'),'固定导航因鼠标离开或外部点击收起');
+        if(page==='index.html'){
+          assert(nav.dataset.collapse==='charts','CAN 页未标记为曲线生成后收起');
+          view.__siteNav.collapse();
+          assert(!nav.classList.contains('nav-open')&&!nav.classList.contains('nav-fixed'),'CAN 页生成曲线后导航未收起');
+          assert(links.inert&&nav.classList.contains('nav-sweep'),'CAN 页收起后语义或亮光动画错误');
+          nav.dispatchEvent(new view.PointerEvent('pointerenter',{pointerType:'mouse'}));
+          assert(nav.classList.contains('nav-open'),'收起后鼠标进入未展开');
+          nav.dispatchEvent(new view.PointerEvent('pointerleave',{pointerType:'mouse'}));
+          assert(!nav.classList.contains('nav-open'),'收起后鼠标离开未再次收起');
+        }
         if(page==='aboutus.html'){
           assert(!pageDoc.querySelector('.back-link'),'返回分析工具按钮未移除');
           assert(!pageDoc.querySelector('.primary-link'),'开始分析 CAN 报文按钮未移除');

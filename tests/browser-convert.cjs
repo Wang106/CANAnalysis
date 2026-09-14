@@ -28,6 +28,7 @@ const server=createServer(async(req,res)=>{
     assert.equal(await page.locator('#topNav a').first().getAttribute('href'),'/');
     assert.equal(await page.locator('#sourceFile').getAttribute('accept'),null);
     assert.equal(await page.locator('#startConvert').isDisabled(),true);
+    assert.equal(await page.evaluate(()=>getComputedStyle(document.querySelector('.conversion-grid')).gridTemplateColumns.split(' ').length),1,'source and target panels are not stacked');
     const sample=Buffer.from('base hex timestamps absolute\n0.125 1 123 Rx d 2 01 FF\n1.25 2 18FF50E5x Tx d 1 02\n');
     for(const format of ['asc','log','trc','blf','txt','mf4','mdf']){
       await page.locator('#sourceFile').setInputFiles({name:'demo.asc',mimeType:'application/octet-stream',buffer:sample});
@@ -36,7 +37,7 @@ const server=createServer(async(req,res)=>{
       await page.locator('#result').waitFor({state:'visible'});
       assert.equal(await page.locator('#preview tr').count(),2);
       const downloaded=page.waitForEvent('download');await page.click('#download');
-      const download=await downloaded;assert.equal(download.suggestedFilename(),'demo_converted.'+format);assert.equal(await download.failure(),null);
+      const download=await downloaded;assert.equal(download.suggestedFilename(),'demo.'+format);assert.equal(await download.failure(),null);
     }
     await page.screenshot({path:process.env.SCREENSHOT_DIR?path.join(process.env.SCREENSHOT_DIR,'convert-desktop.png'):undefined,fullPage:true});
     for(const viewport of [{width:390,height:844},{width:844,height:390}]){
@@ -53,6 +54,18 @@ const server=createServer(async(req,res)=>{
     assert.match(await page.textContent('#status'),/已取消/);
     assert.equal(await page.locator('#startConvert').isEnabled(),true);
     assert.deepEqual(errors,[],'no conversion page script errors');
+    const savePage=await browser.newPage({viewport:{width:1000,height:800}});
+    await savePage.addInitScript(()=>{
+      const source=new File(['base hex timestamps absolute\n0.1 1 123 Rx d 1 FF\n'],'vehicle.log.asc',{type:'text/plain'});
+      const sourceHandle={kind:'file',name:source.name,getFile:async()=>source};
+      window.showOpenFilePicker=async()=>[sourceHandle];
+      window.showSaveFilePicker=async options=>{window.__saveTest={options,sourceHandle};return {name:options.suggestedName,createWritable:async()=>({write:async blob=>window.__saveTest.bytes=blob.size,close:async()=>window.__saveTest.closed=true})};};
+    });
+    await savePage.goto(base+'/convert');await savePage.click('#chooseFile');await savePage.selectOption('#targetFormat','trc');await savePage.click('#startConvert');
+    await savePage.locator('#result').waitFor({state:'visible'});
+    const saveState=await savePage.evaluate(()=>({name:__saveTest.options.suggestedName,startIn:__saveTest.options.startIn===__saveTest.sourceHandle,bytes:__saveTest.bytes,closed:__saveTest.closed,status:document.getElementById('saveResult').textContent,downloadHidden:document.getElementById('download').hidden}));
+    assert.equal(saveState.name,'vehicle.log.trc');assert.equal(saveState.startIn,true);assert.ok(saveState.bytes>0);assert.equal(saveState.closed,true);assert.match(saveState.status,/原文件所在位置/);assert.equal(saveState.downloadHidden,true);
+    await savePage.close();
     await page.goto(base+'/tests/regression.html');
     await page.waitForFunction(()=>Array.isArray(window.__TEST_RESULTS__),{},{timeout:90000});
     const results=await page.evaluate(()=>window.__TEST_RESULTS__);
