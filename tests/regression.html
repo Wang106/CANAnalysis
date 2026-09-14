@@ -47,10 +47,11 @@ document.getElementById('app').addEventListener('load',async()=>{
     assert(aboutItems.map(item=>item.textContent).join('|')==='首页|CAN报文解析|格式转换|27930报文分析|J939分析|友情链接|关于本站','关于本站栏目顺序或标题与主页面不一致');
     assert(aboutItems[6].getAttribute('aria-current')==='page'&&aboutItems[6].classList.contains('active'),'关于本站未标记为当前栏目');
     assert(aboutNav.querySelector('a.nav-item[href="/"]')?.textContent==='CAN报文解析','关于本站导航缺少返回 CAN 报文解析的链接');
-    assert(aboutItems.filter(item=>item.classList.contains('pending')&&item.getAttribute('aria-disabled')==='true').length===5,'关于本站未开放栏目缺少禁用语义');
+    assert(aboutNav.querySelector('a[href="/convert"]'),'关于本站缺少格式转换入口');
+    assert(aboutItems.filter(item=>item.classList.contains('pending')&&item.getAttribute('aria-disabled')==='true').length===4,'关于本站未开放栏目缺少禁用语义');
   });
 
-  for(const page of ['index.html','aboutus.html']){
+  for(const page of ['index.html','aboutus.html','convert.html']){
     await record(page+' 导航启动展开、延时收起及交互关闭',async()=>{
       const probe=document.createElement('iframe');
       probe.style.width='390px';
@@ -122,7 +123,7 @@ document.getElementById('app').addEventListener('load',async()=>{
     api.selectedSet.clear();
     for(const sig of api.dbc.signals)api.selectedSet.add(sig.messageKey+'::'+sig.name);
     api.renderCharts();
-    await waitFor(()=>api.charts.length===7);
+    await waitFor(()=>api.charts.length===7&&doc.getElementById('app').classList.contains('mobile-charts'));
     assert(api.charts.filter(c=>c._series&&c._series.length).length===7,'曲线生成不完整');
     assert(api.charts[0].getOption().series[0].sampling==='lttb','LTTB 未启用');
     api.renderAnalysis(api.dbc.signals);
@@ -332,7 +333,8 @@ document.getElementById('app').addEventListener('load',async()=>{
     assert(items[1].getAttribute('aria-current')==='page'&&items[1].classList.contains('active'),'CAN报文解析未标记为当前栏目');
     const aboutLink=nav.querySelector('a.nav-item[href="/aboutus"]');
     assert(aboutLink?.textContent==='关于本站','主页面导航缺少关于本站链接');
-    assert(items.filter(item=>item.classList.contains('pending')&&item.getAttribute('aria-disabled')==='true').length===5,'未开放栏目缺少禁用语义');
+    assert(nav.querySelector('a[href="/convert"]'),'主页面缺少格式转换入口');
+    assert(items.filter(item=>item.classList.contains('pending')&&item.getAttribute('aria-disabled')==='true').length===4,'未开放栏目缺少禁用语义');
     nav.dispatchEvent(new win.PointerEvent('pointerenter',{pointerType:'mouse'}));
     nav.dispatchEvent(new win.PointerEvent('pointerleave',{pointerType:'mouse'}));
     assert(win.getComputedStyle(nav).height==='12px','导航栏默认未处于收缩状态');
