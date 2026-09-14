@@ -83,6 +83,34 @@ python3 -m http.server 8000
 
 版本变更与回滚基线见 [`CHANGELOG.md`](CHANGELOG.md)。部署时由 `public/version.json` 保存页面代码提交号，避免 GitHub 公共 API 限流导致版本信息空白。
 
+## CAN 日志格式转换
+
+访问 `/convert`（导航中的「格式转换」），选择源文件和目标格式后下载。默认输出 Vector ASC；提供 ASC、BusMaster LOG、PCAN TRC、Vector BLF、周立功 TXT、MF4 和 MDF 七种读取/输出选项。文件通过浏览器 Worker 本地处理，不上传服务器；需要通过 HTTP/HTTPS 打开，不能直接以 `file://` 运行模块 Worker。
+
+- 经典 CAN 数据帧、标准/扩展 ID、远程帧、收发方向和通道可转换；CAN FD 支持 ASC/TRC/BLF/MF4，其他目标会明确拒绝，避免截断数据。
+- BLF 支持普通与 zlib 容器；MF4 支持 4.00–4.11 的原始 `CAN_DataFrame` / `CAN_RemoteFrame` 记录（DT、DL、HL、Deflate/转置 Deflate）；输出 MDF 4.10。MDF3 输出 3.30 原始字段，读取默认小端 IEEE 格式。
+- MDF/MF4 仅有解码信号而无原始 CAN 帧时不能转换；暂不支持 MDF 4.20+、加密、可变长/远程主通道布局及 ZSTD/LZ4。
+- LOG 读取经典 CAN 的 ABSOLUTE/SYSTEM 时间模式，输出 ABSOLUTE；相对时间模式明确拒绝。TRC 读取 1.0/1.1/1.3/2.0/2.1，输出 2.1；2.x 要求数据列 `D` 在末尾。
+- TXT 要求可识别的 CANTest/ZCAN 表头且数据列在末尾，支持 UTF-8、GB18030 和带 BOM 的 UTF-16。提供时间单位选择，非所有周立功软件版本都采用相同表格。
+- 保留日志内时间轴，不迁移采集日期、附件、触发元数据；LOG 精度为 0.1 ms，TRC 为 1 µs，舍入会提示。MDF BusChannel 按 python-can 的零起始规则与页面一起始通道互换。
+- 文本分片读取，输出分块组装；单压缩块限制 64 MB、单输出累积器限制 1 GB。手机可用内存更少，大于 200 MB 建议在电脑上转换。
+
+新增测试（先加入独立样本及失败用例，再实现引擎）：
+
+```bash
+node tests/convert.test.mjs
+node tests/nav-state.test.cjs
+pip install python-can asammdf
+python tests/verify-convert-output.py
+npm install --no-save playwright
+npx playwright install chromium
+node tests/browser-convert.cjs
+```
+
+独立样本由 `tests/generate-convert-fixtures.py` 生成，提交的 JSON 样本让 Node 回归测试无需 Python 依赖。Python 交叉验证使用 python-can / asammdf 读取本引擎生成的真实文件，不仅依靠自有读写器互测。浏览器测试检查七格式下载、移动布局、取消/错误流程及原有解析/导航回归；可通过 `PLAYWRIGHT_MODULE`、`CHROMIUM_PATH` 指定现有安装。
+
+格式参考：[python-can BLF 实现](https://python-can.readthedocs.io/en/stable/_modules/can/io/blf.html)、[PEAK TRC 官方格式](https://www.peak-system.com/produktcd/Pdf/English/PEAK_CAN_TRC_File_Format.pdf)、[asammdf 原始总线日志](https://asammdf.readthedocs.io/en/latest/buslogging.html)。
+
 ## 许可
 
 MIT License
