@@ -327,7 +327,7 @@
 </head>
 <body>
 <div id="app" class="ui-classic">
-  <nav id="topNav" class="nav-open" aria-label="本站栏目">
+  <nav id="topNav" class="nav-open" data-collapse="charts" aria-label="本站栏目">
     <button type="button" class="nav-peek" aria-expanded="true" aria-controls="navLinks"><span>栏目导航</span><span aria-hidden="true">⌄</span></button>
     <div class="top-nav-inner" id="navLinks">
       <span class="nav-item pending" aria-disabled="true">首页</span>
@@ -2940,6 +2940,7 @@ $('btnFilterEmpty').onclick=()=>{
   renderSignalList();
 };
 $('btnStart').onclick=()=>{
+  window.__siteNav?.collapse();
   renderPickedList();
   const bar=$('sigBar');
   const wasCollapsed=bar.classList.contains('collapsed');

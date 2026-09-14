@@ -1,4 +1,5 @@
 #topNav{position:relative;height:12px;flex:0 0 12px;z-index:40;background:var(--panel2);border-bottom:1px solid var(--line);outline:none;overflow:visible;}
+  #topNav.nav-fixed{height:44px;flex-basis:44px;}
   #topNav::before,#topNav::after{content:"";position:absolute;top:0;bottom:0;width:32%;z-index:0;pointer-events:none;opacity:0;will-change:transform,opacity;background:linear-gradient(90deg,transparent 0%,rgba(74,158,255,.2) 28%,var(--accent) 50%,rgba(74,158,255,.2) 72%,transparent 100%);}
   #topNav::before{left:0;}
   #topNav.nav-sweep::before{animation:navSweepLeft 1s ease-out both;}
