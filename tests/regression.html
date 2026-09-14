@@ -65,6 +65,8 @@ document.getElementById('app').addEventListener('load',async()=>{
         const peek=nav.querySelector('.nav-peek');
         const links=nav.querySelector('.top-nav-inner');
         assert(nav.classList.contains('nav-open'),'进入页面未默认展开');
+        assert(view.getComputedStyle(nav).position==='sticky'&&view.getComputedStyle(nav).top==='0px','页面滚动时导航未固定在屏幕顶部');
+        assert(view.getComputedStyle(nav.querySelector('.nav-item.active'),'::after').display==='none','当前栏目文字下方仍显示白色长条');
         await new Promise(resolve=>setTimeout(resolve,1100));
         assert(nav.classList.contains('nav-open')&&nav.classList.contains('nav-fixed'),'导航未保持固定展开');
         assert(!links.inert,'固定导航不能被键盘访问');

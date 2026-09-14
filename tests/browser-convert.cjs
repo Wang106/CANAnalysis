@@ -24,11 +24,12 @@ const server=createServer(async(req,res)=>{
     const errors=[];page.on('pageerror',error=>errors.push(error.message));
     await page.goto(base+'/convert');
     assert.equal(await page.inputValue('#targetFormat'),'asc');
-    assert.equal(await page.locator('#targetFormat option').count(),7);
+    assert.equal(await page.locator('#targetFormat option').count(),8);
     assert.equal(await page.locator('#topNav a').first().getAttribute('href'),'/');
     assert.equal(await page.locator('#sourceFile').getAttribute('accept'),null);
     assert.equal(await page.locator('#startConvert').isDisabled(),true);
     assert.equal(await page.evaluate(()=>getComputedStyle(document.querySelector('.conversion-grid')).gridTemplateColumns.split(' ').length),1,'source and target panels are not stacked');
+    await page.evaluate(()=>scrollTo(0,700));await page.waitForTimeout(50);assert.ok(Math.abs(await page.locator('#topNav').evaluate(node=>node.getBoundingClientRect().top))<1,'navigation did not remain at viewport top while scrolling');await page.evaluate(()=>scrollTo(0,0));
     const sample=Buffer.from('base hex timestamps absolute\n0.125 1 123 Rx d 2 01 FF\n1.25 2 18FF50E5x Tx d 1 02\n');
     for(const format of ['asc','log','trc','blf','txt','mf4','mdf']){
       await page.locator('#sourceFile').setInputFiles({name:'demo.asc',mimeType:'application/octet-stream',buffer:sample});
@@ -39,6 +40,16 @@ const server=createServer(async(req,res)=>{
       const downloaded=page.waitForEvent('download');await page.click('#download');
       const download=await downloaded;assert.equal(download.suggestedFilename(),'demo.'+format);assert.equal(await download.failure(),null);
     }
+    const dbc=Buffer.from('BO_ 291 Demo: 8 ECU\n SG_ Value : 0|8@1+ (1,0) [0|255] "V" ECU\nBO_ 2566869221 Ext: 8 ECU\n SG_ ExtValue : 0|8@1+ (0.5,0) [0|127.5] "A" ECU\n');
+    await page.locator('#sourceFile').setInputFiles({name:'demo.asc',mimeType:'text/plain',buffer:sample});
+    await page.selectOption('#targetFormat','csv');assert.equal(await page.locator('#csvOptions').isVisible(),true);
+    assert.equal(await page.locator('#dbcFile').getAttribute('accept'),null);
+    await page.locator('#dbcFile').setInputFiles({name:'vehicle.dbc',mimeType:'text/plain',buffer:dbc});
+    await page.locator('.signal-option').first().waitFor();await page.click('#selectAllSignals');await page.selectOption('#csvInterval','300');
+    await page.click('#startConvert');await page.locator('#result').waitFor({state:'visible'});
+    const csvEvent=page.waitForEvent('download');await page.click('#download');const csvDownload=await csvEvent;
+    assert.equal(csvDownload.suggestedFilename(),'demo.csv');
+    const csvText=await readFile(await csvDownload.path(),'utf8');assert.match(csvText,/序号,时间,Value,ExtValue/);assert.match(csvText,/1,0\.125000,1,/);
     await page.screenshot({path:process.env.SCREENSHOT_DIR?path.join(process.env.SCREENSHOT_DIR,'convert-desktop.png'):undefined,fullPage:true});
     for(const viewport of [{width:390,height:844},{width:844,height:390}]){
       await page.setViewportSize(viewport);
@@ -74,6 +85,6 @@ const server=createServer(async(req,res)=>{
     const results=await page.evaluate(()=>window.__TEST_RESULTS__);
     console.log(JSON.stringify(results));
     assert.equal(results.every(t=>t.ok),true,'existing browser regressions');
-    console.log('PASS: seven-format downloads, source-path saves, write fallback, responsive layout and existing regressions');
+    console.log('PASS: seven-format downloads, DBC signal CSV, source-path saves, responsive layout and existing regressions');
   }finally{await browser.close();server.close();}
 })().catch(error=>{console.error(error);server.close();process.exitCode=1;});

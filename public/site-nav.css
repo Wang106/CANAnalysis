@@ -1,4 +1,4 @@
-#topNav{position:relative;height:12px;flex:0 0 12px;z-index:40;background:var(--panel2);border-bottom:1px solid var(--line);outline:none;overflow:visible;}
+#topNav{position:sticky;top:0;height:12px;flex:0 0 12px;z-index:140;background:var(--panel2);border-bottom:1px solid var(--line);outline:none;overflow:visible;}
   #topNav.nav-fixed{height:44px;flex-basis:44px;}
   #topNav::before,#topNav::after{content:"";position:absolute;top:0;bottom:0;width:32%;z-index:0;pointer-events:none;opacity:0;will-change:transform,opacity;background:linear-gradient(90deg,transparent 0%,rgba(74,158,255,.2) 28%,var(--accent) 50%,rgba(74,158,255,.2) 72%,transparent 100%);}
   #topNav::before{left:0;}
@@ -18,7 +18,7 @@
   .nav-item.pending{cursor:pointer;}
   .nav-item:not(.active):hover{color:var(--txt);background:var(--panel2);}
   .nav-item.active{color:#071523;background:var(--accent);font-weight:700;box-shadow:0 0 0 1px rgba(255,255,255,.08) inset;}
-  .nav-item.active::after{content:"";position:absolute;left:14px;right:14px;bottom:3px;height:2px;border-radius:2px;background:rgba(255,255,255,.7);}
+  .nav-item.active::after{display:none;}
   @media (max-width:760px){
     .top-nav-inner{justify-content:flex-start;padding-left:8px;padding-right:8px;}
     .nav-item{padding:0 11px;font-size:12px;}

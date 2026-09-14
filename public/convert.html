@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#0f1115">
-  <meta name="description" content="CAN 日志格式转换：在浏览器本地转换 ASC、BLF、BusMaster LOG、PCAN TRC、周立功 TXT 与原始 CAN MDF/MF4。">
+  <meta name="description" content="CAN 日志格式转换与 DBC 信号 CSV 导出：在浏览器本地处理 ASC、BLF、LOG、TRC、TXT、MDF/MF4。">
   <title>格式转换 · CANAnalysis</title>
   <link rel="icon" href="icon.png" type="image/png">
   <link rel="stylesheet" href="convert.css">
@@ -34,7 +34,7 @@
       <span class="eyebrow">CAN LOG CONVERTER</span>
       <h1>换一种格式，<span>继续分析。</span></h1>
       <p>让不同设备记录的 CAN 日志，在熟悉的工具中继续使用。选择文件与目标格式，即可转换并下载。</p>
-      <div class="format-strip" aria-label="支持的格式"><span>.asc</span><span>.log</span><span>.trc</span><span>.blf</span><span>.txt</span><span>.mf4</span><span>.mdf</span></div>
+      <div class="format-strip" aria-label="支持的格式"><span>.asc</span><span>.log</span><span>.trc</span><span>.blf</span><span>.txt</span><span>.mf4</span><span>.mdf</span><span>.csv</span></div>
     </section>
     <section class="converter" aria-labelledby="converter-title">
       <div class="card-heading"><h2 id="converter-title">日志格式转换</h2><span>01 — 选择 · 02 — 转换 · 03 — 下载</span></div>
@@ -54,8 +54,16 @@
         <div class="target-pane">
           <div class="step-label"><span>02</span><h3>选择目标格式</h3></div>
           <label for="targetFormat">转换为</label>
-          <select id="targetFormat"><option value="asc" selected>Vector ASC (.asc) · 推荐</option><option value="log">BusMaster LOG (.log)</option><option value="trc">PCAN TRC 2.1 (.trc)</option><option value="blf">Vector BLF (.blf)</option><option value="txt">周立功 TXT 表格 (.txt)</option><option value="mf4">ASAM MDF 4.10 (.mf4)</option><option value="mdf">ASAM MDF 3.30 (.mdf)</option></select>
+          <select id="targetFormat"><option value="asc" selected>Vector ASC (.asc) · 推荐</option><option value="log">BusMaster LOG (.log)</option><option value="trc">PCAN TRC 2.1 (.trc)</option><option value="blf">Vector BLF (.blf)</option><option value="txt">周立功 TXT 表格 (.txt)</option><option value="mf4">ASAM MDF 4.10 (.mf4)</option><option value="mdf">ASAM MDF 3.30 (.mdf)</option><option value="csv">DBC 信号定时采样 (.csv)</option></select>
           <div class="target-info"><span id="targetExt">.asc</span><h4 id="targetTitle">Vector ASCII</h4><p id="targetDescription">通用文本日志，保留时间、ID、通道与原始数据，适合导入 CAN 报文解析工具。</p><small id="targetCapability">支持经典 CAN、CAN FD 和远程帧</small></div>
+          <section id="csvOptions" class="csv-options" aria-labelledby="csvTitle" hidden>
+            <div class="csv-options-head"><div><span>DBC SIGNAL EXPORT</span><h4 id="csvTitle">选择 DBC 与信号</h4></div><strong id="csvSelected">已选 0 个</strong></div>
+            <div class="dbc-picker"><button type="button" id="chooseDbc" class="secondary">选择 DBC 文件</button><span id="dbcName">未选择 DBC</span><input type="file" id="dbcFile" hidden></div>
+            <div class="csv-controls"><div><label for="csvInterval">时间间隔</label><select id="csvInterval"><option value="100">100 ms</option><option value="200">200 ms</option><option value="300">300 ms</option><option value="400">400 ms</option><option value="500">500 ms</option><option value="600">600 ms</option><option value="700">700 ms</option><option value="800">800 ms</option><option value="900">900 ms</option><option value="1000">1000 ms</option></select></div><div><label for="signalSearch">搜索信号</label><input id="signalSearch" type="search" placeholder="信号名或报文名"></div></div>
+            <div class="signal-actions"><button type="button" id="selectAllSignals" class="secondary">选择当前结果</button><button type="button" id="clearSignals" class="secondary">清空选择</button></div>
+            <div id="signalList" class="signal-list"><p>加载 DBC 后显示信号列表。</p></div>
+            <p class="csv-note">CSV 列顺序为：序号、时间、所选信号。时间单位为秒；每个固定时间点使用该时刻之前最近一次报文值，尚未出现的信号留空。</p>
+          </section>
           <label class="check"><input type="checkbox" id="zeroTime">将首帧时间归零，保留帧间时间差</label>
         </div>
       </div>
@@ -70,7 +78,7 @@
     <section class="result" id="result" aria-labelledby="resultTitle" hidden>
       <div class="result-head"><div><span class="eyebrow">CONVERSION COMPLETE</span><h2 id="resultTitle">转换完成</h2><p id="resultSummary"></p><p id="saveResult" class="save-result" role="status"></p></div><a id="download" class="primary" download>下载转换文件 ↓</a></div>
       <p id="conversionWarnings" class="warning" hidden></p>
-      <div class="preview-wrap"><table><caption>前 8 帧预览</caption><thead><tr><th>时间 / s</th><th>通道</th><th>CAN ID</th><th>方向</th><th>类型</th><th>数据 / hex</th></tr></thead><tbody id="preview"></tbody></table></div>
+      <div class="preview-wrap"><table><caption id="previewCaption">前 8 帧预览</caption><thead><tr id="previewHead"><th>时间 / s</th><th>通道</th><th>CAN ID</th><th>方向</th><th>类型</th><th>数据 / hex</th></tr></thead><tbody id="preview"></tbody></table></div>
     </section>
     <section class="compatibility" aria-labelledby="compat-title">
       <div class="section-heading"><h2 id="compat-title">格式与兼容范围</h2><p>转换的是原始 CAN 数据帧与远程帧。各工具的专有事件、注释和触发信息不在转换范围内。</p></div>
@@ -82,6 +90,7 @@
         <tr><td><b>TXT</b><small>周立功</small></td><td>含表头的 CANTest / ZCAN 表格；支持选择编码与时间单位</td><td>UTF-8 经典 CAN 表格，数据列位于末尾</td></tr>
         <tr><td><b>MF4</b><small>ASAM MDF 4</small></td><td>4.00–4.11 原始 CAN 帧；未压缩、Deflate、转置 Deflate</td><td>MDF 4.10 原始 CAN 记录，可用 asammdf 打开</td></tr>
         <tr><td><b>MDF</b><small>ASAM MDF 3</small></td><td>3.x 中带 CAN_DataFrame 字段的原始帧</td><td>MDF 3.30 经典 CAN 原始字段，可用 asammdf 打开</td></tr>
+        <tr><td><b>CSV</b><small>DBC 信号</small></td><td>DBC + 上述任一 CAN 日志，选择需要的信号</td><td>序号、时间与信号宽表，100–1000 ms 固定间隔</td></tr>
       </tbody></table></div>
       <div class="notes"><p><strong>关于 MDF/MF4：</strong>只有解码信号（例如电压、温度）而没有原始 CAN ID 和 DataBytes 的文件，无法反向还原 CAN 报文。加密文件、MDF 4.20+ 的新布局及 ZSTD/LZ4 压缩暂不支持。</p><p><strong>数据与时间：</strong>保留日志内时间轴；LOG 按 0.1 ms、TRC 按 1 µs 四舍五入，发生精度变化时显示提示。绝对采集日期、附件与触发元数据不迁移。MDF 通道按 python-can 的零起始 BusChannel 与页面的一起始通道互换。</p><p><strong>不支持的记录：</strong>错误帧、无效数据或无法无损保存的 CAN FD 会停止转换并提示；不会直接截断为 8 字节。周立功 TXT 不同软件版本的列结构可能不同，表头不匹配时会显示原因。</p></div>
     </section>
