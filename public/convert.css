@@ -16,3 +16,53 @@
 .csv-options{margin-top:20px;padding:20px;border:1px solid var(--line);border-radius:9px;background:rgba(0,0,0,.13)}
 .csv-options-head,.dbc-picker,.signal-actions{display:flex;align-items:center;justify-content:space-between;gap:12px}.csv-options-head span{font-size:9px;letter-spacing:1.5px;color:var(--accent)}.csv-options-head h4{margin:5px 0 0;font-size:14px}.csv-options-head strong{color:var(--green);font-size:11px}.dbc-picker{justify-content:flex-start;margin:18px 0}.dbc-picker span{min-width:0;color:var(--txt2);font-size:11px;overflow-wrap:anywhere}.csv-controls{display:grid;grid-template-columns:180px minmax(0,1fr);gap:14px}.csv-controls input{width:100%;height:42px;padding:0 12px;border:1px solid #36404f;border-radius:7px;background:var(--panel2);color:var(--txt);font:inherit;font-size:13px}.signal-actions{justify-content:flex-end;margin:14px 0 10px}.signal-actions .secondary{min-height:34px;padding:0 12px;font-size:11px}.signal-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;max-height:260px;overflow:auto;padding:8px;border:1px solid var(--line);border-radius:7px;background:var(--panel)}.signal-list>p{grid-column:1/-1;margin:12px;color:var(--txt2);font-size:11px}.signal-option{display:flex;align-items:flex-start;gap:8px;margin:0;padding:9px;border-radius:5px;color:var(--txt);background:var(--panel2);cursor:pointer}.signal-option:hover{background:#242a35}.signal-option input{flex:0 0 auto;margin:2px 0 0;accent-color:var(--accent)}.signal-option span{min-width:0;overflow:hidden}.signal-option b,.signal-option small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.signal-option b{font-size:11px}.signal-option small{margin-top:3px;color:var(--txt2);font-size:9px}.csv-note{margin:12px 0 0;color:var(--txt2);font-size:10px;line-height:1.7}
 @media(max-width:700px){.csv-options{padding:16px}.csv-controls{grid-template-columns:1fr}.signal-list{grid-template-columns:1fr}.dbc-picker{align-items:stretch;flex-direction:column}.dbc-picker .secondary{width:100%}}
+
+/* Three independent workflow rows: source, raw format conversion and DBC signal CSV. */
+.conversion-flow{display:flex;flex-direction:column}
+.workflow-row{padding:26px;border-bottom:1px solid var(--line)}
+.workflow-row:last-child{border-bottom:0}
+.source-pane{border:0;border-bottom:1px solid var(--line)}
+.file-zone{min-height:150px;margin-bottom:14px}
+.field-note,.row-note{display:block;margin-top:8px;color:var(--txt2);font-size:10px;line-height:1.7}
+.file-list{display:grid;gap:6px;margin:0 0 18px}
+.file-item{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:9px 12px;border:1px solid var(--line);border-radius:6px;background:var(--panel2)}
+.file-item strong{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px}
+.file-item span{flex:none;color:var(--txt2);font-size:10px}
+.target-layout{display:grid;grid-template-columns:minmax(190px,.65fr) minmax(300px,1.35fr) auto;align-items:end;gap:16px}
+.target-info{display:flex;align-items:center;gap:16px;min-height:0;margin:0;padding:14px 16px}
+.target-info>span{flex:none}.target-info h4{margin:0 0 4px}.target-info p{line-height:1.5}.target-info small{margin-top:5px}
+.target-layout>.primary{min-width:150px}
+.csv-options{margin:0;padding:26px;border:0;border-radius:0;background:transparent}
+.csv-options .step-label strong{margin-left:auto;color:var(--green);font-size:11px}
+.csv-stage{display:grid;grid-template-columns:28px minmax(0,1fr);gap:12px;align-items:start;padding:14px 0;border-top:1px solid var(--line)}
+.stage-number{display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:rgba(74,158,255,.1);color:var(--accent);font:11px ui-monospace,monospace}
+.csv-stage>div>label,.signal-toolbar>label{margin:0 0 9px;color:var(--txt);font-weight:600}
+.dbc-picker{justify-content:flex-start;margin:0}.dbc-picker span{min-width:0;color:var(--txt2);font-size:11px;overflow-wrap:anywhere}
+.signal-workspace{min-width:0}
+.signal-toolbar{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:10px}
+.signal-toolbar label{margin:0}.signal-toolbar input{width:min(430px,65%);height:38px;padding:0 12px;border:1px solid #36404f;border-radius:7px;background:var(--panel2);color:var(--txt);font:inherit;font-size:12px}
+.signal-selector{display:grid;grid-template-columns:1fr 1fr;gap:1px;min-height:280px;max-height:390px;overflow:hidden;border:1px solid var(--line);border-radius:8px;background:var(--line)}
+.signal-column{display:flex;min-width:0;min-height:0;flex-direction:column;background:var(--panel)}
+.signal-column-head{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--line);background:var(--panel2);color:var(--txt2);font-size:11px;font-weight:600}
+.signal-column-head>span{margin-left:auto;color:var(--green)}
+.mini-button{min-height:26px;padding:0 9px;border:1px solid var(--line);border-radius:5px;background:var(--panel);color:var(--txt2);font-size:10px;cursor:pointer}
+.signal-list{display:block;min-height:0;max-height:none;flex:1;overflow:auto;padding:6px;border:0;border-radius:0;background:var(--panel)}
+.signal-list>p{margin:14px;color:var(--txt2);font-size:11px}
+.signal-group{margin:4px 0 10px}
+.signal-group-title{padding:5px 7px;color:var(--accent);font-size:10px}
+.signal-option{margin:2px 0;padding:6px 8px 6px 18px}
+.signal-option b{font-size:12px}.signal-option small{font-size:9px}
+.interval-stage>div{width:min(260px,100%)}
+.start-stage>div{width:min(260px,100%)}.start-stage .primary{width:100%}
+.csv-note{margin:8px 0 0 40px}
+.download-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.download-list a{text-decoration:none}
+
+@media(max-width:820px){
+  .target-layout{grid-template-columns:1fr}.target-layout>.primary{width:100%}
+  .target-info{align-items:flex-start}.signal-selector{grid-template-columns:1fr;max-height:none}.signal-column{min-height:230px}.signal-toolbar{align-items:stretch;flex-direction:column}.signal-toolbar input{width:100%}
+}
+@media(max-width:700px){
+  .workflow-row,.csv-options{padding:20px}.file-item{align-items:flex-start;flex-direction:column;gap:4px}.file-item span{flex:auto}
+  .dbc-picker{align-items:stretch;flex-direction:column}.dbc-picker .secondary{width:100%}.csv-note{margin-left:0}
+}

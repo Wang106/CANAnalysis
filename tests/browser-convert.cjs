@@ -24,29 +24,31 @@ const server=createServer(async(req,res)=>{
     const errors=[];page.on('pageerror',error=>errors.push(error.message));
     await page.goto(base+'/convert');
     assert.equal(await page.inputValue('#targetFormat'),'asc');
-    assert.equal(await page.locator('#targetFormat option').count(),8);
+    assert.equal(await page.locator('#targetFormat option').count(),7);
     assert.equal(await page.locator('#topNav a').first().getAttribute('href'),'/');
     assert.equal(await page.locator('#sourceFile').getAttribute('accept'),null);
-    assert.equal(await page.locator('#startConvert').isDisabled(),true);
-    assert.equal(await page.evaluate(()=>getComputedStyle(document.querySelector('.conversion-grid')).gridTemplateColumns.split(' ').length),1,'source and target panels are not stacked');
+    assert.equal(await page.locator('#sourceFile').getAttribute('multiple'),'');
+    assert.equal(await page.locator('.workflow-row').count(),3,'conversion page must use three workflow rows');
+    assert.equal(await page.locator('#startFormatConvert').isDisabled(),true);
+    assert.equal(await page.locator('#startCsvConvert').isDisabled(),true);
     await page.evaluate(()=>scrollTo(0,700));await page.waitForTimeout(50);assert.ok(Math.abs(await page.locator('#topNav').evaluate(node=>node.getBoundingClientRect().top))<1,'navigation did not remain at viewport top while scrolling');await page.evaluate(()=>scrollTo(0,0));
     const sample=Buffer.from('base hex timestamps absolute\n0.125 1 123 Rx d 2 01 FF\n1.25 2 18FF50E5x Tx d 1 02\n');
+    const logSample=Buffer.from('***HEX***\n***ABSOLUTE MODE***\n00:00:00:1000 Rx 1 0x123 s 1 02\n');
     for(const format of ['asc','log','trc','blf','txt','mf4','mdf']){
-      await page.locator('#sourceFile').setInputFiles({name:'demo.asc',mimeType:'application/octet-stream',buffer:sample});
+      await page.locator('#sourceFile').setInputFiles(format==='asc'?{name:'demo.log',mimeType:'text/plain',buffer:logSample}:{name:'demo.asc',mimeType:'application/octet-stream',buffer:sample});
       await page.selectOption('#targetFormat',format);
-      await page.click('#startConvert');
+      await page.click('#startFormatConvert');
       await page.locator('#result').waitFor({state:'visible'});
-      assert.equal(await page.locator('#preview tr').count(),2);
+      assert.equal(await page.locator('#preview tr').count(),format==='asc'?1:2);
       const downloaded=page.waitForEvent('download');await page.click('#download');
       const download=await downloaded;assert.equal(download.suggestedFilename(),'demo.'+format);assert.equal(await download.failure(),null);
     }
     const dbc=Buffer.from('BO_ 291 Demo: 8 ECU\n SG_ Value : 0|8@1+ (1,0) [0|255] "V" ECU\nBO_ 2566869221 Ext: 8 ECU\n SG_ ExtValue : 0|8@1+ (0.5,0) [0|127.5] "A" ECU\n');
     await page.locator('#sourceFile').setInputFiles({name:'demo.asc',mimeType:'text/plain',buffer:sample});
-    await page.selectOption('#targetFormat','csv');assert.equal(await page.locator('#csvOptions').isVisible(),true);
     assert.equal(await page.locator('#dbcFile').getAttribute('accept'),null);
     await page.locator('#dbcFile').setInputFiles({name:'vehicle.dbc',mimeType:'text/plain',buffer:dbc});
     await page.locator('.signal-option').first().waitFor();await page.click('#selectAllSignals');await page.selectOption('#csvInterval','300');
-    await page.click('#startConvert');await page.locator('#result').waitFor({state:'visible'});
+    await page.click('#startCsvConvert');await page.locator('#result').waitFor({state:'visible'});
     const csvEvent=page.waitForEvent('download');await page.click('#download');const csvDownload=await csvEvent;
     assert.equal(csvDownload.suggestedFilename(),'demo.csv');
     const csvText=await readFile(await csvDownload.path(),'utf8');assert.match(csvText,/序号,时间,Value,ExtValue/);assert.match(csvText,/1,0\.125000,1,/);
@@ -56,14 +58,26 @@ const server=createServer(async(req,res)=>{
       assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'no page horizontal overflow');
       if(process.env.SCREENSHOT_DIR)await page.screenshot({path:path.join(process.env.SCREENSHOT_DIR,'convert-'+viewport.width+'.png'),fullPage:true});
     }
+    await page.locator('#sourceFile').setInputFiles([
+      {name:'mixed.asc',mimeType:'text/plain',buffer:sample},
+      {name:'mixed.log',mimeType:'text/plain',buffer:logSample},
+      {name:'already.trc',mimeType:'text/plain',buffer:Buffer.from('ignored')}
+    ]);
+    assert.match(await page.textContent('#fileName'),/3 个文件/);
+    assert.equal(await page.locator('#sourceFormat').isDisabled(),true);
+    await page.selectOption('#targetFormat','trc');await page.click('#startFormatConvert');
+    await page.locator('#result').waitFor({state:'visible'});
+    assert.equal(await page.locator('#downloadList a').count(),2);
+    assert.match(await page.textContent('#resultSummary'),/忽略 1 个同格式文件/);
+    assert.deepEqual(await page.locator('#downloadList a').evaluateAll(nodes=>nodes.map(node=>node.download)),['mixed.trc','mixed.trc']);
     await page.locator('#sourceFile').setInputFiles({name:'bad.asc',mimeType:'text/plain',buffer:Buffer.from('0.1 1 123 Rx d 8 01\n')});
-    await page.click('#startConvert');await page.locator('#error').waitFor({state:'visible'});
+    await page.click('#startFormatConvert');await page.locator('#error').waitFor({state:'visible'});
     assert.equal(await page.locator('#result').isVisible(),false);
     // Cancel immediately while initial file identification is pending.
     await page.locator('#sourceFile').setInputFiles({name:'demo.asc',mimeType:'text/plain',buffer:sample});
-    await page.evaluate(()=>{document.getElementById('startConvert').click();document.getElementById('cancel').click();});
+    await page.evaluate(()=>{document.getElementById('startFormatConvert').click();document.getElementById('cancel').click();});
     assert.match(await page.textContent('#status'),/已取消/);
-    assert.equal(await page.locator('#startConvert').isEnabled(),true);
+    assert.equal(await page.locator('#startFormatConvert').isEnabled(),true);
     assert.deepEqual(errors,[],'no conversion page script errors');
     const savePage=await browser.newPage({viewport:{width:1000,height:800}});
     await savePage.addInitScript(()=>{
@@ -72,12 +86,12 @@ const server=createServer(async(req,res)=>{
       window.showOpenFilePicker=async()=>[sourceHandle];
       window.showSaveFilePicker=async options=>{window.__saveTest={options,sourceHandle};return {name:options.suggestedName,createWritable:async()=>({write:async blob=>window.__saveTest.bytes=blob.size,close:async()=>window.__saveTest.closed=true})};};
     });
-    await savePage.goto(base+'/convert');await savePage.click('#chooseFile');await savePage.selectOption('#targetFormat','trc');await savePage.click('#startConvert');
+    await savePage.goto(base+'/convert');await savePage.click('#chooseFile');await savePage.selectOption('#targetFormat','trc');await savePage.click('#startFormatConvert');
     await savePage.locator('#result').waitFor({state:'visible'});
     const saveState=await savePage.evaluate(()=>({name:__saveTest.options.suggestedName,startIn:__saveTest.options.startIn===__saveTest.sourceHandle,bytes:__saveTest.bytes,closed:__saveTest.closed,status:document.getElementById('saveResult').textContent,downloadHidden:document.getElementById('download').hidden}));
     assert.equal(saveState.name,'vehicle.log.trc');assert.equal(saveState.startIn,true);assert.ok(saveState.bytes>0);assert.equal(saveState.closed,true);assert.match(saveState.status,/原文件所在位置/);assert.equal(saveState.downloadHidden,true);
     await savePage.evaluate(()=>window.showSaveFilePicker=async options=>({name:options.suggestedName,createWritable:async()=>{throw new DOMException('denied','NotAllowedError');}}));
-    await savePage.selectOption('#targetFormat','blf');await savePage.click('#startConvert');await savePage.locator('#result').waitFor({state:'visible'});
+    await savePage.selectOption('#targetFormat','blf');await savePage.click('#startFormatConvert');await savePage.locator('#result').waitFor({state:'visible'});
     assert.match(await savePage.textContent('#saveResult'),/写入失败/);assert.equal(await savePage.locator('#download').isVisible(),true);assert.equal(await savePage.getAttribute('#download','download'),'vehicle.log.blf');
     await savePage.close();
     await page.goto(base+'/tests/regression.html');
