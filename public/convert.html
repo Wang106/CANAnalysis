@@ -37,46 +37,47 @@
       <div class="format-strip" aria-label="支持的格式"><span>.asc</span><span>.log</span><span>.trc</span><span>.blf</span><span>.txt</span><span>.mf4</span><span>.mdf</span><span>.csv</span></div>
     </section>
     <section class="converter" aria-labelledby="converter-title">
-      <div class="card-heading"><h2 id="converter-title">日志格式转换</h2><span>01 — 选择 · 02 — 转换 · 03 — 下载</span></div>
-      <div class="conversion-grid">
-        <div class="source-pane">
+      <div class="card-heading"><h2 id="converter-title">日志格式转换</h2><span>01 — 源文件 · 02 — 格式转换 · 03 — 信号 CSV</span></div>
+      <div class="conversion-flow">
+        <section class="workflow-row source-pane">
           <div class="step-label"><span>01</span><h3>选择源文件</h3></div>
           <div class="file-zone" id="dropZone">
             <svg width="38" height="42" viewBox="0 0 38 42" fill="none" aria-hidden="true"><path d="M8 2h15l10 10v27H5V2h3Z" stroke="currentColor" stroke-width="1.5"/><path d="M23 2v11h10M19 32V19m-5 5 5-5 5 5" stroke="currentColor" stroke-width="1.5"/></svg>
-            <strong id="fileName">选择或拖入 CAN 日志</strong>
-            <span id="fileMeta">支持七种日志格式 · 每次转换一个文件</span>
-            <button type="button" id="chooseFile" class="secondary">选择文件</button>
-            <input type="file" id="sourceFile" hidden>
+            <strong id="fileName">选择或拖入一个或多个 CAN 日志</strong>
+            <span id="fileMeta">支持七种日志格式 · 可混合选择不同格式</span>
+            <button type="button" id="chooseFile" class="secondary">选择日志文件</button>
+            <input type="file" id="sourceFile" multiple hidden>
           </div>
+          <div id="fileList" class="file-list" aria-live="polite"></div>
           <label for="sourceFormat">源文件格式</label>
-          <select id="sourceFormat"><option value="auto">自动识别</option><option value="asc">Vector ASC (.asc)</option><option value="log">BusMaster LOG (.log)</option><option value="trc">PCAN TRC (.trc)</option><option value="blf">Vector BLF (.blf)</option><option value="txt">周立功 TXT (.txt)</option><option value="mf4">ASAM MDF 4 (.mf4)</option><option value="mdf">ASAM MDF 3 (.mdf)</option></select>
-        </div>
-        <div class="target-pane">
-          <div class="step-label"><span>02</span><h3>选择目标格式</h3></div>
-          <label for="targetFormat">转换为</label>
-          <select id="targetFormat"><option value="asc" selected>Vector ASC (.asc) · 推荐</option><option value="log">BusMaster LOG (.log)</option><option value="trc">PCAN TRC 2.1 (.trc)</option><option value="blf">Vector BLF (.blf)</option><option value="txt">周立功 TXT 表格 (.txt)</option><option value="mf4">ASAM MDF 4.10 (.mf4)</option><option value="mdf">ASAM MDF 3.30 (.mdf)</option><option value="csv">DBC 信号定时采样 (.csv)</option></select>
-          <div class="target-info"><span id="targetExt">.asc</span><h4 id="targetTitle">Vector ASCII</h4><p id="targetDescription">通用文本日志，保留时间、ID、通道与原始数据，适合导入 CAN 报文解析工具。</p><small id="targetCapability">支持经典 CAN、CAN FD 和远程帧</small></div>
-          <section id="csvOptions" class="csv-options" aria-labelledby="csvTitle" hidden>
-            <div class="csv-options-head"><div><span>DBC SIGNAL EXPORT</span><h4 id="csvTitle">选择 DBC 与信号</h4></div><strong id="csvSelected">已选 0 个</strong></div>
-            <div class="dbc-picker"><button type="button" id="chooseDbc" class="secondary">选择 DBC 文件</button><span id="dbcName">未选择 DBC</span><input type="file" id="dbcFile" hidden></div>
-            <div class="csv-controls"><div><label for="csvInterval">时间间隔</label><select id="csvInterval"><option value="100">100 ms</option><option value="200">200 ms</option><option value="300">300 ms</option><option value="400">400 ms</option><option value="500">500 ms</option><option value="600">600 ms</option><option value="700">700 ms</option><option value="800">800 ms</option><option value="900">900 ms</option><option value="1000">1000 ms</option></select></div><div><label for="signalSearch">搜索信号</label><input id="signalSearch" type="search" placeholder="信号名或报文名"></div></div>
-            <div class="signal-actions"><button type="button" id="selectAllSignals" class="secondary">选择当前结果</button><button type="button" id="clearSignals" class="secondary">清空选择</button></div>
-            <div id="signalList" class="signal-list"><p>加载 DBC 后显示信号列表。</p></div>
-            <p class="csv-note">CSV 列顺序为：序号、时间、所选信号。时间单位为秒；每个固定时间点使用该时刻之前最近一次报文值，尚未出现的信号留空。</p>
-          </section>
+          <select id="sourceFormat"><option value="auto">按每个文件自动识别</option><option value="asc">Vector ASC (.asc)</option><option value="log">BusMaster LOG (.log)</option><option value="trc">PCAN TRC (.trc)</option><option value="blf">Vector BLF (.blf)</option><option value="txt">周立功 TXT (.txt)</option><option value="mf4">ASAM MDF 4 (.mf4)</option><option value="mdf">ASAM MDF 3 (.mdf)</option></select>
+          <small class="field-note">手动指定格式仅对单个文件有效；多文件会逐个自动识别。</small>
+        </section>
+        <section class="workflow-row target-pane">
+          <div class="step-label"><span>02</span><h3>选择目标转换格式</h3></div>
+          <div class="target-layout"><div><label for="targetFormat">转换为</label><select id="targetFormat"><option value="asc" selected>Vector ASC (.asc) · 推荐</option><option value="log">BusMaster LOG (.log)</option><option value="trc">PCAN TRC 2.1 (.trc)</option><option value="blf">Vector BLF (.blf)</option><option value="txt">周立功 TXT 表格 (.txt)</option><option value="mf4">ASAM MDF 4.10 (.mf4)</option><option value="mdf">ASAM MDF 3.30 (.mdf)</option></select></div><div class="target-info"><span id="targetExt">.asc</span><div><h4 id="targetTitle">Vector ASCII</h4><p id="targetDescription">通用文本日志，保留时间、ID、通道与原始数据，适合导入 CAN 报文解析工具。</p><small id="targetCapability">支持经典 CAN、CAN FD 和远程帧</small></div></div><button id="startFormatConvert" type="button" class="primary" disabled>转换所选文件 <span aria-hidden="true">→</span></button></div>
           <label class="check"><input type="checkbox" id="zeroTime">将首帧时间归零，保留帧间时间差</label>
-        </div>
+          <p class="row-note">所有文件统一转换为目标格式；源格式与目标格式一致的文件会自动忽略。</p>
+        </section>
+        <section id="csvOptions" class="workflow-row csv-options" aria-labelledby="csvTitle">
+          <div class="step-label"><span>03</span><h3 id="csvTitle">按 DBC 信号转换为 CSV</h3><strong id="csvSelected">已选 0 个</strong></div>
+          <div class="csv-stage"><span class="stage-number">1</span><div><label>选择 DBC 文件</label><div class="dbc-picker"><button type="button" id="chooseDbc" class="secondary">选择 DBC 文件</button><span id="dbcName">未选择 DBC</span><input type="file" id="dbcFile" hidden></div></div></div>
+          <div class="csv-stage signal-stage"><span class="stage-number">2</span><div class="signal-workspace"><div class="signal-toolbar"><label for="signalSearch">选择信号值</label><input id="signalSearch" type="search" placeholder="搜索信号名 / 报文名…"></div><div class="signal-selector"><div class="signal-column"><div class="signal-column-head">可选信号<button type="button" id="selectAllSignals" class="mini-button">全选当前结果</button><span id="availableCount">0</span></div><div id="signalList" class="signal-list"><p>请先加载 DBC 文件</p></div></div><div class="signal-column"><div class="signal-column-head">已选信号<button type="button" id="clearSignals" class="mini-button">清空</button><span id="pickedCount">0</span></div><div id="selectedSignalList" class="signal-list"><p>勾选左侧信号后显示在此</p></div></div></div></div></div>
+          <div class="csv-stage interval-stage"><span class="stage-number">3</span><div><label for="csvInterval">确定时间间隔</label><select id="csvInterval"><option value="100">100 ms</option><option value="200">200 ms</option><option value="300">300 ms</option><option value="400">400 ms</option><option value="500">500 ms</option><option value="600">600 ms</option><option value="700">700 ms</option><option value="800">800 ms</option><option value="900">900 ms</option><option value="1000">1000 ms</option></select></div></div>
+          <div class="csv-stage start-stage"><span class="stage-number">4</span><div><label>开始转换</label><button id="startCsvConvert" type="button" class="primary" disabled>转换为 CSV <span aria-hidden="true">→</span></button></div></div>
+          <p class="csv-note">每个所选日志分别生成一个 CSV。列顺序为：序号、时间、所选信号；每个固定时间点使用此前最近一次报文值，尚未出现的信号留空。</p>
+        </section>
       </div>
       <details class="advanced"><summary>文本编码与时间设置</summary><div class="advanced-grid">
         <div><label for="encoding">文本文件编码</label><select id="encoding"><option value="utf-8">UTF-8（默认）</option><option value="gb18030">GBK / GB18030（中文旧日志）</option></select></div>
         <div><label for="txtTimeUnit">周立功 TXT 时间单位</label><select id="txtTimeUnit"><option value="">按表头识别</option><option value="1">秒 (s)</option><option value="0.001">毫秒 (ms)</option><option value="0.000001">微秒 (µs)</option><option value="0.0001">0.1 毫秒 / 计数</option></select></div>
       </div><p>UTF-16 文件根据 BOM 自动识别。TXT“时间标识”默认按 0.1 毫秒计数，其余时间列按秒；请核对设备导出设置。</p></details>
-      <div class="action-bar"><p>文件不会上传到服务器。支持文件访问权限的浏览器会在转换前确认原目录保存位置；其他浏览器转换后提供下载。</p><div class="actions"><button id="cancel" type="button" class="secondary" hidden>取消</button><button id="startConvert" type="button" class="primary" disabled>开始转换 <span aria-hidden="true">→</span></button></div></div>
+      <div class="action-bar"><p>文件不会上传到服务器。支持文件访问权限的浏览器会在转换前确认保存位置；其他浏览器转换后逐个提供下载。</p><div class="actions"><button id="cancel" type="button" class="secondary" hidden>取消</button></div></div>
       <div class="status-panel" id="statusPanel" hidden><p id="status" role="status" aria-live="polite"></p><progress id="progress" max="1" value="0" aria-label="转换进度"></progress></div>
       <p class="error" id="error" role="alert" hidden></p>
     </section>
     <section class="result" id="result" aria-labelledby="resultTitle" hidden>
-      <div class="result-head"><div><span class="eyebrow">CONVERSION COMPLETE</span><h2 id="resultTitle">转换完成</h2><p id="resultSummary"></p><p id="saveResult" class="save-result" role="status"></p></div><a id="download" class="primary" download>下载转换文件 ↓</a></div>
+      <div class="result-head"><div><span class="eyebrow">CONVERSION COMPLETE</span><h2 id="resultTitle">转换完成</h2><p id="resultSummary"></p><p id="saveResult" class="save-result" role="status"></p></div><a id="download" class="primary" download>下载转换文件 ↓</a></div><div id="downloadList" class="download-list"></div>
       <p id="conversionWarnings" class="warning" hidden></p>
       <div class="preview-wrap"><table><caption id="previewCaption">前 8 帧预览</caption><thead><tr id="previewHead"><th>时间 / s</th><th>通道</th><th>CAN ID</th><th>方向</th><th>类型</th><th>数据 / hex</th></tr></thead><tbody id="preview"></tbody></table></div>
     </section>

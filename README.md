@@ -86,10 +86,11 @@ python3 -m http.server 8000
 
 ## CAN 日志格式转换
 
-访问 `/convert`（导航中的「格式转换」），第一行选择日志文件，第二行选择输出目标格式。默认输出 Vector ASC；提供 ASC、BusMaster LOG、PCAN TRC、Vector BLF、周立功 TXT、MF4、MDF 和 DBC 信号 CSV 八种输出选项。文件通过浏览器 Worker 本地处理，不上传服务器；需要通过 HTTP/HTTPS 打开，不能直接以 `file://` 运行模块 Worker。
+访问 `/convert`（导航中的「格式转换」），页面按三行组织：第一行选择源日志，第二行统一转换原始日志格式，第三行通过 DBC 选择信号并导出 CSV。默认原始输出为 Vector ASC；支持 ASC、BusMaster LOG、PCAN TRC、Vector BLF、周立功 TXT、MF4、MDF 七种原始日志格式，以及独立的 DBC 信号 CSV。文件通过浏览器 Worker 本地处理，不上传服务器；需要通过 HTTP/HTTPS 打开，不能直接以 `file://` 运行模块 Worker。
 
 在支持 File System Access API 的桌面浏览器中，通过页面按钮选择源文件后，转换前会打开保存确认框并默认定位到源文件所在目录，输出沿用源文件名主体并替换扩展名；确认后在转换完成时自动写入。浏览器不提供原路径、用户取消授权、目录不可用或写入失败时，页面改为提供同名文件下载。受浏览器安全机制限制，网页不能静默读取或写入完整本地路径；iPhone Safari 使用下载回退。
 
+- 可一次选择多个文件，也可混合选择不同源格式；页面逐个自动识别并统一转换为所选目标格式，源格式与目标格式相同的文件自动忽略。每个输入仍生成一个保留原名称主体的独立结果。
 - 经典 CAN 数据帧、标准/扩展 ID、远程帧、收发方向和通道可转换；CAN FD 支持 ASC/TRC/BLF/MF4，其他目标会明确拒绝，避免截断数据。
 - BLF 支持普通与 zlib 容器；MF4 支持 4.00–4.11 的原始 `CAN_DataFrame` / `CAN_RemoteFrame` 记录（DT、DL、HL、Deflate/转置 Deflate）；输出 MDF 4.10。MDF3 输出 3.30 原始字段，读取默认小端 IEEE 格式。
 - MDF/MF4 仅有解码信号而无原始 CAN 帧时不能转换；暂不支持 MDF 4.20+、加密、可变长/远程主通道布局及 ZSTD/LZ4。
@@ -103,6 +104,7 @@ python3 -m http.server 8000
 
 ```bash
 node tests/convert.test.mjs
+node tests/batch.test.mjs
 node tests/csv.test.mjs
 node tests/nav-state.test.cjs
 pip install python-can asammdf
@@ -112,7 +114,7 @@ npx playwright install chromium
 node tests/browser-convert.cjs
 ```
 
-独立样本由 `tests/generate-convert-fixtures.py` 生成，提交的 JSON 样本让 Node 回归测试无需 Python 依赖。Python 交叉验证使用 python-can / asammdf 读取本引擎生成的真实文件，不仅依靠自有读写器互测。浏览器测试检查七种原始日志下载、DBC 信号 CSV、移动布局、取消/错误流程及原有解析/导航回归；可通过 `PLAYWRIGHT_MODULE`、`CHROMIUM_PATH` 指定现有安装。
+独立样本由 `tests/generate-convert-fixtures.py` 生成，提交的 JSON 样本让 Node 回归测试无需 Python 依赖。Python 交叉验证使用 python-can / asammdf 读取本引擎生成的真实文件，不仅依靠自有读写器互测。浏览器测试检查七种原始日志下载、混合格式多文件队列、同格式跳过、DBC 信号 CSV、移动布局、取消/错误流程及原有解析/导航回归；可通过 `PLAYWRIGHT_MODULE`、`CHROMIUM_PATH` 指定现有安装。
 
 格式参考：[python-can BLF 实现](https://python-can.readthedocs.io/en/stable/_modules/can/io/blf.html)、[PEAK TRC 官方格式](https://www.peak-system.com/produktcd/Pdf/English/PEAK_CAN_TRC_File_Format.pdf)、[asammdf 原始总线日志](https://asammdf.readthedocs.io/en/latest/buslogging.html)。
 

@@ -24,7 +24,7 @@ const server=createServer(async(req,res)=>{
     const errors=[];page.on('pageerror',error=>errors.push(error.message));
     await page.goto(base+'/convert');
     assert.equal(await page.inputValue('#targetFormat'),'asc');
-    assert.equal(await page.locator('#targetFormat option').count(),8);
+    assert.equal(await page.locator('#targetFormat option').count(),7);
     assert.equal(await page.locator('#topNav a').first().getAttribute('href'),'/');
     assert.equal(await page.locator('#sourceFile').getAttribute('accept'),null);
     assert.equal(await page.locator('#sourceFile').getAttribute('multiple'),'');
@@ -33,12 +33,13 @@ const server=createServer(async(req,res)=>{
     assert.equal(await page.locator('#startCsvConvert').isDisabled(),true);
     await page.evaluate(()=>scrollTo(0,700));await page.waitForTimeout(50);assert.ok(Math.abs(await page.locator('#topNav').evaluate(node=>node.getBoundingClientRect().top))<1,'navigation did not remain at viewport top while scrolling');await page.evaluate(()=>scrollTo(0,0));
     const sample=Buffer.from('base hex timestamps absolute\n0.125 1 123 Rx d 2 01 FF\n1.25 2 18FF50E5x Tx d 1 02\n');
+    const logSample=Buffer.from('***HEX***\n***ABSOLUTE MODE***\n00:00:00:1000 Rx 1 0x123 s 1 02\n');
     for(const format of ['asc','log','trc','blf','txt','mf4','mdf']){
-      await page.locator('#sourceFile').setInputFiles({name:'demo.asc',mimeType:'application/octet-stream',buffer:sample});
+      await page.locator('#sourceFile').setInputFiles(format==='asc'?{name:'demo.log',mimeType:'text/plain',buffer:logSample}:{name:'demo.asc',mimeType:'application/octet-stream',buffer:sample});
       await page.selectOption('#targetFormat',format);
       await page.click('#startFormatConvert');
       await page.locator('#result').waitFor({state:'visible'});
-      assert.equal(await page.locator('#preview tr').count(),2);
+      assert.equal(await page.locator('#preview tr').count(),format==='asc'?1:2);
       const downloaded=page.waitForEvent('download');await page.click('#download');
       const download=await downloaded;assert.equal(download.suggestedFilename(),'demo.'+format);assert.equal(await download.failure(),null);
     }
@@ -57,13 +58,13 @@ const server=createServer(async(req,res)=>{
       assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'no page horizontal overflow');
       if(process.env.SCREENSHOT_DIR)await page.screenshot({path:path.join(process.env.SCREENSHOT_DIR,'convert-'+viewport.width+'.png'),fullPage:true});
     }
-    const logSample=Buffer.from('***HEX***\n***ABSOLUTE MODE***\n00:00:00:1000 Rx 1 0x123 s 1 02\n');
     await page.locator('#sourceFile').setInputFiles([
       {name:'mixed.asc',mimeType:'text/plain',buffer:sample},
       {name:'mixed.log',mimeType:'text/plain',buffer:logSample},
       {name:'already.trc',mimeType:'text/plain',buffer:Buffer.from('ignored')}
     ]);
     assert.match(await page.textContent('#fileName'),/3 个文件/);
+    assert.equal(await page.locator('#sourceFormat').isDisabled(),true);
     await page.selectOption('#targetFormat','trc');await page.click('#startFormatConvert');
     await page.locator('#result').waitFor({state:'visible'});
     assert.equal(await page.locator('#downloadList a').count(),2);
