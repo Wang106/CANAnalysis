@@ -1,16 +1,16 @@
-/* Shared navigation lifecycle for every site page. */
+/* Shared navigation lifecycle. Ordinary pages stay fixed; CAN may collapse after chart creation. */
 (() => {
   'use strict';
   const nav = document.getElementById('topNav');
   if (!nav) return;
   const trigger = nav.querySelector('.nav-peek');
   const links = nav.querySelector('.top-nav-inner');
-  let introTimer;
   let closing = false;
+  const collapseOnCharts = nav.dataset.collapse === 'charts';
+  let collapseEnabled = false;
 
   function open() {
     if (closing) return;
-    clearTimeout(introTimer);
     nav.classList.remove('nav-sweep');
     nav.classList.add('nav-open');
     trigger.setAttribute('aria-expanded', 'true');
@@ -18,7 +18,7 @@
   }
 
   function close() {
-    clearTimeout(introTimer);
+    if (!collapseEnabled) return;
     if (!nav.classList.contains('nav-open')) return;
     closing = true;
     if (links.contains(document.activeElement)) trigger.focus({preventScroll: true});
@@ -29,6 +29,13 @@
     void nav.offsetWidth;
     nav.classList.add('nav-sweep');
     closing = false;
+  }
+
+  function collapse() {
+    if (!collapseOnCharts) return;
+    collapseEnabled = true;
+    nav.classList.remove('nav-fixed');
+    close();
   }
 
   nav.addEventListener('pointerenter', event => {
@@ -54,14 +61,15 @@
   document.addEventListener('pointerdown', dismissOutside);
   document.addEventListener('click', dismissOutside);
 
-  function intro() {
+  function initialize() {
+    collapseEnabled = false;
+    nav.classList.add('nav-fixed');
     open();
-    introTimer = setTimeout(close, 1000);
   }
-  if (document.readyState === 'complete') intro();
-  else window.addEventListener('load', intro, {once: true});
-  window.addEventListener('pagehide', () => clearTimeout(introTimer));
+  window.__siteNav = {open, close, collapse};
+  if (document.readyState === 'complete') initialize();
+  else window.addEventListener('load', initialize, {once: true});
   window.addEventListener('pageshow', event => {
-    if (event.persisted) intro();
+    if (event.persisted && (!collapseOnCharts || !collapseEnabled)) initialize();
   });
 })();

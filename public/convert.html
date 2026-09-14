@@ -63,12 +63,12 @@
         <div><label for="encoding">文本文件编码</label><select id="encoding"><option value="utf-8">UTF-8（默认）</option><option value="gb18030">GBK / GB18030（中文旧日志）</option></select></div>
         <div><label for="txtTimeUnit">周立功 TXT 时间单位</label><select id="txtTimeUnit"><option value="">按表头识别</option><option value="1">秒 (s)</option><option value="0.001">毫秒 (ms)</option><option value="0.000001">微秒 (µs)</option><option value="0.0001">0.1 毫秒 / 计数</option></select></div>
       </div><p>UTF-16 文件根据 BOM 自动识别。TXT“时间标识”默认按 0.1 毫秒计数，其余时间列按秒；请核对设备导出设置。</p></details>
-      <div class="action-bar"><p>文件不会上传到服务器。大文件转换时请保持页面打开。</p><div class="actions"><button id="cancel" type="button" class="secondary" hidden>取消</button><button id="startConvert" type="button" class="primary" disabled>开始转换 <span aria-hidden="true">→</span></button></div></div>
+      <div class="action-bar"><p>文件不会上传到服务器。支持文件访问权限的浏览器会在转换前确认原目录保存位置；其他浏览器转换后提供下载。</p><div class="actions"><button id="cancel" type="button" class="secondary" hidden>取消</button><button id="startConvert" type="button" class="primary" disabled>开始转换 <span aria-hidden="true">→</span></button></div></div>
       <div class="status-panel" id="statusPanel" hidden><p id="status" role="status" aria-live="polite"></p><progress id="progress" max="1" value="0" aria-label="转换进度"></progress></div>
       <p class="error" id="error" role="alert" hidden></p>
     </section>
     <section class="result" id="result" aria-labelledby="resultTitle" hidden>
-      <div class="result-head"><div><span class="eyebrow">READY TO DOWNLOAD</span><h2 id="resultTitle">转换完成</h2><p id="resultSummary"></p></div><a id="download" class="primary" download>下载转换文件 ↓</a></div>
+      <div class="result-head"><div><span class="eyebrow">CONVERSION COMPLETE</span><h2 id="resultTitle">转换完成</h2><p id="resultSummary"></p><p id="saveResult" class="save-result" role="status"></p></div><a id="download" class="primary" download>下载转换文件 ↓</a></div>
       <p id="conversionWarnings" class="warning" hidden></p>
       <div class="preview-wrap"><table><caption>前 8 帧预览</caption><thead><tr><th>时间 / s</th><th>通道</th><th>CAN ID</th><th>方向</th><th>类型</th><th>数据 / hex</th></tr></thead><tbody id="preview"></tbody></table></div>
     </section>

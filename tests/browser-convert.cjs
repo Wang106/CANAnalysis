@@ -65,12 +65,15 @@ const server=createServer(async(req,res)=>{
     await savePage.locator('#result').waitFor({state:'visible'});
     const saveState=await savePage.evaluate(()=>({name:__saveTest.options.suggestedName,startIn:__saveTest.options.startIn===__saveTest.sourceHandle,bytes:__saveTest.bytes,closed:__saveTest.closed,status:document.getElementById('saveResult').textContent,downloadHidden:document.getElementById('download').hidden}));
     assert.equal(saveState.name,'vehicle.log.trc');assert.equal(saveState.startIn,true);assert.ok(saveState.bytes>0);assert.equal(saveState.closed,true);assert.match(saveState.status,/原文件所在位置/);assert.equal(saveState.downloadHidden,true);
+    await savePage.evaluate(()=>window.showSaveFilePicker=async options=>({name:options.suggestedName,createWritable:async()=>{throw new DOMException('denied','NotAllowedError');}}));
+    await savePage.selectOption('#targetFormat','blf');await savePage.click('#startConvert');await savePage.locator('#result').waitFor({state:'visible'});
+    assert.match(await savePage.textContent('#saveResult'),/写入失败/);assert.equal(await savePage.locator('#download').isVisible(),true);assert.equal(await savePage.getAttribute('#download','download'),'vehicle.log.blf');
     await savePage.close();
     await page.goto(base+'/tests/regression.html');
     await page.waitForFunction(()=>Array.isArray(window.__TEST_RESULTS__),{},{timeout:90000});
     const results=await page.evaluate(()=>window.__TEST_RESULTS__);
     console.log(JSON.stringify(results));
     assert.equal(results.every(t=>t.ok),true,'existing browser regressions');
-    console.log('PASS: browser conversion/download all seven formats, desktop/mobile layout, cancel/errors and existing regressions');
+    console.log('PASS: seven-format downloads, source-path saves, write fallback, responsive layout and existing regressions');
   }finally{await browser.close();server.close();}
 })().catch(error=>{console.error(error);server.close();process.exitCode=1;});

@@ -6,3 +6,10 @@
 #navNotice{position:fixed;z-index:160;max-width:calc(100vw - 16px);padding:8px 12px;border:1px solid var(--accent);border-radius:7px;background:var(--panel);color:#fff;font-size:12px;pointer-events:none;opacity:0}#navNotice.show{opacity:1}
 @media(max-width:700px){.shell{width:calc(100% - 24px)}.site-header{padding:20px 0}.brand small{display:none}.local-badge{font-size:10px}.intro{padding:36px 0 26px}h1{font-size:33px}.intro p{font-size:12px}.card-heading{padding:18px}.card-heading>span{display:none}.conversion-grid{grid-template-columns:1fr}.source-pane,.target-pane{padding:20px}.source-pane{border-right:none;border-bottom:1px solid var(--line)}.target-info{min-height:0}.file-zone{min-height:190px}.advanced{padding:16px 20px}.advanced-grid{grid-template-columns:1fr}.action-bar{padding:20px;flex-direction:column;align-items:stretch;gap:14px}.actions{justify-content:flex-end}.actions .primary{flex:1}.result{padding:20px}.result-head{align-items:stretch;flex-direction:column}.result-head .primary{width:100%}.compatibility{padding-top:36px}.status-panel{padding:0 20px 20px}.error{padding:16px 20px}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto;transition:none!important}}
+
+/* The conversion flow is intentionally vertical: source first, target second. */
+.conversion-grid{grid-template-columns:minmax(0,1fr)}
+.source-pane{border-right:0;border-bottom:1px solid var(--line)}
+.file-zone{min-height:176px}
+.target-info{min-height:0}
+.save-result{margin:10px 0 0;color:var(--green)!important}

@@ -119,8 +119,10 @@ document.getElementById('app').addEventListener('load',async()=>{
     assert(api.asc.totalMessages===3430,'ASC 报文数量错误');
     api.selectedSet.clear();
     for(const sig of api.dbc.signals)api.selectedSet.add(sig.messageKey+'::'+sig.name);
-    api.renderCharts();
+    doc.getElementById('btnStart').disabled=false;
+    doc.getElementById('btnStart').click();
     await waitFor(()=>api.charts.length===7&&doc.getElementById('app').classList.contains('mobile-charts'));
+    assert(!doc.getElementById('topNav').classList.contains('nav-open'),'点击生成曲线后顶部导航未自动收回');
     assert(api.charts.filter(c=>c._series&&c._series.length).length===7,'曲线生成不完整');
     assert(api.charts[0].getOption().series[0].sampling==='lttb','LTTB 未启用');
     api.renderAnalysis(api.dbc.signals);
