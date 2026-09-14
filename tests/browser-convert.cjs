@@ -29,6 +29,7 @@ const server=createServer(async(req,res)=>{
     assert.equal(await page.locator('#sourceFile').getAttribute('accept'),null);
     assert.equal(await page.locator('#startConvert').isDisabled(),true);
     assert.equal(await page.evaluate(()=>getComputedStyle(document.querySelector('.conversion-grid')).gridTemplateColumns.split(' ').length),1,'source and target panels are not stacked');
+    await page.evaluate(()=>scrollTo(0,700));await page.waitForTimeout(50);assert.ok(Math.abs(await page.locator('#topNav').evaluate(node=>node.getBoundingClientRect().top))<1,'navigation did not remain at viewport top while scrolling');await page.evaluate(()=>scrollTo(0,0));
     const sample=Buffer.from('base hex timestamps absolute\n0.125 1 123 Rx d 2 01 FF\n1.25 2 18FF50E5x Tx d 1 02\n');
     for(const format of ['asc','log','trc','blf','txt','mf4','mdf']){
       await page.locator('#sourceFile').setInputFiles({name:'demo.asc',mimeType:'application/octet-stream',buffer:sample});
@@ -48,7 +49,7 @@ const server=createServer(async(req,res)=>{
     await page.click('#startConvert');await page.locator('#result').waitFor({state:'visible'});
     const csvEvent=page.waitForEvent('download');await page.click('#download');const csvDownload=await csvEvent;
     assert.equal(csvDownload.suggestedFilename(),'demo.csv');
-    const csvText=await readFile(await csvDownload.path(),'utf8');assert.match(csvText,/序号,时间\/s,Value,ExtValue/);assert.match(csvText,/1,0\.125000,1,/);
+    const csvText=await readFile(await csvDownload.path(),'utf8');assert.match(csvText,/序号,时间,Value,ExtValue/);assert.match(csvText,/1,0\.125000,1,/);
     await page.screenshot({path:process.env.SCREENSHOT_DIR?path.join(process.env.SCREENSHOT_DIR,'convert-desktop.png'):undefined,fullPage:true});
     for(const viewport of [{width:390,height:844},{width:844,height:390}]){
       await page.setViewportSize(viewport);

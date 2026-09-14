@@ -11,6 +11,7 @@
 - **横轴同步**：鼠标滚轮缩放横轴，所有信号区域同步联动；拖拽平移横轴
 - **纵轴独立**：`Shift`+滚轮单独缩放每个区域的纵轴，亦可手动输入 Y 范围或一键自适应
 - **自动分析**：汇总报文总数/时间范围/报文率/未知ID，并检测信号超量程、恒定/卡死、报文丢帧等问题
+- **固定导航**：页面向下滚动时栏目导航保持在屏幕顶部；CAN 解析页生成曲线后自动缩回，释放曲线空间
 
 ## 在线访问
 
@@ -85,7 +86,7 @@ python3 -m http.server 8000
 
 ## CAN 日志格式转换
 
-访问 `/convert`（导航中的「格式转换」），第一行选择日志文件，第二行选择输出目标格式。默认输出 Vector ASC；提供 ASC、BusMaster LOG、PCAN TRC、Vector BLF、周立功 TXT、MF4 和 MDF 七种读取/输出选项。文件通过浏览器 Worker 本地处理，不上传服务器；需要通过 HTTP/HTTPS 打开，不能直接以 `file://` 运行模块 Worker。
+访问 `/convert`（导航中的「格式转换」），第一行选择日志文件，第二行选择输出目标格式。默认输出 Vector ASC；提供 ASC、BusMaster LOG、PCAN TRC、Vector BLF、周立功 TXT、MF4、MDF 和 DBC 信号 CSV 八种输出选项。文件通过浏览器 Worker 本地处理，不上传服务器；需要通过 HTTP/HTTPS 打开，不能直接以 `file://` 运行模块 Worker。
 
 在支持 File System Access API 的桌面浏览器中，通过页面按钮选择源文件后，转换前会打开保存确认框并默认定位到源文件所在目录，输出沿用源文件名主体并替换扩展名；确认后在转换完成时自动写入。浏览器不提供原路径、用户取消授权、目录不可用或写入失败时，页面改为提供同名文件下载。受浏览器安全机制限制，网页不能静默读取或写入完整本地路径；iPhone Safari 使用下载回退。
 
@@ -96,11 +97,13 @@ python3 -m http.server 8000
 - TXT 要求可识别的 CANTest/ZCAN 表头且数据列在末尾，支持 UTF-8、GB18030 和带 BOM 的 UTF-16。提供时间单位选择，非所有周立功软件版本都采用相同表格。
 - 保留日志内时间轴，不迁移采集日期、附件、触发元数据；LOG 精度为 0.1 ms，TRC 为 1 µs，舍入会提示。MDF BusChannel 按 python-can 的零起始规则与页面一起始通道互换。
 - 文本分片读取，输出分块组装；单压缩块限制 64 MB、单输出累积器限制 1 GB。手机可用内存更少，大于 200 MB 建议在电脑上转换。
+- CSV 模式额外加载 DBC，可搜索并勾选信号，支持 100–1000 ms（每 100 ms 一档）采样间隔。列依次为序号、时间（秒）和所选信号；每个时间点使用此前最近的有效报文值，信号尚未出现时留空。支持 Intel/Motorola、带符号、factor/offset、基础复用及 DBC Float32/Float64。
 
 新增测试（先加入独立样本及失败用例，再实现引擎）：
 
 ```bash
 node tests/convert.test.mjs
+node tests/csv.test.mjs
 node tests/nav-state.test.cjs
 pip install python-can asammdf
 python tests/verify-convert-output.py
@@ -109,7 +112,7 @@ npx playwright install chromium
 node tests/browser-convert.cjs
 ```
 
-独立样本由 `tests/generate-convert-fixtures.py` 生成，提交的 JSON 样本让 Node 回归测试无需 Python 依赖。Python 交叉验证使用 python-can / asammdf 读取本引擎生成的真实文件，不仅依靠自有读写器互测。浏览器测试检查七格式下载、移动布局、取消/错误流程及原有解析/导航回归；可通过 `PLAYWRIGHT_MODULE`、`CHROMIUM_PATH` 指定现有安装。
+独立样本由 `tests/generate-convert-fixtures.py` 生成，提交的 JSON 样本让 Node 回归测试无需 Python 依赖。Python 交叉验证使用 python-can / asammdf 读取本引擎生成的真实文件，不仅依靠自有读写器互测。浏览器测试检查七种原始日志下载、DBC 信号 CSV、移动布局、取消/错误流程及原有解析/导航回归；可通过 `PLAYWRIGHT_MODULE`、`CHROMIUM_PATH` 指定现有安装。
 
 格式参考：[python-can BLF 实现](https://python-can.readthedocs.io/en/stable/_modules/can/io/blf.html)、[PEAK TRC 官方格式](https://www.peak-system.com/produktcd/Pdf/English/PEAK_CAN_TRC_File_Format.pdf)、[asammdf 原始总线日志](https://asammdf.readthedocs.io/en/latest/buslogging.html)。
 

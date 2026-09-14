@@ -27,7 +27,7 @@ const result=await convert(source,'asc','csv',{signals:selected,intervalMs:100})
 assert.equal(result.stats.frames,5);
 assert.equal(result.stats.rows,3);
 const rows=(await result.blob.text()).replace(/^\uFEFF/,'').trim().split(/\r?\n/).map(row=>row.split(','));
-assert.deepEqual(rows[0],['序号','时间/s','Speed','SignedBE','Branch']);
+assert.deepEqual(rows[0],['序号','时间','Speed','SignedBE','Branch']);
 assert.deepEqual(rows[1],['1','0.000000','10','-168','']);
 assert.deepEqual(rows[2],['2','0.100000','20','87','21']);
 assert.deepEqual(rows[3],['3','0.200000','30','-39','21']);
@@ -40,4 +40,10 @@ await assert.rejects(()=>convert(source,'asc','csv',{signals:[],intervalMs:100})
 await assert.rejects(()=>convert(source,'asc','csv',{signals:selected,intervalMs:150}),/时间间隔/);
 const tooWide=parseDBC('BO_ 1 A: 8 E\n SG_ Wide : 0|64@1+ (1,0) [0|1] "" E\n').signals;
 await assert.rejects(()=>convert(source,'asc','csv',{signals:tooWide,intervalMs:100}),/53 位/);
+await assert.rejects(()=>convert(new Blob(['0 1 100 Rx d 8 00 00 00 00 00 00 00 00\n2000000 1 100 Rx d 8 00 00 00 00 00 00 00 00\n']),'asc','csv',{signals:[selected[0]],intervalMs:100}),/1000 万行/);
+const floats=parseDBC('BO_ 768 FloatMsg: 8 E\n SG_ F32 : 0|32@1+ (1,0) [0|10] "" E\n SG_ F64 : 0|64@1+ (1,0) [0|10] "" E\nSIG_VALTYPE_ 768 F32 : 1;\nSIG_VALTYPE_ 768 F64 : 2;\n').signals;
+const f32=await convert(new Blob(['0.0 1 300 Rx d 8 00 00 C0 3F 00 00 00 00\n']),'asc','csv',{signals:[floats[0]],intervalMs:100});
+assert.match(await f32.blob.text(),/1\.5/);
+const f64=await convert(new Blob(['0.0 1 300 Rx d 8 00 00 00 00 00 00 F8 3F\n']),'asc','csv',{signals:[floats[1]],intervalMs:100});
+assert.match(await f64.blob.text(),/1\.5/);
 console.log('PASS: DBC parsing, Intel/Motorola/signed/multiplexed decoding and 100–1000 ms CSV sampling');

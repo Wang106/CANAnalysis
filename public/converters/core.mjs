@@ -1,7 +1,9 @@
 import {readText,textWriter} from './text.mjs';
 import {readBLF,blfWriter} from './blf.mjs';
 import {readMDF,mdfWriter} from './mdf.mjs';
+import {convertCsv} from './csv.mjs';
 export const FORMATS=['asc','log','trc','blf','txt','mf4','mdf'];
+export const OUTPUT_FORMATS=[...FORMATS,'csv'];
 export async function* readFrames(blob,format,options={}){
   if(!FORMATS.includes(format))throw Error('请选择支持的输入格式');
   if(format==='blf')yield* readBLF(blob,options);
@@ -9,7 +11,11 @@ export async function* readFrames(blob,format,options={}){
   else yield* readText(blob,format,options);
 }
 export async function convert(blob,input,output,options={}){
-  if(!FORMATS.includes(output))throw Error('请选择支持的输出格式');
+  if(!OUTPUT_FORMATS.includes(output))throw Error('请选择支持的输出格式');
+  if(output==='csv'){
+    const warnings=new Set();
+    return convertCsv(readFrames(blob,input,{...options,warn:message=>warnings.add(message)}),{...options,warnings});
+  }
   const writer=output==='blf'?blfWriter():['mf4','mdf'].includes(output)?mdfWriter(output==='mf4'?4:3):textWriter(output);
   const stats={frames:0,fd:0,remote:0,channels:[],first:null,last:null},warnings=new Set(),channels=new Set(),preview=[];
   let origin=null;
