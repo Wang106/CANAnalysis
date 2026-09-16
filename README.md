@@ -86,7 +86,7 @@ python3 -m http.server 8000
 
 ## CAN 日志格式转换
 
-访问 `/convert`（导航中的「格式转换」），页面按三行组织：第一行选择源日志，第二行统一转换原始日志格式，第三行通过 DBC 选择信号并导出 CSV。默认原始输出为 Vector ASC；支持 ASC、BusMaster LOG、PCAN TRC、Vector BLF、周立功 TXT、MF4、MDF 七种原始日志格式，以及独立的 DBC 信号 CSV。文件通过浏览器 Worker 本地处理，不上传服务器；需要通过 HTTP/HTTPS 打开，不能直接以 `file://` 运行模块 Worker。
+访问 `/convert`（导航中的「格式转换」），先选择一个或多个源日志，下方提供默认折叠的“日志格式转换”和“DBC 信号转换为 CSV”两个横向栏目，点击标题即可展开或再次折叠。原始日志目标格式以七张卡片展示，默认选中 Vector ASC，也可切换 BusMaster LOG、PCAN TRC、Vector BLF、周立功 TXT、MF4 或 MDF。文件通过浏览器 Worker 本地处理，不上传服务器；需要通过 HTTP/HTTPS 打开，不能直接以 `file://` 运行模块 Worker。
 
 在支持 File System Access API 的桌面浏览器中，通过页面按钮选择源文件后，转换前会打开保存确认框并默认定位到源文件所在目录，输出沿用源文件名主体并替换扩展名；确认后在转换完成时自动写入。浏览器不提供原路径、用户取消授权、目录不可用或写入失败时，页面改为提供同名文件下载。受浏览器安全机制限制，网页不能静默读取或写入完整本地路径；iPhone Safari 使用下载回退。
 

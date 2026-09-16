@@ -25,7 +25,7 @@ function canStartCsv(){return sources.length>0&&dbcData&&selectedSignals.size>0;
 function busy(active){
   running=active;
   for(const id of ['chooseFile','sourceFile','targetFormat','zeroTime','encoding','txtTimeUnit','chooseDbc','dbcFile','csvInterval','signalSearch','selectAllSignals','clearSignals'])$(id).disabled=active;
-  $('sourceFormat').disabled=active||sources.length>1;
+  for(const card of document.querySelectorAll('.format-card'))card.disabled=active;
   for(const input of document.querySelectorAll('.signal-list input[data-key]'))input.disabled=active||!!dbcData?.signals.find(signal=>signal.key===input.dataset.key)?.precisionUnsupported;
   $('startFormatConvert').disabled=active||!canStartFormat();$('startCsvConvert').disabled=active||!canStartCsv();$('cancel').hidden=!active;
 }
@@ -45,7 +45,7 @@ function select(items){
   const total=items.reduce((sum,item)=>sum+item.file.size,0);
   $('fileName').textContent=items.length===1?items[0].file.name:items.length+' 个文件已选择';
   $('fileMeta').textContent=size(total)+(total>200*1024**2?' · 大文件建议在电脑上转换':items.some(item=>item.handle)?' · 可请求保存到原目录':' · 转换后提供下载');
-  $('sourceFormat').value='auto';$('sourceFormat').disabled=items.length>1;renderSources();busy(false);
+  renderSources();busy(false);
 }
 $('chooseFile').onclick=async()=>{
   if(window.showOpenFilePicker){
@@ -61,13 +61,15 @@ $('dropZone').ondragover=event=>{event.preventDefault();if(!worker)$('dropZone')
 $('dropZone').ondragleave=()=> $('dropZone').classList.remove('drag');
 $('dropZone').ondrop=event=>{event.preventDefault();$('dropZone').classList.remove('drag');select([...event.dataTransfer.files].map(file=>({file,handle:null})));};
 
-function targetChanged(){
-  const key=$('targetFormat').value,[title,description,fd]=descriptions[key];
+function targetChanged(key){
+  $('targetFormat').value=key;
+  for(const card of document.querySelectorAll('.format-card'))card.setAttribute('aria-pressed',String(card.dataset.format===key));
+  const [title,description,fd]=descriptions[key];
   $('targetExt').textContent='.'+key;$('targetTitle').textContent=title;$('targetDescription').textContent=description;
   $('targetCapability').textContent=fd?'支持经典 CAN、CAN FD 和远程帧':'支持经典 CAN 和远程帧';clearResult();busy(false);
 }
-$('targetFormat').onchange=targetChanged;
-for(const id of ['sourceFormat','zeroTime','encoding','txtTimeUnit','csvInterval'])$(id).onchange=clearResult;
+for(const card of document.querySelectorAll('.format-card'))card.onclick=()=>targetChanged(card.dataset.format);
+for(const id of ['zeroTime','encoding','txtTimeUnit','csvInterval'])$(id).onchange=clearResult;
 
 const signalMatches=(signal,query)=>!query||(signal.name+' '+signal.messageName+' '+signal.messageId.toString(16)).toLowerCase().includes(query);
 function signalLabel(signal,checked){
@@ -169,8 +171,7 @@ async function run(output){
     // For a single file, open the save dialog while the button click still provides user activation.
     const preparedDestination=sources.length===1?await requestOutputHandle(sources[0],outputName(sources[0].file,output),output):null;
     if(current!==job)return;
-    const override=sources.length===1?$('sourceFormat').value:'auto';
-    const plan=output==='csv'?{convert:await Promise.all(sources.map(async source=>({file:source.file,input:override==='auto'?await detectInputFormat(source.file):override,output:'csv',outputName:outputName(source.file,'csv')}))),skipped:[]}:await planBatch(sources.map(source=>source.file),output,override);
+    const plan=output==='csv'?{convert:await Promise.all(sources.map(async source=>({file:source.file,input:await detectInputFormat(source.file),output:'csv',outputName:outputName(source.file,'csv')}))),skipped:[]}:await planBatch(sources.map(source=>source.file),output);
     if(current!==job)return;
     if(!plan.convert.length)throw Error('所选文件格式均与目标格式一致，已全部忽略，无需转换');
     const signalOptions=output==='csv'?dbcData.signals.filter(signal=>selectedSignals.has(signal.key)).map(serializableSignal):[];
