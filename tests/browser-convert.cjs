@@ -54,6 +54,8 @@ const server=createServer(async(req,res)=>{
     const dbc=Buffer.from('BO_ 291 Demo: 8 ECU\n SG_ Value : 0|8@1+ (1,0) [0|255] "V" ECU\nBO_ 2566869221 Ext: 8 ECU\n SG_ ExtValue : 0|8@1+ (0.5,0) [0|127.5] "A" ECU\n');
     await page.locator('#sourceFile').setInputFiles({name:'demo.asc',mimeType:'text/plain',buffer:sample});
     await page.click('#csvSummary');assert.equal(await page.locator('#csvAccordion').getAttribute('open'),'');
+    await page.click('#csvSummary');assert.equal(await page.locator('#csvAccordion').getAttribute('open'),null);
+    await page.click('#csvSummary');
     assert.equal(await page.locator('#dbcFile').getAttribute('accept'),null);
     await page.locator('#dbcFile').setInputFiles({name:'vehicle.dbc',mimeType:'text/plain',buffer:dbc});
     await page.locator('.signal-option').first().waitFor();await page.click('#selectAllSignals');await page.selectOption('#csvInterval','300');
