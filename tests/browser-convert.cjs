@@ -33,7 +33,13 @@ const server=createServer(async(req,res)=>{
     assert.match(await page.textContent('#fileMeta'),/ASC、LOG、TRC、BLF、TXT、MF4、MDF 等七种日志格式/);
     assert.equal(await page.locator('.conversion-accordion').count(),2);
     assert.equal(await page.locator('.conversion-accordion[open]').count(),0,'conversion accordions must be collapsed by default');
+    assert.equal(await page.locator('.workflow-heading').count(),3,'all three workflow title rows must be visually emphasized');
+    const headingColors=await page.locator('.workflow-heading').evaluateAll(nodes=>nodes.map(node=>getComputedStyle(node).getPropertyValue('--section-accent').trim()));
+    assert.equal(new Set(headingColors).size,3,'the three workflow title rows must use distinct accent colors');
+    assert.equal(await page.locator('#formatSummary .when-closed').isVisible(),true);
+    assert.equal(await page.locator('#csvSummary .when-closed').isVisible(),true);
     await page.click('#formatSummary');assert.equal(await page.locator('#formatAccordion').getAttribute('open'),'');
+    assert.equal(await page.locator('#formatSummary .when-open').isVisible(),true);
     await page.click('#formatSummary');assert.equal(await page.locator('#formatAccordion').getAttribute('open'),null);
     await page.click('#formatSummary');
     assert.equal(await page.locator('#startFormatConvert').isDisabled(),true);
