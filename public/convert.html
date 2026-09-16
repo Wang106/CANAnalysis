@@ -40,7 +40,7 @@
       <div class="card-heading"><h2 id="converter-title">日志格式转换</h2><span>01 — 源文件 · 02 — 格式转换 · 03 — 信号 CSV</span></div>
       <div class="conversion-flow">
         <section class="workflow-row source-pane">
-          <div class="step-label"><span>01</span><h3>选择源文件</h3></div>
+          <div class="step-label workflow-heading source-heading"><span>01</span><h3>选择源文件</h3><strong>始终展开</strong></div>
           <div class="file-zone" id="dropZone">
             <svg width="38" height="42" viewBox="0 0 38 42" fill="none" aria-hidden="true"><path d="M8 2h15l10 10v27H5V2h3Z" stroke="currentColor" stroke-width="1.5"/><path d="M23 2v11h10M19 32V19m-5 5 5-5 5 5" stroke="currentColor" stroke-width="1.5"/></svg>
             <strong id="fileName">选择或拖入一个或多个 CAN 日志</strong>
@@ -51,7 +51,7 @@
           <div id="fileList" class="file-list" aria-live="polite"></div>
         </section>
         <details id="formatAccordion" class="conversion-accordion">
-          <summary id="formatSummary"><span class="accordion-index">02</span><span><b>日志格式转换</b><small>统一转换为 ASC、LOG、TRC、BLF、TXT、MF4 或 MDF</small></span><i aria-hidden="true">⌄</i></summary>
+          <summary id="formatSummary" class="workflow-heading format-heading"><span class="accordion-index">02</span><span class="accordion-copy"><b>日志格式转换</b><small>统一转换为 ASC、LOG、TRC、BLF、TXT、MF4 或 MDF</small></span><span class="accordion-action"><span class="when-closed">点击展开</span><span class="when-open">点击收起</span></span><i aria-hidden="true">⌄</i></summary>
           <div class="accordion-content target-pane">
             <label>选择目标转换格式</label><input id="targetFormat" type="hidden" value="asc">
             <div class="format-cards" role="group" aria-label="目标转换格式">
@@ -69,7 +69,7 @@
           </div>
         </details>
         <details id="csvAccordion" class="conversion-accordion">
-          <summary id="csvSummary"><span class="accordion-index">03</span><span><b>DBC 信号转换为 CSV</b><small>选择信号并按固定时间间隔导出宽表</small></span><strong id="csvSelected">已选 0 个</strong><i aria-hidden="true">⌄</i></summary>
+          <summary id="csvSummary" class="workflow-heading csv-heading"><span class="accordion-index">03</span><span class="accordion-copy"><b>DBC 信号转换为 CSV</b><small>选择信号并按固定时间间隔导出宽表</small></span><strong id="csvSelected">已选 0 个</strong><span class="accordion-action"><span class="when-closed">点击展开</span><span class="when-open">点击收起</span></span><i aria-hidden="true">⌄</i></summary>
           <div id="csvOptions" class="accordion-content csv-options" aria-labelledby="csvSummary">
           <div class="csv-stage"><span class="stage-number">1</span><div><label>选择 DBC 文件</label><div class="dbc-picker"><button type="button" id="chooseDbc" class="secondary">选择 DBC 文件</button><span id="dbcName">未选择 DBC</span><input type="file" id="dbcFile" hidden></div></div></div>
           <div class="csv-stage signal-stage"><span class="stage-number">2</span><div class="signal-workspace"><div class="signal-toolbar"><label for="signalSearch">选择信号值</label><input id="signalSearch" type="search" placeholder="搜索信号名 / 报文名…"></div><div class="signal-selector"><div class="signal-column"><div class="signal-column-head">可选信号<button type="button" id="selectAllSignals" class="mini-button">全选当前结果</button><span id="availableCount">0</span></div><div id="signalList" class="signal-list"><p>请先加载 DBC 文件</p></div></div><div class="signal-column"><div class="signal-column-head">已选信号<button type="button" id="clearSignals" class="mini-button">清空</button><span id="pickedCount">0</span></div><div id="selectedSignalList" class="signal-list"><p>勾选左侧信号后显示在此</p></div></div></div></div></div>
