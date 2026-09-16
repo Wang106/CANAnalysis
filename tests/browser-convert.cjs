@@ -37,7 +37,7 @@ const server=createServer(async(req,res)=>{
     assert.equal(await page.locator('#csvAccordion').getAttribute('open'),null);
     assert.equal(await page.locator('.workflow-heading').count(),3,'all three workflow title rows must be visually emphasized');
     const headingColors=await page.locator('.workflow-heading').evaluateAll(nodes=>nodes.map(node=>getComputedStyle(node).getPropertyValue('--section-accent').trim()));
-    assert.deepEqual(headingColors,['#38bdf8','#3ddc84','#38bdf8'],'workflow title colors must follow the requested 01/02/03 order');
+    assert.deepEqual(headingColors,['#38bdf8','#3ddc84','#a78bfa'],'workflow title colors must remain distinct for 01/02/03');
     assert.equal(await page.locator('.conversion-flow').evaluate(node=>getComputedStyle(node).rowGap),'8px','workflow sections must have visible spacing');
     const actionRight=await page.locator('#formatSummary .accordion-action, #csvSummary .accordion-action').evaluateAll(nodes=>nodes.map(node=>Math.round(node.getBoundingClientRect().right)));
     assert.equal(actionRight[0],actionRight[1],'format and CSV expand actions must align at the right');
@@ -45,6 +45,11 @@ const server=createServer(async(req,res)=>{
     await page.click('#sourceSummary');assert.equal(await page.locator('#sourceAccordion').getAttribute('open'),'');
     assert.equal(await page.locator('#formatSummary .when-closed').isVisible(),true);
     assert.equal(await page.locator('#csvSummary .when-closed').isVisible(),true);
+    assert.match(await page.textContent('#csvSummary'),/转换为 CSV 文件/);
+    assert.equal(await page.locator('#csvSelected').isHidden(),true,'CSV selected count must stay hidden before a DBC is loaded');
+    assert.equal(await page.locator('#sourceAccordion .file-zone + .advanced').count(),1,'text encoding settings must follow the source file picker');
+    assert.equal(await page.locator('.intro p').textContent(),'01 — 源文件 · 02 — 格式转换 · 03 — 信号 CSV');
+    assert.equal(await page.locator('.format-strip').count(),0,'top format badges must be removed');
     await page.click('#formatSummary');assert.equal(await page.locator('#formatAccordion').getAttribute('open'),'');
     assert.equal(await page.locator('#formatSummary .when-open').isVisible(),true);
     await page.click('#formatSummary');assert.equal(await page.locator('#formatAccordion').getAttribute('open'),null);
@@ -71,6 +76,8 @@ const server=createServer(async(req,res)=>{
     await page.click('#csvSummary');
     assert.equal(await page.locator('#dbcFile').getAttribute('accept'),null);
     await page.locator('#dbcFile').setInputFiles({name:'vehicle.dbc',mimeType:'text/plain',buffer:dbc});
+    await page.locator('#csvSelected').waitFor({state:'visible'});
+    assert.equal(await page.locator('#csvSelected').isVisible(),true,'CSV selected count must appear after a DBC is loaded');
     await page.locator('.signal-option').first().waitFor();await page.click('#selectAllSignals');await page.selectOption('#csvInterval','300');
     await page.click('#startCsvConvert');await page.locator('#result').waitFor({state:'visible'});
     const csvEvent=page.waitForEvent('download');await page.click('#download');const csvDownload=await csvEvent;
