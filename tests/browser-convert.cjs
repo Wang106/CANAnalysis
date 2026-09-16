@@ -24,11 +24,18 @@ const server=createServer(async(req,res)=>{
     const errors=[];page.on('pageerror',error=>errors.push(error.message));
     await page.goto(base+'/convert');
     assert.equal(await page.inputValue('#targetFormat'),'asc');
-    assert.equal(await page.locator('#targetFormat option').count(),7);
+    assert.equal(await page.locator('.format-card').count(),7);
+    assert.equal(await page.locator('.format-card[aria-pressed="true"]').getAttribute('data-format'),'asc');
     assert.equal(await page.locator('#topNav a').first().getAttribute('href'),'/');
     assert.equal(await page.locator('#sourceFile').getAttribute('accept'),null);
     assert.equal(await page.locator('#sourceFile').getAttribute('multiple'),'');
-    assert.equal(await page.locator('.workflow-row').count(),3,'conversion page must use three workflow rows');
+    assert.equal(await page.locator('#sourceFormat').count(),0,'source format selector must be removed');
+    assert.match(await page.textContent('#fileMeta'),/ASC、LOG、TRC、BLF、TXT、MF4、MDF 等七种日志格式/);
+    assert.equal(await page.locator('.conversion-accordion').count(),2);
+    assert.equal(await page.locator('.conversion-accordion[open]').count(),0,'conversion accordions must be collapsed by default');
+    await page.click('#formatSummary');assert.equal(await page.locator('#formatAccordion').getAttribute('open'),'');
+    await page.click('#formatSummary');assert.equal(await page.locator('#formatAccordion').getAttribute('open'),null);
+    await page.click('#formatSummary');
     assert.equal(await page.locator('#startFormatConvert').isDisabled(),true);
     assert.equal(await page.locator('#startCsvConvert').isDisabled(),true);
     await page.evaluate(()=>scrollTo(0,700));await page.waitForTimeout(50);assert.ok(Math.abs(await page.locator('#topNav').evaluate(node=>node.getBoundingClientRect().top))<1,'navigation did not remain at viewport top while scrolling');await page.evaluate(()=>scrollTo(0,0));
@@ -36,7 +43,8 @@ const server=createServer(async(req,res)=>{
     const logSample=Buffer.from('***HEX***\n***ABSOLUTE MODE***\n00:00:00:1000 Rx 1 0x123 s 1 02\n');
     for(const format of ['asc','log','trc','blf','txt','mf4','mdf']){
       await page.locator('#sourceFile').setInputFiles(format==='asc'?{name:'demo.log',mimeType:'text/plain',buffer:logSample}:{name:'demo.asc',mimeType:'application/octet-stream',buffer:sample});
-      await page.selectOption('#targetFormat',format);
+      await page.click(`.format-card[data-format="${format}"]`);
+      assert.equal(await page.inputValue('#targetFormat'),format);
       await page.click('#startFormatConvert');
       await page.locator('#result').waitFor({state:'visible'});
       assert.equal(await page.locator('#preview tr').count(),format==='asc'?1:2);
@@ -45,6 +53,7 @@ const server=createServer(async(req,res)=>{
     }
     const dbc=Buffer.from('BO_ 291 Demo: 8 ECU\n SG_ Value : 0|8@1+ (1,0) [0|255] "V" ECU\nBO_ 2566869221 Ext: 8 ECU\n SG_ ExtValue : 0|8@1+ (0.5,0) [0|127.5] "A" ECU\n');
     await page.locator('#sourceFile').setInputFiles({name:'demo.asc',mimeType:'text/plain',buffer:sample});
+    await page.click('#csvSummary');assert.equal(await page.locator('#csvAccordion').getAttribute('open'),'');
     assert.equal(await page.locator('#dbcFile').getAttribute('accept'),null);
     await page.locator('#dbcFile').setInputFiles({name:'vehicle.dbc',mimeType:'text/plain',buffer:dbc});
     await page.locator('.signal-option').first().waitFor();await page.click('#selectAllSignals');await page.selectOption('#csvInterval','300');
@@ -64,8 +73,7 @@ const server=createServer(async(req,res)=>{
       {name:'already.trc',mimeType:'text/plain',buffer:Buffer.from('ignored')}
     ]);
     assert.match(await page.textContent('#fileName'),/3 个文件/);
-    assert.equal(await page.locator('#sourceFormat').isDisabled(),true);
-    await page.selectOption('#targetFormat','trc');await page.click('#startFormatConvert');
+    await page.click('.format-card[data-format="trc"]');await page.click('#startFormatConvert');
     await page.locator('#result').waitFor({state:'visible'});
     assert.equal(await page.locator('#downloadList a').count(),2);
     assert.match(await page.textContent('#resultSummary'),/忽略 1 个同格式文件/);
@@ -86,12 +94,12 @@ const server=createServer(async(req,res)=>{
       window.showOpenFilePicker=async()=>[sourceHandle];
       window.showSaveFilePicker=async options=>{window.__saveTest={options,sourceHandle};return {name:options.suggestedName,createWritable:async()=>({write:async blob=>window.__saveTest.bytes=blob.size,close:async()=>window.__saveTest.closed=true})};};
     });
-    await savePage.goto(base+'/convert');await savePage.click('#chooseFile');await savePage.selectOption('#targetFormat','trc');await savePage.click('#startFormatConvert');
+    await savePage.goto(base+'/convert');await savePage.click('#chooseFile');await savePage.click('#formatSummary');await savePage.click('.format-card[data-format="trc"]');await savePage.click('#startFormatConvert');
     await savePage.locator('#result').waitFor({state:'visible'});
     const saveState=await savePage.evaluate(()=>({name:__saveTest.options.suggestedName,startIn:__saveTest.options.startIn===__saveTest.sourceHandle,bytes:__saveTest.bytes,closed:__saveTest.closed,status:document.getElementById('saveResult').textContent,downloadHidden:document.getElementById('download').hidden}));
     assert.equal(saveState.name,'vehicle.log.trc');assert.equal(saveState.startIn,true);assert.ok(saveState.bytes>0);assert.equal(saveState.closed,true);assert.match(saveState.status,/原文件所在位置/);assert.equal(saveState.downloadHidden,true);
     await savePage.evaluate(()=>window.showSaveFilePicker=async options=>({name:options.suggestedName,createWritable:async()=>{throw new DOMException('denied','NotAllowedError');}}));
-    await savePage.selectOption('#targetFormat','blf');await savePage.click('#startFormatConvert');await savePage.locator('#result').waitFor({state:'visible'});
+    await savePage.click('.format-card[data-format="blf"]');await savePage.click('#startFormatConvert');await savePage.locator('#result').waitFor({state:'visible'});
     assert.match(await savePage.textContent('#saveResult'),/写入失败/);assert.equal(await savePage.locator('#download').isVisible(),true);assert.equal(await savePage.getAttribute('#download','download'),'vehicle.log.blf');
     await savePage.close();
     await page.goto(base+'/tests/regression.html');
