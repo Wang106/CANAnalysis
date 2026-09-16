@@ -102,8 +102,8 @@ function updateCsvSelection(){
 $('chooseDbc').onclick=()=>{$('dbcFile').value='';$('dbcFile').click();};
 $('dbcFile').onchange=async event=>{
   const file=event.target.files[0];if(!file)return;
-  try{dbcData=parseDBC(await file.text());selectedSignals.clear();$('dbcName').textContent=file.name+' · '+dbcData.signals.length+' 个信号';$('signalSearch').value='';updateCsvSelection();}
-  catch(error){dbcData=null;selectedSignals.clear();$('dbcName').textContent='DBC 解析失败：'+error.message;updateCsvSelection();}
+  try{dbcData=parseDBC(await file.text());selectedSignals.clear();$('dbcName').textContent=file.name+' · '+dbcData.signals.length+' 个信号';$('signalSearch').value='';$('csvSelected').hidden=false;updateCsvSelection();}
+  catch(error){dbcData=null;selectedSignals.clear();$('dbcName').textContent='DBC 解析失败：'+error.message;$('csvSelected').hidden=true;updateCsvSelection();}
 };
 $('signalSearch').oninput=renderSignals;
 for(const id of ['signalList','selectedSignalList'])$(id).onchange=event=>{
