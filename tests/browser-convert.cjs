@@ -33,18 +33,19 @@ const server=createServer(async(req,res)=>{
     });
     await languagePage.goto(base+'/');
     await languagePage.locator('#siteLanguage').waitFor();
-    assert.equal(await languagePage.locator('#topNav > :last-child #siteLanguage').count(),1,'language button must be the final navigation control');
-    assert.equal((await languagePage.textContent('#siteLanguage')).trim(),'English','Chinese pages must offer English as the language action');
-    await languagePage.click('#siteLanguage');
+    assert.equal(await languagePage.locator('#topNav > :last-child #siteLanguage').count(),1,'language selector must be the final navigation control');
+    assert.equal(await languagePage.inputValue('#siteLanguage'),'','language selector must keep its Language placeholder visible');
+    assert.equal((await languagePage.locator('#siteLanguage option').allTextContents()).join('|'),'Language|中文|English');
+    await languagePage.selectOption('#siteLanguage','en');
     await languagePage.waitForFunction(()=>document.documentElement.lang==='en');
-    assert.equal((await languagePage.textContent('#siteLanguage')).trim(),'中文','English pages must offer Chinese as the language action');
+    assert.equal(await languagePage.inputValue('#siteLanguage'),'','English pages must still display the Language placeholder');
     await languagePage.waitForTimeout(80);
     const indexUntranslated=await untranslated();assert.equal(indexUntranslated.length,0,'CAN analysis page must be fully translated to English: '+JSON.stringify(indexUntranslated));
     await languagePage.goto(base+'/aboutus');
-    assert.equal((await languagePage.textContent('#siteLanguage')).trim(),'中文','language choice must persist across pages');
+    assert.equal(await languagePage.inputValue('#siteLanguage'),'','language choice must persist while the selector keeps its placeholder');
     const aboutUntranslated=await untranslated();assert.equal(aboutUntranslated.length,0,'about page must be fully translated to English: '+JSON.stringify(aboutUntranslated));
     await languagePage.goto(base+'/convert');
-    assert.equal((await languagePage.textContent('#siteLanguage')).trim(),'中文');
+    assert.equal(await languagePage.inputValue('#siteLanguage'),'');
     const convertUntranslated=await untranslated();assert.equal(convertUntranslated.length,0,'convert page must be fully translated to English: '+JSON.stringify(convertUntranslated));
     await languagePage.locator('#sourceFile').setInputFiles({name:'language.asc',mimeType:'text/plain',buffer:Buffer.from('base hex timestamps absolute\n0.125 1 123 Rx d 1 01\n')});
     await languagePage.waitForFunction(()=>!/文件|转换后|保存到/.test(document.querySelector('#fileMeta').textContent));
@@ -60,9 +61,9 @@ const server=createServer(async(req,res)=>{
     if(process.env.SCREENSHOT_DIR){
       await languagePage.screenshot({path:path.join(process.env.SCREENSHOT_DIR,'convert-en-390.png'),fullPage:true});
     }
-    await languagePage.click('#siteLanguage');
+    await languagePage.selectOption('#siteLanguage','zh');
     await languagePage.waitForFunction(()=>document.documentElement.lang==='zh-CN');
-    assert.equal((await languagePage.textContent('#siteLanguage')).trim(),'English');
+    assert.equal(await languagePage.inputValue('#siteLanguage'),'');
     assert.match(await languagePage.textContent('#sourceSummary'),/选择源文件/);
     await languageContext.close();
     assert.equal(await page.inputValue('#targetFormat'),'asc');
@@ -74,10 +75,12 @@ const server=createServer(async(req,res)=>{
     assert.equal(await page.locator('#sourceFormat').count(),0,'source format selector must be removed');
     assert.match(await page.textContent('#fileMeta'),/ASC、LOG、TRC、BLF、TXT、MF4、MDF 等七种日志格式/);
     assert.equal(await page.locator('.conversion-accordion').count(),3);
-    assert.equal(await page.locator('#sourceAccordion').getAttribute('open'),'','source accordion must be expanded by default');
+    assert.equal(await page.locator('#sourceAccordion').getAttribute('open'),null,'source accordion must be collapsed by default');
     assert.equal(await page.locator('#formatAccordion').getAttribute('open'),null);
     assert.equal(await page.locator('#csvAccordion').getAttribute('open'),null,'CSV conversion must be collapsed by default');
     assert.equal(await page.locator('#compatibilityAccordion').getAttribute('open'),null,'compatibility details must be collapsed by default');
+    assert.match(await page.textContent('#compatibilitySummary'),/格式与兼容范围说明/);
+    assert.equal(await page.locator('#compatibilitySummary').evaluate(node=>getComputedStyle(node).getPropertyValue('--section-accent').trim()),'#f59e0b','compatibility explanation must have its own accent color');
     await page.click('#compatibilitySummary');assert.equal(await page.locator('#compatibilityAccordion').getAttribute('open'),'');
     await page.click('#compatibilitySummary');assert.equal(await page.locator('#compatibilityAccordion').getAttribute('open'),null);
     assert.equal(await page.locator('.workflow-heading').count(),3,'all three workflow title rows must be visually emphasized');
@@ -86,8 +89,9 @@ const server=createServer(async(req,res)=>{
     assert.equal(await page.locator('.conversion-flow').evaluate(node=>getComputedStyle(node).rowGap),'8px','workflow sections must have visible spacing');
     const actionRight=await page.locator('#formatSummary .accordion-action, #csvSummary .accordion-action').evaluateAll(nodes=>nodes.map(node=>Math.round(node.getBoundingClientRect().right)));
     assert.equal(actionRight[0],actionRight[1],'format and CSV expand actions must align at the right');
-    await page.click('#sourceSummary');assert.equal(await page.locator('#sourceAccordion').getAttribute('open'),null);
     await page.click('#sourceSummary');assert.equal(await page.locator('#sourceAccordion').getAttribute('open'),'');
+    await page.click('#sourceSummary');assert.equal(await page.locator('#sourceAccordion').getAttribute('open'),null);
+    await page.click('#sourceSummary');
     assert.equal(await page.locator('#formatSummary .when-closed').isVisible(),true);
     assert.equal(await page.locator('#csvSummary .when-closed').isVisible(),true);
     assert.match(await page.textContent('#csvSummary'),/转换为 CSV 文件/);
