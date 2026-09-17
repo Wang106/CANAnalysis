@@ -112,7 +112,7 @@
     const nav=document.getElementById('topNav');if(!nav||document.getElementById('siteLanguage'))return;
     const wrap=document.createElement('div');wrap.className='language-switcher';wrap.dataset.noI18n='true';
     const skinControl=document.createElement('span');skinControl.className='skin-control';
-    const skinFace=document.createElement('span');skinFace.className='skin-face';skinFace.setAttribute('aria-hidden','true');skinFace.textContent='🎨';
+    const skinFace=document.createElement('span');skinFace.className='skin-face';skinFace.setAttribute('aria-hidden','true');skinFace.textContent='默认风格';
     const skinSelect=document.createElement('select');skinSelect.id='siteSkin';skinSelect.setAttribute('aria-label','皮肤选择');
     skinSelect.append(new Option('默认风格','default'));skinSelect.addEventListener('change',()=>setSkin(skinSelect.value));skinControl.append(skinFace,skinSelect);
     const toggle=document.createElement('span');toggle.className='language-toggle';toggle.textContent='🌐';toggle.setAttribute('aria-hidden','true');
@@ -126,7 +126,7 @@
   function updateSwitcher() {
     const select=document.getElementById('siteLanguage');if(!select)return;
     select.value=language;
-    const skinSelect=document.getElementById('siteSkin');if(skinSelect){skinSelect.value=skin;skinSelect.options[0].textContent=language==='en'?'Default Style':'默认风格';skinSelect.setAttribute('aria-label',language==='en'?'Skin selector':'皮肤选择');}
+    const skinSelect=document.getElementById('siteSkin');if(skinSelect){const skinText=language==='en'?'Default Style':'默认风格';skinSelect.value=skin;skinSelect.options[0].textContent=skinText;skinSelect.closest('.skin-control')?.querySelector('.skin-face')?.replaceChildren(skinText);skinSelect.setAttribute('aria-label',language==='en'?'Skin selector':'皮肤选择');}
   }
   function setSkin(next,{persist=true}={}) {
     skin=next==='default'?'default':'default';if(persist)localStorage.setItem(SKIN_KEY,skin);
