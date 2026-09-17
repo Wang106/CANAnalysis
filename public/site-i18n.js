@@ -110,14 +110,15 @@
     const nav=document.getElementById('topNav');if(!nav||document.getElementById('siteLanguage'))return;
     const wrap=document.createElement('div');wrap.className='language-switcher';wrap.dataset.noI18n='true';
     const icon=document.createElement('span');icon.setAttribute('aria-hidden','true');icon.textContent='🌐';
+    const control=document.createElement('span');control.className='language-control';
+    const face=document.createElement('span');face.className='language-face';face.setAttribute('aria-hidden','true');face.textContent='Language';
     const select=document.createElement('select');select.id='siteLanguage';select.setAttribute('aria-label','Language');
-    const placeholder=new Option('Language','',true,true);placeholder.hidden=true;placeholder.disabled=true;
-    select.append(placeholder,new Option('中文','zh'),new Option('English','en'));
-    select.addEventListener('change',()=>{if(select.value)setLanguage(select.value);});wrap.append(icon,select);nav.appendChild(wrap);
+    select.append(new Option('中文','zh'),new Option('English','en'));select.value=language;
+    select.addEventListener('change',()=>setLanguage(select.value));control.append(face,select);wrap.append(icon,control);nav.appendChild(wrap);
   }
   function updateSwitcher() {
     const select=document.getElementById('siteLanguage');if(!select)return;
-    select.value='';
+    select.value=language;
   }
   function setLanguage(next,{persist=true}={}) {
     language=next==='en'?'en':'zh';if(persist)localStorage.setItem(STORAGE_KEY,language);
