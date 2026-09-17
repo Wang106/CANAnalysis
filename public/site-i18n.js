@@ -112,20 +112,16 @@
     const nav=document.getElementById('topNav');if(!nav||document.getElementById('siteLanguage'))return;
     const wrap=document.createElement('div');wrap.className='language-switcher';wrap.dataset.noI18n='true';
     const skinControl=document.createElement('span');skinControl.className='skin-control';
+    const skinFace=document.createElement('span');skinFace.className='skin-face';skinFace.setAttribute('aria-hidden','true');skinFace.textContent='🎨';
     const skinSelect=document.createElement('select');skinSelect.id='siteSkin';skinSelect.setAttribute('aria-label','皮肤选择');
-    skinSelect.append(new Option('默认风格','default'));skinSelect.addEventListener('change',()=>setSkin(skinSelect.value));skinControl.append(skinSelect);
-    const toggle=document.createElement('button');toggle.type='button';toggle.className='language-toggle';toggle.textContent='🌐';toggle.setAttribute('aria-label','展开语言选择器');toggle.setAttribute('aria-expanded','true');
+    skinSelect.append(new Option('默认风格','default'));skinSelect.addEventListener('change',()=>setSkin(skinSelect.value));skinControl.append(skinFace,skinSelect);
+    const toggle=document.createElement('span');toggle.className='language-toggle';toggle.textContent='🌐';toggle.setAttribute('aria-hidden','true');
     const control=document.createElement('span');control.className='language-control';
     const face=document.createElement('span');face.className='language-face';face.setAttribute('aria-hidden','true');face.textContent='Language';
     const select=document.createElement('select');select.id='siteLanguage';select.setAttribute('aria-label','Language');
     select.append(new Option('中文','zh'),new Option('English','en'));select.value=language;
-    const compact=()=>matchMedia('(max-width:760px)').matches;
-    const closeLanguage=()=>{wrap.classList.remove('language-open');nav.classList.remove('language-expanded');toggle.setAttribute('aria-expanded',compact()?'false':'true');};
-    toggle.addEventListener('click',event=>{if(!compact()){select.focus();return;}event.stopPropagation();const open=!wrap.classList.contains('language-open');wrap.classList.toggle('language-open',open);nav.classList.toggle('language-expanded',open);toggle.setAttribute('aria-expanded',String(open));});
-    select.addEventListener('change',()=>{setLanguage(select.value);if(compact())closeLanguage();});
-    document.addEventListener('pointerdown',event=>{if(compact()&&!wrap.contains(event.target))closeLanguage();});
-    matchMedia('(max-width:760px)').addEventListener('change',closeLanguage);
-    control.append(face,select);wrap.append(skinControl,toggle,control);nav.appendChild(wrap);closeLanguage();
+    select.addEventListener('change',()=>setLanguage(select.value));
+    control.append(face,select);wrap.append(skinControl,toggle,control);nav.appendChild(wrap);
   }
   function updateSwitcher() {
     const select=document.getElementById('siteLanguage');if(!select)return;

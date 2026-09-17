@@ -59,20 +59,19 @@ const server=createServer(async(req,res)=>{
     if(process.env.SCREENSHOT_DIR)await languagePage.screenshot({path:path.join(process.env.SCREENSHOT_DIR,'convert-en-desktop.png'),fullPage:true});
     await languagePage.setViewportSize({width:390,height:844});
     assert.equal(await languagePage.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'English mobile page must not overflow horizontally');
-    assert.equal(await languagePage.locator('.language-control').isHidden(),true,'narrow screens must initially show only the globe for language');
+    assert.equal(await languagePage.locator('.language-face').isHidden(),true,'narrow screens must hide the Language field face');
     assert.equal(await languagePage.locator('.language-toggle').isVisible(),true);
     assert.equal((await languagePage.textContent('.language-toggle')).trim(),'🌐');
     assert.equal(await languagePage.locator('.skin-control').isVisible(),true,'skin selector must remain available on narrow screens');
-    await languagePage.click('.language-toggle');
-    assert.equal(await languagePage.locator('.language-control').isVisible(),true,'globe click must expand the language selector');
-    assert.equal(await languagePage.getAttribute('.language-toggle','aria-expanded'),'true');
+    assert.equal((await languagePage.textContent('.skin-face')).trim(),'🎨','narrow screens must show the skin selector as an icon');
     const mobileNavBounds=await languagePage.evaluate(()=>{
-      const links=document.getElementById('navLinks'),switcher=document.querySelector('.language-switcher'),select=document.getElementById('siteLanguage');
-      const linkBounds=links.getBoundingClientRect(),switcherBounds=switcher.getBoundingClientRect(),line=getComputedStyle(switcher,'::after');
-      return {linksRight:Math.round(linkBounds.right),switcherLeft:Math.round(switcherBounds.left),selectorWidth:Math.round(select.getBoundingClientRect().width),lineWidth:Math.round(parseFloat(line.width)),lineColor:line.backgroundColor,linksBorder:getComputedStyle(links).borderBottomWidth};
+      const links=document.getElementById('navLinks'),switcher=document.querySelector('.language-switcher'),languageSelect=document.getElementById('siteLanguage'),languageIcon=document.querySelector('.language-toggle'),skinSelect=document.getElementById('siteSkin'),skinIcon=document.querySelector('.skin-face');
+      const linkBounds=links.getBoundingClientRect(),switcherBounds=switcher.getBoundingClientRect(),languageBounds=languageSelect.getBoundingClientRect(),languageIconBounds=languageIcon.getBoundingClientRect(),skinBounds=skinSelect.getBoundingClientRect(),skinIconBounds=skinIcon.getBoundingClientRect(),line=getComputedStyle(switcher,'::after');
+      return {linksRight:Math.round(linkBounds.right),switcherLeft:Math.round(switcherBounds.left),languageWidth:Math.round(languageBounds.width),languageLeft:Math.round(languageBounds.left),languageIconLeft:Math.round(languageIconBounds.left),skinWidth:Math.round(skinBounds.width),skinLeft:Math.round(skinBounds.left),skinIconLeft:Math.round(skinIconBounds.left),languageOpacity:getComputedStyle(languageSelect).opacity,skinOpacity:getComputedStyle(skinSelect).opacity,lineWidth:Math.round(parseFloat(line.width)),lineColor:line.backgroundColor,linksBorder:getComputedStyle(links).borderBottomWidth};
     });
     assert.ok(mobileNavBounds.linksRight<=mobileNavBounds.switcherLeft,'mobile navigation links must not sit underneath the language button: '+JSON.stringify(mobileNavBounds));
-    assert.ok(mobileNavBounds.selectorWidth>=94,'Language selector must be wide enough to show its full label: '+JSON.stringify(mobileNavBounds));
+    assert.deepEqual([mobileNavBounds.languageWidth,mobileNavBounds.languageLeft,mobileNavBounds.languageOpacity],[28,mobileNavBounds.languageIconLeft,'0'],'transparent language selector must directly cover the globe icon');
+    assert.deepEqual([mobileNavBounds.skinWidth,mobileNavBounds.skinLeft,mobileNavBounds.skinOpacity],[28,mobileNavBounds.skinIconLeft,'0'],'transparent skin selector must directly cover the skin icon');
     assert.equal(mobileNavBounds.lineWidth,390,'navigation accent line must extend beneath the language selector');
     assert.match(mobileNavBounds.lineColor,/0\.38\)/,'navigation accent line must use the softer color');
     assert.equal(mobileNavBounds.linksBorder,'0px','short accent line under navigation links must be removed');
@@ -82,7 +81,7 @@ const server=createServer(async(req,res)=>{
     await languagePage.selectOption('#siteLanguage','zh');
     await languagePage.waitForFunction(()=>document.documentElement.lang==='zh-CN');
     assert.equal(await languagePage.inputValue('#siteLanguage'),'zh');
-    assert.equal(await languagePage.locator('.language-control').isHidden(),true,'language selector must collapse after a mobile choice');
+    assert.equal(await languagePage.locator('.language-face').isHidden(),true,'compact icon layout must remain after a mobile choice');
     assert.match(await languagePage.textContent('#sourceSummary'),/选择源文件/);
     await languageContext.close();
     assert.equal(await page.inputValue('#targetFormat'),'asc');
