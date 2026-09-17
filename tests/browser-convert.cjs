@@ -56,10 +56,15 @@ const server=createServer(async(req,res)=>{
     await languagePage.setViewportSize({width:390,height:844});
     assert.equal(await languagePage.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'English mobile page must not overflow horizontally');
     const mobileNavBounds=await languagePage.evaluate(()=>{
-      const links=document.getElementById('navLinks').getBoundingClientRect(),switcher=document.querySelector('.language-switcher').getBoundingClientRect();
-      return {linksRight:Math.round(links.right),switcherLeft:Math.round(switcher.left)};
+      const links=document.getElementById('navLinks'),switcher=document.querySelector('.language-switcher'),select=document.getElementById('siteLanguage');
+      const linkBounds=links.getBoundingClientRect(),switcherBounds=switcher.getBoundingClientRect(),line=getComputedStyle(switcher,'::after');
+      return {linksRight:Math.round(linkBounds.right),switcherLeft:Math.round(switcherBounds.left),selectorWidth:Math.round(select.getBoundingClientRect().width),lineWidth:Math.round(parseFloat(line.width)),lineColor:line.backgroundColor,linksBorder:getComputedStyle(links).borderBottomWidth};
     });
     assert.ok(mobileNavBounds.linksRight<=mobileNavBounds.switcherLeft,'mobile navigation links must not sit underneath the language button: '+JSON.stringify(mobileNavBounds));
+    assert.ok(mobileNavBounds.selectorWidth>=94,'Language selector must be wide enough to show its full label: '+JSON.stringify(mobileNavBounds));
+    assert.equal(mobileNavBounds.lineWidth,390,'navigation accent line must extend beneath the language selector');
+    assert.match(mobileNavBounds.lineColor,/0\.38\)/,'navigation accent line must use the softer color');
+    assert.equal(mobileNavBounds.linksBorder,'0px','short accent line under navigation links must be removed');
     if(process.env.SCREENSHOT_DIR){
       await languagePage.screenshot({path:path.join(process.env.SCREENSHOT_DIR,'convert-en-390.png'),fullPage:true});
     }
