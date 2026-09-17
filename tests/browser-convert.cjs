@@ -27,35 +27,42 @@ const server=createServer(async(req,res)=>{
     const languagePage=await languageContext.newPage();
     const untranslated=()=>languagePage.evaluate(()=>{
       const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);const values=[];
-      while(walker.nextNode())if(!['SCRIPT','STYLE','TEMPLATE'].includes(walker.currentNode.parentElement?.tagName))values.push(walker.currentNode.nodeValue);
-      for(const node of document.querySelectorAll('[aria-label],[placeholder],[title]'))values.push(node.getAttribute('aria-label')||'',node.getAttribute('placeholder')||'',node.getAttribute('title')||'');
+      while(walker.nextNode())if(!['SCRIPT','STYLE','TEMPLATE'].includes(walker.currentNode.parentElement?.tagName)&&!walker.currentNode.parentElement?.closest('[data-no-i18n]'))values.push(walker.currentNode.nodeValue);
+      for(const node of document.querySelectorAll('[aria-label],[placeholder],[title]'))if(!node.closest('[data-no-i18n]'))values.push(node.getAttribute('aria-label')||'',node.getAttribute('placeholder')||'',node.getAttribute('title')||'');
       return values.filter(value=>/[\u3400-\u9fff]/.test(value.trim()));
     });
     await languagePage.goto(base+'/');
     await languagePage.locator('#siteLanguage').waitFor();
-    assert.equal(await languagePage.locator('#topNav > :last-child #siteLanguage').count(),1,'language selector must be the final navigation control');
-    assert.equal(await languagePage.inputValue('#siteLanguage'),'zh');
-    await languagePage.selectOption('#siteLanguage','en');
+    assert.equal(await languagePage.locator('#topNav > :last-child #siteLanguage').count(),1,'language button must be the final navigation control');
+    assert.equal((await languagePage.textContent('#siteLanguage')).trim(),'English','Chinese pages must offer English as the language action');
+    await languagePage.click('#siteLanguage');
     await languagePage.waitForFunction(()=>document.documentElement.lang==='en');
+    assert.equal((await languagePage.textContent('#siteLanguage')).trim(),'中文','English pages must offer Chinese as the language action');
     await languagePage.waitForTimeout(80);
     const indexUntranslated=await untranslated();assert.equal(indexUntranslated.length,0,'CAN analysis page must be fully translated to English: '+JSON.stringify(indexUntranslated));
     await languagePage.goto(base+'/aboutus');
-    assert.equal(await languagePage.inputValue('#siteLanguage'),'en','language choice must persist across pages');
+    assert.equal((await languagePage.textContent('#siteLanguage')).trim(),'中文','language choice must persist across pages');
     const aboutUntranslated=await untranslated();assert.equal(aboutUntranslated.length,0,'about page must be fully translated to English: '+JSON.stringify(aboutUntranslated));
     await languagePage.goto(base+'/convert');
-    assert.equal(await languagePage.inputValue('#siteLanguage'),'en');
+    assert.equal((await languagePage.textContent('#siteLanguage')).trim(),'中文');
     const convertUntranslated=await untranslated();assert.equal(convertUntranslated.length,0,'convert page must be fully translated to English: '+JSON.stringify(convertUntranslated));
     await languagePage.locator('#sourceFile').setInputFiles({name:'language.asc',mimeType:'text/plain',buffer:Buffer.from('base hex timestamps absolute\n0.125 1 123 Rx d 1 01\n')});
     await languagePage.waitForFunction(()=>!/文件|转换后|保存到/.test(document.querySelector('#fileMeta').textContent));
     const runtimeUntranslated=await untranslated();assert.equal(runtimeUntranslated.length,0,'runtime conversion status must be translated to English: '+JSON.stringify(runtimeUntranslated));
+    if(process.env.SCREENSHOT_DIR)await languagePage.screenshot({path:path.join(process.env.SCREENSHOT_DIR,'convert-en-desktop.png'),fullPage:true});
+    await languagePage.setViewportSize({width:390,height:844});
+    assert.equal(await languagePage.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'English mobile page must not overflow horizontally');
+    const mobileNavBounds=await languagePage.evaluate(()=>{
+      const links=document.getElementById('navLinks').getBoundingClientRect(),switcher=document.querySelector('.language-switcher').getBoundingClientRect();
+      return {linksRight:Math.round(links.right),switcherLeft:Math.round(switcher.left)};
+    });
+    assert.ok(mobileNavBounds.linksRight<=mobileNavBounds.switcherLeft,'mobile navigation links must not sit underneath the language button: '+JSON.stringify(mobileNavBounds));
     if(process.env.SCREENSHOT_DIR){
-      await languagePage.screenshot({path:path.join(process.env.SCREENSHOT_DIR,'convert-en-desktop.png'),fullPage:true});
-      await languagePage.setViewportSize({width:390,height:844});
-      assert.equal(await languagePage.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'English mobile page must not overflow horizontally');
       await languagePage.screenshot({path:path.join(process.env.SCREENSHOT_DIR,'convert-en-390.png'),fullPage:true});
     }
-    await languagePage.selectOption('#siteLanguage','zh');
+    await languagePage.click('#siteLanguage');
     await languagePage.waitForFunction(()=>document.documentElement.lang==='zh-CN');
+    assert.equal((await languagePage.textContent('#siteLanguage')).trim(),'English');
     assert.match(await languagePage.textContent('#sourceSummary'),/选择源文件/);
     await languageContext.close();
     assert.equal(await page.inputValue('#targetFormat'),'asc');
@@ -69,7 +76,10 @@ const server=createServer(async(req,res)=>{
     assert.equal(await page.locator('.conversion-accordion').count(),3);
     assert.equal(await page.locator('#sourceAccordion').getAttribute('open'),'','source accordion must be expanded by default');
     assert.equal(await page.locator('#formatAccordion').getAttribute('open'),null);
-    assert.equal(await page.locator('#csvAccordion').getAttribute('open'),null);
+    assert.equal(await page.locator('#csvAccordion').getAttribute('open'),null,'CSV conversion must be collapsed by default');
+    assert.equal(await page.locator('#compatibilityAccordion').getAttribute('open'),null,'compatibility details must be collapsed by default');
+    await page.click('#compatibilitySummary');assert.equal(await page.locator('#compatibilityAccordion').getAttribute('open'),'');
+    await page.click('#compatibilitySummary');assert.equal(await page.locator('#compatibilityAccordion').getAttribute('open'),null);
     assert.equal(await page.locator('.workflow-heading').count(),3,'all three workflow title rows must be visually emphasized');
     const headingColors=await page.locator('.workflow-heading').evaluateAll(nodes=>nodes.map(node=>getComputedStyle(node).getPropertyValue('--section-accent').trim()));
     assert.deepEqual(headingColors,['#38bdf8','#3ddc84','#a78bfa'],'workflow title colors must remain distinct for 01/02/03');
