@@ -2,6 +2,7 @@
 (() => {
   'use strict';
   const STORAGE_KEY = 'cananalysis-language';
+  const SKIN_KEY = 'cananalysis-skin';
   const exact = new Map(Object.entries({
     '中文':'Chinese','语言切换':'Language','本站栏目':'Site sections','栏目导航':'Site navigation',
     '首页':'Home','CAN报文解析':'CAN Message Analysis','格式转换':'Format Conversion','27930报文分析':'GB/T 27930 Analysis','J939分析':'J1939 Analysis','友情链接':'Links','关于本站':'About',
@@ -75,6 +76,7 @@
   const attrOriginal = new WeakMap(), attrApplied = new WeakMap();
   const watchedAttributes = ['aria-label','placeholder','title','content'];
   let language = localStorage.getItem(STORAGE_KEY) === 'en' ? 'en' : 'zh';
+  let skin = localStorage.getItem(SKIN_KEY) || 'default';
   let titleOriginal = document.title;
 
   function translatedWhitespace(value) {
@@ -109,16 +111,30 @@
   function addSwitcher() {
     const nav=document.getElementById('topNav');if(!nav||document.getElementById('siteLanguage'))return;
     const wrap=document.createElement('div');wrap.className='language-switcher';wrap.dataset.noI18n='true';
-    const icon=document.createElement('span');icon.setAttribute('aria-hidden','true');icon.textContent='🌐';
+    const skinControl=document.createElement('span');skinControl.className='skin-control';
+    const skinSelect=document.createElement('select');skinSelect.id='siteSkin';skinSelect.setAttribute('aria-label','皮肤选择');
+    skinSelect.append(new Option('默认风格','default'));skinSelect.addEventListener('change',()=>setSkin(skinSelect.value));skinControl.append(skinSelect);
+    const toggle=document.createElement('button');toggle.type='button';toggle.className='language-toggle';toggle.textContent='🌐';toggle.setAttribute('aria-label','展开语言选择器');toggle.setAttribute('aria-expanded','true');
     const control=document.createElement('span');control.className='language-control';
     const face=document.createElement('span');face.className='language-face';face.setAttribute('aria-hidden','true');face.textContent='Language';
     const select=document.createElement('select');select.id='siteLanguage';select.setAttribute('aria-label','Language');
     select.append(new Option('中文','zh'),new Option('English','en'));select.value=language;
-    select.addEventListener('change',()=>setLanguage(select.value));control.append(face,select);wrap.append(icon,control);nav.appendChild(wrap);
+    const compact=()=>matchMedia('(max-width:760px)').matches;
+    const closeLanguage=()=>{wrap.classList.remove('language-open');nav.classList.remove('language-expanded');toggle.setAttribute('aria-expanded',compact()?'false':'true');};
+    toggle.addEventListener('click',event=>{if(!compact()){select.focus();return;}event.stopPropagation();const open=!wrap.classList.contains('language-open');wrap.classList.toggle('language-open',open);nav.classList.toggle('language-expanded',open);toggle.setAttribute('aria-expanded',String(open));});
+    select.addEventListener('change',()=>{setLanguage(select.value);if(compact())closeLanguage();});
+    document.addEventListener('pointerdown',event=>{if(compact()&&!wrap.contains(event.target))closeLanguage();});
+    matchMedia('(max-width:760px)').addEventListener('change',closeLanguage);
+    control.append(face,select);wrap.append(skinControl,toggle,control);nav.appendChild(wrap);closeLanguage();
   }
   function updateSwitcher() {
     const select=document.getElementById('siteLanguage');if(!select)return;
     select.value=language;
+    const skinSelect=document.getElementById('siteSkin');if(skinSelect){skinSelect.value=skin;skinSelect.options[0].textContent=language==='en'?'Default Style':'默认风格';skinSelect.setAttribute('aria-label',language==='en'?'Skin selector':'皮肤选择');}
+  }
+  function setSkin(next,{persist=true}={}) {
+    skin=next==='default'?'default':'default';if(persist)localStorage.setItem(SKIN_KEY,skin);
+    document.documentElement.dataset.skin=skin;updateSwitcher();
   }
   function setLanguage(next,{persist=true}={}) {
     language=next==='en'?'en':'zh';if(persist)localStorage.setItem(STORAGE_KEY,language);
@@ -138,7 +154,7 @@
       }
     }
   });
-  function initialize(){addSwitcher();setLanguage(language,{persist:false});observer.observe(document.documentElement,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:watchedAttributes});}
-  window.__siteI18n={get language(){return language;},t:value=>language==='en'?translate(value):value,setLanguage};
+  function initialize(){addSwitcher();setSkin(skin,{persist:false});setLanguage(language,{persist:false});observer.observe(document.documentElement,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:watchedAttributes});}
+  window.__siteI18n={get language(){return language;},get skin(){return skin;},t:value=>language==='en'?translate(value):value,setLanguage,setSkin};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initialize,{once:true});else initialize();
 })();
