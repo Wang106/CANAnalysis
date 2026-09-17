@@ -34,20 +34,21 @@ const server=createServer(async(req,res)=>{
     await languagePage.goto(base+'/');
     await languagePage.locator('#siteLanguage').waitFor();
     assert.equal(await languagePage.locator('#topNav > :last-child #siteLanguage').count(),1,'language selector must be the final navigation control');
-    assert.equal(await languagePage.inputValue('#siteLanguage'),'','language selector must keep its Language placeholder visible');
-    assert.equal(await languagePage.locator('#siteLanguage option[value=""]').getAttribute('hidden'),'','Language placeholder must be hidden from the expanded menu');
-    assert.equal(await languagePage.locator('#siteLanguage option[value=""]').getAttribute('disabled'),'','Language placeholder must not be selectable');
-    assert.equal((await languagePage.locator('#siteLanguage option:not([hidden])').allTextContents()).join('|'),'中文|English','expanded menu must contain only the two language choices');
+    assert.equal(await languagePage.inputValue('#siteLanguage'),'zh','new visitors must default to Chinese');
+    assert.equal((await languagePage.textContent('.language-face')).trim(),'Language','Language must be a fixed visual overlay');
+    assert.equal(await languagePage.locator('#siteLanguage option').count(),2,'the native selector must contain only two choices');
+    assert.equal((await languagePage.locator('#siteLanguage option').allTextContents()).join('|'),'中文|English','expanded menu must contain only the two language choices');
+    assert.equal(await languagePage.locator('#siteLanguage').evaluate(node=>getComputedStyle(node).opacity),'0','native selector must stay transparent beneath the Language overlay');
     await languagePage.selectOption('#siteLanguage','en');
     await languagePage.waitForFunction(()=>document.documentElement.lang==='en');
-    assert.equal(await languagePage.inputValue('#siteLanguage'),'','English pages must still display the Language placeholder');
+    assert.equal(await languagePage.inputValue('#siteLanguage'),'en','English selection must update the transparent native selector');
     await languagePage.waitForTimeout(80);
     const indexUntranslated=await untranslated();assert.equal(indexUntranslated.length,0,'CAN analysis page must be fully translated to English: '+JSON.stringify(indexUntranslated));
     await languagePage.goto(base+'/aboutus');
-    assert.equal(await languagePage.inputValue('#siteLanguage'),'','language choice must persist while the selector keeps its placeholder');
+    assert.equal(await languagePage.inputValue('#siteLanguage'),'en','language choice must persist across pages');
     const aboutUntranslated=await untranslated();assert.equal(aboutUntranslated.length,0,'about page must be fully translated to English: '+JSON.stringify(aboutUntranslated));
     await languagePage.goto(base+'/convert');
-    assert.equal(await languagePage.inputValue('#siteLanguage'),'');
+    assert.equal(await languagePage.inputValue('#siteLanguage'),'en');
     const convertUntranslated=await untranslated();assert.equal(convertUntranslated.length,0,'convert page must be fully translated to English: '+JSON.stringify(convertUntranslated));
     await languagePage.locator('#sourceFile').setInputFiles({name:'language.asc',mimeType:'text/plain',buffer:Buffer.from('base hex timestamps absolute\n0.125 1 123 Rx d 1 01\n')});
     await languagePage.waitForFunction(()=>!/文件|转换后|保存到/.test(document.querySelector('#fileMeta').textContent));
@@ -70,7 +71,7 @@ const server=createServer(async(req,res)=>{
     }
     await languagePage.selectOption('#siteLanguage','zh');
     await languagePage.waitForFunction(()=>document.documentElement.lang==='zh-CN');
-    assert.equal(await languagePage.inputValue('#siteLanguage'),'');
+    assert.equal(await languagePage.inputValue('#siteLanguage'),'zh');
     assert.match(await languagePage.textContent('#sourceSummary'),/选择源文件/);
     await languageContext.close();
     assert.equal(await page.inputValue('#targetFormat'),'asc');
