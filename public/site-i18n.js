@@ -111,7 +111,8 @@
     const wrap=document.createElement('div');wrap.className='language-switcher';wrap.dataset.noI18n='true';
     const icon=document.createElement('span');icon.setAttribute('aria-hidden','true');icon.textContent='🌐';
     const select=document.createElement('select');select.id='siteLanguage';select.setAttribute('aria-label','Language');
-    select.append(new Option('Language','',true,true),new Option('中文','zh'),new Option('English','en'));
+    const placeholder=new Option('Language','',true,true);placeholder.hidden=true;placeholder.disabled=true;
+    select.append(placeholder,new Option('中文','zh'),new Option('English','en'));
     select.addEventListener('change',()=>{if(select.value)setLanguage(select.value);});wrap.append(icon,select);nav.appendChild(wrap);
   }
   function updateSwitcher() {

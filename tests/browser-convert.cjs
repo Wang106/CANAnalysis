@@ -35,7 +35,9 @@ const server=createServer(async(req,res)=>{
     await languagePage.locator('#siteLanguage').waitFor();
     assert.equal(await languagePage.locator('#topNav > :last-child #siteLanguage').count(),1,'language selector must be the final navigation control');
     assert.equal(await languagePage.inputValue('#siteLanguage'),'','language selector must keep its Language placeholder visible');
-    assert.equal((await languagePage.locator('#siteLanguage option').allTextContents()).join('|'),'Language|中文|English');
+    assert.equal(await languagePage.locator('#siteLanguage option[value=""]').getAttribute('hidden'),'','Language placeholder must be hidden from the expanded menu');
+    assert.equal(await languagePage.locator('#siteLanguage option[value=""]').getAttribute('disabled'),'','Language placeholder must not be selectable');
+    assert.equal((await languagePage.locator('#siteLanguage option:not([hidden])').allTextContents()).join('|'),'中文|English','expanded menu must contain only the two language choices');
     await languagePage.selectOption('#siteLanguage','en');
     await languagePage.waitForFunction(()=>document.documentElement.lang==='en');
     assert.equal(await languagePage.inputValue('#siteLanguage'),'','English pages must still display the Language placeholder');
