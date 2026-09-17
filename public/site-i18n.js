@@ -83,6 +83,7 @@
   }
   function applyText(node, refreshOriginal=false) {
     if (!node.parentElement || ['SCRIPT','STYLE','TEMPLATE'].includes(node.parentElement.tagName)) return;
+    if (node.parentElement.closest('[data-no-i18n]')) return;
     if (!textOriginal.has(node) || refreshOriginal) textOriginal.set(node,node.nodeValue);
     const source=textOriginal.get(node), value=language==='en'?translatedWhitespace(source):source;
     textApplied.set(node,value);if(node.nodeValue!==value)node.nodeValue=value;
@@ -93,7 +94,7 @@
     return [attrOriginal.get(node),attrApplied.get(node)];
   }
   function applyAttribute(node,name,refreshOriginal=false){
-    if(!node.hasAttribute?.(name))return;const [originals,applied]=attributeMaps(node);
+    if(!node.hasAttribute?.(name)||node.closest?.('[data-no-i18n]'))return;const [originals,applied]=attributeMaps(node);
     if(!originals.has(name)||refreshOriginal)originals.set(name,node.getAttribute(name));
     const source=originals.get(name),value=language==='en'?translate(source):source;applied.set(name,value);
     if(node.getAttribute(name)!==value)node.setAttribute(name,value);
@@ -107,18 +108,22 @@
   }
   function addSwitcher() {
     const nav=document.getElementById('topNav');if(!nav||document.getElementById('siteLanguage'))return;
-    const wrap=document.createElement('label');wrap.className='language-switcher';wrap.setAttribute('aria-label','语言切换');
+    const wrap=document.createElement('div');wrap.className='language-switcher';wrap.dataset.noI18n='true';
     const icon=document.createElement('span');icon.setAttribute('aria-hidden','true');icon.textContent='🌐';
-    const select=document.createElement('select');select.id='siteLanguage';select.setAttribute('aria-label','语言切换');
-    select.append(new Option('中文','zh'),new Option('English','en'));select.value=language;
-    select.addEventListener('change',()=>setLanguage(select.value));wrap.append(icon,select);nav.appendChild(wrap);
+    const button=document.createElement('button');button.id='siteLanguage';button.type='button';
+    button.addEventListener('click',()=>setLanguage(language==='zh'?'en':'zh'));wrap.append(icon,button);nav.appendChild(wrap);
+  }
+  function updateSwitcher() {
+    const button=document.getElementById('siteLanguage');if(!button)return;
+    button.textContent=language==='zh'?'English':'中文';
+    button.setAttribute('aria-label',language==='zh'?'切换为英文':'Switch to Chinese');
   }
   function setLanguage(next,{persist=true}={}) {
     language=next==='en'?'en':'zh';if(persist)localStorage.setItem(STORAGE_KEY,language);
     document.documentElement.lang=language==='en'?'en':'zh-CN';
     document.title=language==='en'?translate(titleOriginal):titleOriginal;
     applyTree(document);
-    const select=document.getElementById('siteLanguage');if(select)select.value=language;
+    updateSwitcher();
     window.dispatchEvent(new CustomEvent('site-language-change',{detail:{language}}));
   }
   const observer=new MutationObserver(records=>{
