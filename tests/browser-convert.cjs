@@ -42,6 +42,7 @@ const server=createServer(async(req,res)=>{
     assert.equal(await languagePage.locator('#siteSkin option').count(),1,'only the default skin is currently available');
     assert.equal(await languagePage.getAttribute('html','data-skin'),'default');
     assert.equal(await languagePage.locator('.skin-control + .language-toggle').count(),1,'skin selector must sit to the left of the language control');
+    assert.equal(await languagePage.locator('.language-toggle').isHidden(),true,'desktop navigation must hide the language globe');
     const desktopSelectorStyles=await languagePage.evaluate(()=>{
       const navItem=document.querySelector('.nav-item'),skinFace=document.querySelector('.skin-face'),skinSelect=document.getElementById('siteSkin'),languageFace=document.querySelector('.language-face'),languageSelect=document.getElementById('siteLanguage');
       const bounds=node=>{const rect=node.getBoundingClientRect();return [Math.round(rect.left),Math.round(rect.top),Math.round(rect.width),Math.round(rect.height)];};
@@ -120,12 +121,17 @@ const server=createServer(async(req,res)=>{
     assert.equal(await page.locator('.workflow-heading').count(),3,'all three workflow title rows must be visually emphasized');
     const headingColors=await page.locator('.workflow-heading').evaluateAll(nodes=>nodes.map(node=>getComputedStyle(node).getPropertyValue('--section-accent').trim()));
     assert.deepEqual(headingColors,['#38bdf8','#3ddc84','#a78bfa'],'workflow title colors must remain distinct for 01/02/03');
-    const sourceHeadingRest=await page.locator('#sourceSummary').evaluate(node=>({background:getComputedStyle(node).backgroundImage,shadow:getComputedStyle(node).boxShadow}));
-    await page.hover('#sourceSummary');await page.waitForTimeout(700);
-    const sourceHeadingHover=await page.locator('#sourceSummary').evaluate(node=>({background:getComputedStyle(node).backgroundImage,shadow:getComputedStyle(node).boxShadow}));
-    await page.waitForTimeout(700);
-    const sourceHeadingHeld=await page.locator('#sourceSummary').evaluate(node=>({background:getComputedStyle(node).backgroundImage,shadow:getComputedStyle(node).boxShadow}));
-    assert.notDeepEqual(sourceHeadingHover,sourceHeadingRest,'workflow heading must become brighter on hover');
+    const sourceHeadingRest=await page.locator('#sourceSummary').evaluate(node=>{const glow=getComputedStyle(node,'::after');return {opacity:Number(glow.opacity),duration:glow.transitionDuration,animation:glow.animationName,left:glow.left,right:glow.right,top:glow.top,bottom:glow.bottom,transform:glow.transform,shadow:getComputedStyle(node).boxShadow};});
+    assert.deepEqual([sourceHeadingRest.duration,sourceHeadingRest.animation,sourceHeadingRest.left,sourceHeadingRest.right,sourceHeadingRest.top,sourceHeadingRest.bottom,sourceHeadingRest.transform],['1.2s','none','0px','0px','0px','0px','none'],'workflow glow must slowly brighten the whole heading instead of sweeping sideways');
+    await page.hover('#sourceSummary');await page.waitForTimeout(250);
+    const sourceHeadingDuring=await page.locator('#sourceSummary').evaluate(node=>Number(getComputedStyle(node,'::after').opacity));
+    assert.ok(sourceHeadingDuring>0&&sourceHeadingDuring<1,'workflow heading must fade in gradually: '+sourceHeadingDuring);
+    await page.waitForTimeout(1200);
+    const sourceHeadingHover=await page.locator('#sourceSummary').evaluate(node=>({opacity:Number(getComputedStyle(node,'::after').opacity),shadow:getComputedStyle(node).boxShadow}));
+    await page.waitForTimeout(500);
+    const sourceHeadingHeld=await page.locator('#sourceSummary').evaluate(node=>({opacity:Number(getComputedStyle(node,'::after').opacity),shadow:getComputedStyle(node).boxShadow}));
+    assert.equal(sourceHeadingHover.opacity,1,'workflow heading must finish at full hover brightness');
+    assert.notEqual(sourceHeadingHover.shadow,sourceHeadingRest.shadow,'workflow heading shadow must brighten on hover');
     assert.deepEqual(sourceHeadingHeld,sourceHeadingHover,'workflow heading must remain bright while the pointer stays over it');
     assert.equal(await page.locator('.conversion-flow').evaluate(node=>getComputedStyle(node).rowGap),'8px','workflow sections must have visible spacing');
     const actionRight=await page.locator('#formatSummary .accordion-action, #csvSummary .accordion-action').evaluateAll(nodes=>nodes.map(node=>Math.round(node.getBoundingClientRect().right)));
