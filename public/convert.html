@@ -94,8 +94,8 @@
       <p id="conversionWarnings" class="warning" hidden></p>
       <div class="preview-wrap"><table><caption id="previewCaption">前 8 帧预览</caption><thead><tr id="previewHead"><th>时间 / s</th><th>通道</th><th>CAN ID</th><th>方向</th><th>类型</th><th>数据 / hex</th></tr></thead><tbody id="preview"></tbody></table></div>
     </section>
-    <section class="compatibility" aria-labelledby="compat-title">
-      <div class="section-heading"><h2 id="compat-title">格式与兼容范围</h2><p>转换的是原始 CAN 数据帧与远程帧。各工具的专有事件、注释和触发信息不在转换范围内。</p></div>
+    <details id="compatibilityAccordion" class="compatibility compatibility-accordion">
+      <summary id="compatibilitySummary" class="section-heading"><span><h2 id="compat-title">格式与兼容范围</h2><p>转换的是原始 CAN 数据帧与远程帧。各工具的专有事件、注释和触发信息不在转换范围内。</p></span><span class="compatibility-action"><span class="when-closed">点击展开</span><span class="when-open">点击收起</span><i aria-hidden="true">⌄</i></span></summary>
       <div class="table-wrap"><table><thead><tr><th>格式</th><th>读取</th><th>输出</th></tr></thead><tbody>
         <tr><td><b>ASC</b><small>Vector</small></td><td>经典 CAN / CAN FD 文本日志</td><td>ASC，经典 CAN / CAN FD</td></tr>
         <tr><td><b>LOG</b><small>BusMaster</small></td><td>经典 CAN，ABSOLUTE / SYSTEM 时间模式</td><td>BusMaster 经典 CAN 日志，时间精度 0.1 ms</td></tr>
@@ -107,7 +107,7 @@
         <tr><td><b>CSV</b><small>DBC 信号</small></td><td>DBC + 上述任一 CAN 日志，选择需要的信号</td><td>序号、时间与信号宽表，100–1000 ms 固定间隔</td></tr>
       </tbody></table></div>
       <div class="notes"><p><strong>关于 MDF/MF4：</strong>只有解码信号（例如电压、温度）而没有原始 CAN ID 和 DataBytes 的文件，无法反向还原 CAN 报文。加密文件、MDF 4.20+ 的新布局及 ZSTD/LZ4 压缩暂不支持。</p><p><strong>数据与时间：</strong>保留日志内时间轴；LOG 按 0.1 ms、TRC 按 1 µs 四舍五入，发生精度变化时显示提示。绝对采集日期、附件与触发元数据不迁移。MDF 通道按 python-can 的零起始 BusChannel 与页面的一起始通道互换。</p><p><strong>不支持的记录：</strong>错误帧、无效数据或无法无损保存的 CAN FD 会停止转换并提示；不会直接截断为 8 字节。周立功 TXT 不同软件版本的列结构可能不同，表头不匹配时会显示原因。</p></div>
-    </section>
+    </details>
   </main>
   <footer class="shell"><span>CANAnalysis · 格式转换</span><a href="/aboutus">关于本站</a></footer>
   <div id="navNotice" role="status" aria-live="polite"></div>
