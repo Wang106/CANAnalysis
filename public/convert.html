@@ -39,7 +39,7 @@
     <section class="converter" aria-labelledby="converter-title">
       <div class="card-heading"><h2 id="converter-title">日志格式转换</h2><span>01 — 源文件 · 02 — 格式转换 · 03 — 信号 CSV</span></div>
       <div class="conversion-flow">
-        <details id="sourceAccordion" class="conversion-accordion source-accordion" open>
+        <details id="sourceAccordion" class="conversion-accordion source-accordion">
           <summary id="sourceSummary" class="workflow-heading source-heading"><span class="accordion-index">01</span><span class="accordion-copy"><b>选择源文件</b><small>选择或拖入一个或多个 CAN 日志</small></span><span class="accordion-action"><span class="when-closed">点击展开</span><span class="when-open">点击收起</span></span><i aria-hidden="true">⌄</i></summary>
           <div class="accordion-content source-pane">
           <div class="file-zone" id="dropZone">
@@ -95,7 +95,7 @@
       <div class="preview-wrap"><table><caption id="previewCaption">前 8 帧预览</caption><thead><tr id="previewHead"><th>时间 / s</th><th>通道</th><th>CAN ID</th><th>方向</th><th>类型</th><th>数据 / hex</th></tr></thead><tbody id="preview"></tbody></table></div>
     </section>
     <details id="compatibilityAccordion" class="compatibility compatibility-accordion">
-      <summary id="compatibilitySummary" class="section-heading"><span><h2 id="compat-title">格式与兼容范围</h2><p>转换的是原始 CAN 数据帧与远程帧。各工具的专有事件、注释和触发信息不在转换范围内。</p></span><span class="compatibility-action"><span class="when-closed">点击展开</span><span class="when-open">点击收起</span><i aria-hidden="true">⌄</i></span></summary>
+      <summary id="compatibilitySummary" class="section-heading"><span><h2 id="compat-title">格式与兼容范围说明</h2><p>转换的是原始 CAN 数据帧与远程帧。各工具的专有事件、注释和触发信息不在转换范围内。</p></span><span class="compatibility-action"><span class="when-closed">点击展开</span><span class="when-open">点击收起</span><i aria-hidden="true">⌄</i></span></summary>
       <div class="table-wrap"><table><thead><tr><th>格式</th><th>读取</th><th>输出</th></tr></thead><tbody>
         <tr><td><b>ASC</b><small>Vector</small></td><td>经典 CAN / CAN FD 文本日志</td><td>ASC，经典 CAN / CAN FD</td></tr>
         <tr><td><b>LOG</b><small>BusMaster</small></td><td>经典 CAN，ABSOLUTE / SYSTEM 时间模式</td><td>BusMaster 经典 CAN 日志，时间精度 0.1 ms</td></tr>
