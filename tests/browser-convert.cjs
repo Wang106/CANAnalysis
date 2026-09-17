@@ -45,12 +45,16 @@ const server=createServer(async(req,res)=>{
     const desktopSelectorStyles=await languagePage.evaluate(()=>{
       const navItem=document.querySelector('.nav-item'),skinFace=document.querySelector('.skin-face'),skinSelect=document.getElementById('siteSkin'),languageFace=document.querySelector('.language-face'),languageSelect=document.getElementById('siteLanguage');
       const bounds=node=>{const rect=node.getBoundingClientRect();return [Math.round(rect.left),Math.round(rect.top),Math.round(rect.width),Math.round(rect.height)];};
-      return {navFont:getComputedStyle(navItem).fontSize,skinFont:getComputedStyle(skinFace).fontSize,languageFont:getComputedStyle(languageFace).fontSize,skinBorder:getComputedStyle(skinFace).borderStyle,languageBorder:getComputedStyle(languageFace).borderStyle,skinOpacity:getComputedStyle(skinSelect).opacity,languageOpacity:getComputedStyle(languageSelect).opacity,skinFaceBounds:bounds(skinFace),skinSelectBounds:bounds(skinSelect),languageFaceBounds:bounds(languageFace),languageSelectBounds:bounds(languageSelect)};
+      return {navFont:getComputedStyle(navItem).fontSize,skinFont:getComputedStyle(skinFace).fontSize,languageFont:getComputedStyle(languageFace).fontSize,skinBorder:getComputedStyle(skinFace).borderStyle,languageBorder:getComputedStyle(languageFace).borderStyle,skinBackground:getComputedStyle(skinFace).backgroundColor,languageBackground:getComputedStyle(languageFace).backgroundColor,skinArrow:getComputedStyle(skinFace,'::after').content,languageArrow:getComputedStyle(languageFace,'::after').content,skinOpacity:getComputedStyle(skinSelect).opacity,languageOpacity:getComputedStyle(languageSelect).opacity,skinFaceBounds:bounds(skinFace),skinSelectBounds:bounds(skinSelect),languageFaceBounds:bounds(languageFace),languageSelectBounds:bounds(languageSelect)};
     });
     assert.equal(desktopSelectorStyles.skinFont,desktopSelectorStyles.navFont,'default skin label must use the navigation font size');
     assert.equal(desktopSelectorStyles.languageFont,desktopSelectorStyles.navFont,'Language label must use the navigation font size');
-    assert.equal(desktopSelectorStyles.skinBorder,'none','default skin must appear as text until clicked');
-    assert.equal(desktopSelectorStyles.languageBorder,'none','Language must appear as text until clicked');
+    assert.equal(desktopSelectorStyles.skinBorder,'solid','default skin label must have a clickable outline');
+    assert.equal(desktopSelectorStyles.languageBorder,'solid','Language label must have a clickable outline');
+    assert.notEqual(desktopSelectorStyles.skinBackground,'rgba(0, 0, 0, 0)','default skin label must have a clickable background');
+    assert.notEqual(desktopSelectorStyles.languageBackground,'rgba(0, 0, 0, 0)','Language label must have a clickable background');
+    assert.equal(desktopSelectorStyles.skinArrow,'"⌄"','default skin label must advertise its menu with an arrow');
+    assert.equal(desktopSelectorStyles.languageArrow,'"⌄"','Language label must advertise its menu with an arrow');
     assert.deepEqual([desktopSelectorStyles.skinOpacity,desktopSelectorStyles.skinSelectBounds],['0',desktopSelectorStyles.skinFaceBounds],'hidden skin selector must cover its visible label');
     assert.deepEqual([desktopSelectorStyles.languageOpacity,desktopSelectorStyles.languageSelectBounds],['0',desktopSelectorStyles.languageFaceBounds],'hidden language selector must cover its visible label');
     await languagePage.selectOption('#siteLanguage','en');
@@ -116,6 +120,13 @@ const server=createServer(async(req,res)=>{
     assert.equal(await page.locator('.workflow-heading').count(),3,'all three workflow title rows must be visually emphasized');
     const headingColors=await page.locator('.workflow-heading').evaluateAll(nodes=>nodes.map(node=>getComputedStyle(node).getPropertyValue('--section-accent').trim()));
     assert.deepEqual(headingColors,['#38bdf8','#3ddc84','#a78bfa'],'workflow title colors must remain distinct for 01/02/03');
+    const sourceHeadingRest=await page.locator('#sourceSummary').evaluate(node=>({background:getComputedStyle(node).backgroundImage,shadow:getComputedStyle(node).boxShadow}));
+    await page.hover('#sourceSummary');await page.waitForTimeout(700);
+    const sourceHeadingHover=await page.locator('#sourceSummary').evaluate(node=>({background:getComputedStyle(node).backgroundImage,shadow:getComputedStyle(node).boxShadow}));
+    await page.waitForTimeout(700);
+    const sourceHeadingHeld=await page.locator('#sourceSummary').evaluate(node=>({background:getComputedStyle(node).backgroundImage,shadow:getComputedStyle(node).boxShadow}));
+    assert.notDeepEqual(sourceHeadingHover,sourceHeadingRest,'workflow heading must become brighter on hover');
+    assert.deepEqual(sourceHeadingHeld,sourceHeadingHover,'workflow heading must remain bright while the pointer stays over it');
     assert.equal(await page.locator('.conversion-flow').evaluate(node=>getComputedStyle(node).rowGap),'8px','workflow sections must have visible spacing');
     const actionRight=await page.locator('#formatSummary .accordion-action, #csvSummary .accordion-action').evaluateAll(nodes=>nodes.map(node=>Math.round(node.getBoundingClientRect().right)));
     assert.equal(actionRight[0],actionRight[1],'format and CSV expand actions must align at the right');
