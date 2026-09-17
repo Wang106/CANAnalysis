@@ -22,14 +22,17 @@
   .language-switcher{position:absolute;right:8px;top:6px;z-index:4;display:inline-flex;align-items:center;gap:5px;height:32px;padding:0 7px;border-left:1px solid var(--line);background:rgba(23,26,33,.98);color:var(--accent);font-size:10px;cursor:pointer;opacity:0;visibility:hidden;pointer-events:none;transform:translateY(-34px);transition:transform .65s cubic-bezier(.22,1,.36,1),opacity .5s ease,visibility 0s .65s;}
   .language-switcher::after{content:"";position:absolute;right:-8px;bottom:-6px;width:100vw;height:1px;background:rgba(74,158,255,.38);pointer-events:none;}
   #topNav.nav-open .language-switcher{opacity:1;visibility:visible;pointer-events:auto;transform:translateY(0);transition-delay:0s;}
-  .language-switcher select{width:auto;min-width:96px;height:28px;padding:0 24px 0 9px;border:1px solid var(--line);border-radius:6px;background:var(--panel2);color:var(--txt);font:11px inherit;cursor:pointer;}
-  .language-switcher select:hover,.language-switcher select:focus-visible{border-color:var(--accent);outline:none;}
+  .language-control{position:relative;width:96px;height:28px;flex:0 0 96px;}
+  .language-face{position:absolute;inset:0;display:flex;align-items:center;padding:0 24px 0 9px;border:1px solid var(--line);border-radius:6px;background:var(--panel2);color:var(--txt);font:11px inherit;pointer-events:none;}
+  .language-face::after{content:"⌄";position:absolute;right:8px;top:50%;color:var(--txt2);font-size:12px;transform:translateY(-54%);}
+  .language-control select{position:absolute;inset:0;width:100%;height:100%;margin:0;border:0;opacity:0;cursor:pointer;}
+  .language-control:hover .language-face,.language-control:focus-within .language-face{border-color:var(--accent);}
   @media (max-width:760px){
     .top-nav-inner{width:calc(100% - 124px);justify-content:flex-start;padding-left:8px;padding-right:8px;}
     .nav-item{padding:0 11px;font-size:12px;}
     .language-switcher{right:4px;width:120px;padding:0 4px;box-sizing:border-box;}
     .language-switcher::after{right:-4px;}
-    .language-switcher select{min-width:0;flex:1;padding-left:7px;}
+    .language-control{min-width:0;flex:1;}
   }
   @media (prefers-reduced-motion:reduce){
     #topNav.nav-sweep::before,#topNav.nav-sweep::after{animation:none;display:none;}
