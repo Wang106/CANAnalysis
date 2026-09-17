@@ -36,12 +36,15 @@ const server=createServer(async(req,res)=>{
     assert.equal(await languagePage.locator('#topNav > :last-child #siteLanguage').count(),1,'language selector must be the final navigation control');
     assert.equal(await languagePage.inputValue('#siteLanguage'),'zh','new visitors must default to Chinese');
     assert.equal((await languagePage.textContent('.language-face')).trim(),'Language','Language must be a fixed visual overlay');
-    assert.equal(await languagePage.locator('#siteLanguage option').count(),2,'the native selector must contain only two choices');
-    assert.equal((await languagePage.locator('#siteLanguage option').allTextContents()).join('|'),'中文|English','expanded menu must contain only the two language choices');
-    assert.equal(await languagePage.locator('#siteLanguage').evaluate(node=>getComputedStyle(node).opacity),'0','native selector must stay transparent beneath the Language overlay');
+    assert.equal((await languagePage.locator('#siteLanguage option').allTextContents()).join('|'),'中文|English','native language selector must contain only two choices');
+    assert.equal(await languagePage.inputValue('#siteSkin'),'default','default skin must be selected');
+    assert.equal(await languagePage.locator('#siteSkin option').count(),1,'only the default skin is currently available');
+    assert.equal(await languagePage.getAttribute('html','data-skin'),'default');
+    assert.equal(await languagePage.locator('.skin-control + .language-toggle').count(),1,'skin selector must sit to the left of the language control');
     await languagePage.selectOption('#siteLanguage','en');
     await languagePage.waitForFunction(()=>document.documentElement.lang==='en');
-    assert.equal(await languagePage.inputValue('#siteLanguage'),'en','English selection must update the transparent native selector');
+    assert.equal(await languagePage.inputValue('#siteLanguage'),'en');
+    assert.equal((await languagePage.locator('#siteSkin option').first().textContent()).trim(),'Default Style');
     await languagePage.waitForTimeout(80);
     const indexUntranslated=await untranslated();assert.equal(indexUntranslated.length,0,'CAN analysis page must be fully translated to English: '+JSON.stringify(indexUntranslated));
     await languagePage.goto(base+'/aboutus');
@@ -56,6 +59,13 @@ const server=createServer(async(req,res)=>{
     if(process.env.SCREENSHOT_DIR)await languagePage.screenshot({path:path.join(process.env.SCREENSHOT_DIR,'convert-en-desktop.png'),fullPage:true});
     await languagePage.setViewportSize({width:390,height:844});
     assert.equal(await languagePage.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'English mobile page must not overflow horizontally');
+    assert.equal(await languagePage.locator('.language-control').isHidden(),true,'narrow screens must initially show only the globe for language');
+    assert.equal(await languagePage.locator('.language-toggle').isVisible(),true);
+    assert.equal((await languagePage.textContent('.language-toggle')).trim(),'🌐');
+    assert.equal(await languagePage.locator('.skin-control').isVisible(),true,'skin selector must remain available on narrow screens');
+    await languagePage.click('.language-toggle');
+    assert.equal(await languagePage.locator('.language-control').isVisible(),true,'globe click must expand the language selector');
+    assert.equal(await languagePage.getAttribute('.language-toggle','aria-expanded'),'true');
     const mobileNavBounds=await languagePage.evaluate(()=>{
       const links=document.getElementById('navLinks'),switcher=document.querySelector('.language-switcher'),select=document.getElementById('siteLanguage');
       const linkBounds=links.getBoundingClientRect(),switcherBounds=switcher.getBoundingClientRect(),line=getComputedStyle(switcher,'::after');
@@ -72,6 +82,7 @@ const server=createServer(async(req,res)=>{
     await languagePage.selectOption('#siteLanguage','zh');
     await languagePage.waitForFunction(()=>document.documentElement.lang==='zh-CN');
     assert.equal(await languagePage.inputValue('#siteLanguage'),'zh');
+    assert.equal(await languagePage.locator('.language-control').isHidden(),true,'language selector must collapse after a mobile choice');
     assert.match(await languagePage.textContent('#sourceSummary'),/选择源文件/);
     await languageContext.close();
     assert.equal(await page.inputValue('#targetFormat'),'asc');
