@@ -117,11 +117,11 @@
 
 /* Compatibility information stays compact until the user asks for it. */
 .compatibility-accordion{margin:36px 0 12px;padding:0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
-.compatibility-accordion>summary{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:20px 4px;list-style:none;cursor:pointer;user-select:none}
+.compatibility-accordion>summary{--section-accent:#f59e0b;--section-tint:rgba(245,158,11,.13);display:flex;align-items:center;justify-content:space-between;gap:20px;padding:20px 14px;border-left:4px solid var(--section-accent);list-style:none;cursor:pointer;user-select:none;background:linear-gradient(90deg,var(--section-tint),rgba(29,33,43,.34) 76%);box-shadow:inset 0 0 22px rgba(255,255,255,.015)}
 .compatibility-accordion>summary::-webkit-details-marker{display:none}
 .compatibility-accordion>summary h2{margin:0;font-size:18px}
 .compatibility-accordion>summary p{margin:7px 0 0}
-.compatibility-action{display:flex;align-items:center;gap:10px;flex:none;color:var(--accent);font-size:10px;font-weight:700;white-space:nowrap}
+.compatibility-action{display:flex;align-items:center;gap:10px;flex:none;color:var(--section-accent);font-size:10px;font-weight:700;white-space:nowrap}
 .compatibility-action i{font-style:normal;font-size:18px;transition:transform .2s ease}
 .compatibility-accordion[open] .compatibility-action i{transform:rotate(180deg)}
 .compatibility-accordion[open] .when-closed{display:none}
