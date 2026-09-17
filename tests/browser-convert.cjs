@@ -36,11 +36,23 @@ const server=createServer(async(req,res)=>{
     assert.equal(await languagePage.locator('#topNav > :last-child #siteLanguage').count(),1,'language selector must be the final navigation control');
     assert.equal(await languagePage.inputValue('#siteLanguage'),'zh','new visitors must default to Chinese');
     assert.equal((await languagePage.textContent('.language-face')).trim(),'Language','Language must be a fixed visual overlay');
+    assert.equal((await languagePage.textContent('.skin-face')).trim(),'默认风格','default skin must be shown as a fixed visual label');
     assert.equal((await languagePage.locator('#siteLanguage option').allTextContents()).join('|'),'中文|English','native language selector must contain only two choices');
     assert.equal(await languagePage.inputValue('#siteSkin'),'default','default skin must be selected');
     assert.equal(await languagePage.locator('#siteSkin option').count(),1,'only the default skin is currently available');
     assert.equal(await languagePage.getAttribute('html','data-skin'),'default');
     assert.equal(await languagePage.locator('.skin-control + .language-toggle').count(),1,'skin selector must sit to the left of the language control');
+    const desktopSelectorStyles=await languagePage.evaluate(()=>{
+      const navItem=document.querySelector('.nav-item'),skinFace=document.querySelector('.skin-face'),skinSelect=document.getElementById('siteSkin'),languageFace=document.querySelector('.language-face'),languageSelect=document.getElementById('siteLanguage');
+      const bounds=node=>{const rect=node.getBoundingClientRect();return [Math.round(rect.left),Math.round(rect.top),Math.round(rect.width),Math.round(rect.height)];};
+      return {navFont:getComputedStyle(navItem).fontSize,skinFont:getComputedStyle(skinFace).fontSize,languageFont:getComputedStyle(languageFace).fontSize,skinBorder:getComputedStyle(skinFace).borderStyle,languageBorder:getComputedStyle(languageFace).borderStyle,skinOpacity:getComputedStyle(skinSelect).opacity,languageOpacity:getComputedStyle(languageSelect).opacity,skinFaceBounds:bounds(skinFace),skinSelectBounds:bounds(skinSelect),languageFaceBounds:bounds(languageFace),languageSelectBounds:bounds(languageSelect)};
+    });
+    assert.equal(desktopSelectorStyles.skinFont,desktopSelectorStyles.navFont,'default skin label must use the navigation font size');
+    assert.equal(desktopSelectorStyles.languageFont,desktopSelectorStyles.navFont,'Language label must use the navigation font size');
+    assert.equal(desktopSelectorStyles.skinBorder,'none','default skin must appear as text until clicked');
+    assert.equal(desktopSelectorStyles.languageBorder,'none','Language must appear as text until clicked');
+    assert.deepEqual([desktopSelectorStyles.skinOpacity,desktopSelectorStyles.skinSelectBounds],['0',desktopSelectorStyles.skinFaceBounds],'hidden skin selector must cover its visible label');
+    assert.deepEqual([desktopSelectorStyles.languageOpacity,desktopSelectorStyles.languageSelectBounds],['0',desktopSelectorStyles.languageFaceBounds],'hidden language selector must cover its visible label');
     await languagePage.selectOption('#siteLanguage','en');
     await languagePage.waitForFunction(()=>document.documentElement.lang==='en');
     assert.equal(await languagePage.inputValue('#siteLanguage'),'en');
@@ -63,7 +75,7 @@ const server=createServer(async(req,res)=>{
     assert.equal(await languagePage.locator('.language-toggle').isVisible(),true);
     assert.equal((await languagePage.textContent('.language-toggle')).trim(),'🌐');
     assert.equal(await languagePage.locator('.skin-control').isVisible(),true,'skin selector must remain available on narrow screens');
-    assert.equal((await languagePage.textContent('.skin-face')).trim(),'🎨','narrow screens must show the skin selector as an icon');
+    assert.equal(await languagePage.locator('.skin-face').evaluate(node=>getComputedStyle(node,'::before').content),'"🎨"','narrow screens must show the skin selector as an icon');
     const mobileNavBounds=await languagePage.evaluate(()=>{
       const links=document.getElementById('navLinks'),switcher=document.querySelector('.language-switcher'),languageSelect=document.getElementById('siteLanguage'),languageIcon=document.querySelector('.language-toggle'),skinSelect=document.getElementById('siteSkin'),skinIcon=document.querySelector('.skin-face');
       const linkBounds=links.getBoundingClientRect(),switcherBounds=switcher.getBoundingClientRect(),languageBounds=languageSelect.getBoundingClientRect(),languageIconBounds=languageIcon.getBoundingClientRect(),skinBounds=skinSelect.getBoundingClientRect(),skinIconBounds=skinIcon.getBoundingClientRect(),line=getComputedStyle(switcher,'::after');
