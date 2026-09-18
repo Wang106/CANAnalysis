@@ -39,7 +39,7 @@ const server=createServer(async(req,res)=>{
     assert.equal((await languagePage.textContent('.skin-face')).trim(),'默认风格','default skin must be shown as a fixed visual label');
     assert.equal((await languagePage.locator('#siteLanguage option').allTextContents()).join('|'),'中文|English','native language selector must contain only two choices');
     assert.equal(await languagePage.inputValue('#siteSkin'),'default','default skin must be selected');
-    assert.equal((await languagePage.locator('#siteSkin option').allTextContents()).join('|'),'默认风格|深色模式','skin selector must offer default and dark modes');
+    assert.equal((await languagePage.locator('#siteSkin option').allTextContents()).join('|'),'默认风格|深色模式|亮白模式','skin selector must offer default, dark and light modes');
     assert.equal(await languagePage.getAttribute('html','data-skin'),'default');
     assert.equal(await languagePage.locator('.skin-control + .language-toggle').count(),1,'skin selector must sit to the left of the language control');
     assert.equal(await languagePage.locator('.language-toggle').isHidden(),true,'desktop navigation must hide the language globe');
@@ -66,18 +66,26 @@ const server=createServer(async(req,res)=>{
       return {bg:root.getPropertyValue('--bg').trim(),panel:root.getPropertyValue('--panel').trim(),accent:root.getPropertyValue('--accent').trim(),body:body.backgroundColor,active:active.backgroundColor};
     });
     assert.deepEqual(indexDark,{bg:'#191b24',panel:'#242732',accent:'#1687ff',body:'rgb(25, 27, 36)',active:'rgb(47, 95, 153)'},'CAN analysis page must apply the reference-inspired dark palette');
+    await languagePage.selectOption('#siteSkin','light');
+    await languagePage.waitForFunction(()=>document.documentElement.dataset.skin==='light');
+    assert.equal((await languagePage.textContent('.skin-face')).trim(),'亮白模式','selected light skin must be visible in Chinese');
+    const indexLight=await languagePage.evaluate(()=>{
+      const root=getComputedStyle(document.documentElement),body=getComputedStyle(document.body),active=getComputedStyle(document.querySelector('.nav-item.active'));
+      return {bg:root.getPropertyValue('--bg').trim(),panel:root.getPropertyValue('--panel').trim(),accent:root.getPropertyValue('--accent').trim(),body:body.backgroundColor,active:active.backgroundColor};
+    });
+    assert.deepEqual(indexLight,{bg:'#f4f6fa',panel:'#ffffff',accent:'#1677ff',body:'rgb(244, 246, 250)',active:'rgb(219, 234, 254)'},'CAN analysis page must apply the bright white palette');
     await languagePage.selectOption('#siteLanguage','en');
     await languagePage.waitForFunction(()=>document.documentElement.lang==='en');
     assert.equal(await languagePage.inputValue('#siteLanguage'),'en');
-    assert.equal((await languagePage.locator('#siteSkin option').allTextContents()).join('|'),'Default Style|Dark Mode');
-    assert.equal((await languagePage.textContent('.skin-face')).trim(),'Dark Mode','selected skin label must be translated');
+    assert.equal((await languagePage.locator('#siteSkin option').allTextContents()).join('|'),'Default Style|Dark Mode|Light Mode');
+    assert.equal((await languagePage.textContent('.skin-face')).trim(),'Light Mode','selected skin label must be translated');
     await languagePage.waitForTimeout(80);
     const indexUntranslated=await untranslated();assert.equal(indexUntranslated.length,0,'CAN analysis page must be fully translated to English: '+JSON.stringify(indexUntranslated));
     await languagePage.goto(base+'/aboutus');
     assert.equal(await languagePage.inputValue('#siteLanguage'),'en','language choice must persist across pages');
-    assert.equal(await languagePage.inputValue('#siteSkin'),'dark','skin choice must persist on the about page');
-    assert.equal(await languagePage.getAttribute('html','data-skin'),'dark');
-    assert.equal(await languagePage.locator('.feature-card').evaluate(node=>getComputedStyle(node).backgroundColor),'rgb(36, 39, 50)','about cards must use the shared dark surface');
+    assert.equal(await languagePage.inputValue('#siteSkin'),'light','skin choice must persist on the about page');
+    assert.equal(await languagePage.getAttribute('html','data-skin'),'light');
+    assert.equal(await languagePage.locator('.feature-card').evaluate(node=>getComputedStyle(node).backgroundColor),'rgb(255, 255, 255)','about cards must use the shared light surface');
     const paymentQrLayout=await languagePage.locator('.pay-card').evaluateAll(cards=>cards.map(card=>{
       const image=card.querySelector('.qr-image'),caption=card.querySelector('figcaption'),box=image.getBoundingClientRect(),captionBox=caption.getBoundingClientRect(),cardStyle=getComputedStyle(card),imageStyle=getComputedStyle(image);
       return {width:Math.round(box.width),height:Math.round(box.height),cardBackground:cardStyle.backgroundImage,cardBorder:cardStyle.borderTopWidth,cardPadding:cardStyle.paddingTop,imageBackground:imageStyle.backgroundColor,captionCount:card.querySelectorAll('figcaption').length,title:caption.textContent.trim(),centerDelta:Math.round(Math.abs((box.left+box.width/2)-(captionBox.left+captionBox.width/2)))};
@@ -88,8 +96,8 @@ const server=createServer(async(req,res)=>{
     const aboutUntranslated=await untranslated();assert.equal(aboutUntranslated.length,0,'about page must be fully translated to English: '+JSON.stringify(aboutUntranslated));
     await languagePage.goto(base+'/convert');
     assert.equal(await languagePage.inputValue('#siteLanguage'),'en');
-    assert.equal(await languagePage.inputValue('#siteSkin'),'dark','skin choice must persist on the convert page');
-    assert.equal(await languagePage.locator('.converter').evaluate(node=>getComputedStyle(node).backgroundColor),'rgb(36, 39, 50)','converter must use the shared dark surface');
+    assert.equal(await languagePage.inputValue('#siteSkin'),'light','skin choice must persist on the convert page');
+    assert.equal(await languagePage.locator('.converter').evaluate(node=>getComputedStyle(node).backgroundColor),'rgb(255, 255, 255)','converter must use the shared light surface');
     assert.equal(await languagePage.locator('.converter').evaluate(node=>getComputedStyle(node).borderRadius),'8px','dark mode must use the compact reference-style cards');
     const convertUntranslated=await untranslated();assert.equal(convertUntranslated.length,0,'convert page must be fully translated to English: '+JSON.stringify(convertUntranslated));
     await languagePage.locator('#sourceFile').setInputFiles({name:'language.asc',mimeType:'text/plain',buffer:Buffer.from('base hex timestamps absolute\n0.125 1 123 Rx d 1 01\n')});
