@@ -114,7 +114,7 @@
     const skinControl=document.createElement('span');skinControl.className='skin-control';
     const skinFace=document.createElement('span');skinFace.className='skin-face';skinFace.setAttribute('aria-hidden','true');skinFace.textContent='默认风格';
     const skinSelect=document.createElement('select');skinSelect.id='siteSkin';skinSelect.setAttribute('aria-label','皮肤选择');
-    skinSelect.append(new Option('默认风格','default'),new Option('深色模式','dark'));skinSelect.addEventListener('change',()=>setSkin(skinSelect.value));skinControl.append(skinFace,skinSelect);
+    skinSelect.append(new Option('默认风格','default'),new Option('深色模式','dark'),new Option('亮白模式','light'));skinSelect.addEventListener('change',()=>setSkin(skinSelect.value));skinControl.append(skinFace,skinSelect);
     const toggle=document.createElement('span');toggle.className='language-toggle';toggle.textContent='🌐';toggle.setAttribute('aria-hidden','true');
     const control=document.createElement('span');control.className='language-control';
     const face=document.createElement('span');face.className='language-face';face.setAttribute('aria-hidden','true');face.textContent='Language';
@@ -126,10 +126,10 @@
   function updateSwitcher() {
     const select=document.getElementById('siteLanguage');if(!select)return;
     select.value=language;
-    const skinSelect=document.getElementById('siteSkin');if(skinSelect){const skinLabels=language==='en'?{default:'Default Style',dark:'Dark Mode'}:{default:'默认风格',dark:'深色模式'};skinSelect.options[0].textContent=skinLabels.default;skinSelect.options[1].textContent=skinLabels.dark;skinSelect.value=skin;skinSelect.closest('.skin-control')?.querySelector('.skin-face')?.replaceChildren(skinLabels[skin]);skinSelect.setAttribute('aria-label',language==='en'?'Skin selector':'皮肤选择');}
+    const skinSelect=document.getElementById('siteSkin');if(skinSelect){const skinLabels=language==='en'?{default:'Default Style',dark:'Dark Mode',light:'Light Mode'}:{default:'默认风格',dark:'深色模式',light:'亮白模式'};skinSelect.options[0].textContent=skinLabels.default;skinSelect.options[1].textContent=skinLabels.dark;skinSelect.options[2].textContent=skinLabels.light;skinSelect.value=skin;skinSelect.closest('.skin-control')?.querySelector('.skin-face')?.replaceChildren(skinLabels[skin]);skinSelect.setAttribute('aria-label',language==='en'?'Skin selector':'皮肤选择');}
   }
   function setSkin(next,{persist=true}={}) {
-    skin=next==='dark'?'dark':'default';if(persist)localStorage.setItem(SKIN_KEY,skin);
+    skin=['dark','light'].includes(next)?next:'default';if(persist)localStorage.setItem(SKIN_KEY,skin);
     document.documentElement.dataset.skin=skin;updateSwitcher();
   }
   function setLanguage(next,{persist=true}={}) {
