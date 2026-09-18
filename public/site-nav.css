@@ -310,3 +310,31 @@ html[data-skin="light"] ::selection{
   background:rgba(22,119,255,.25);
   color:#0b2545;
 }
+
+/* Preserve readable contrast for legacy page-specific dark literals. */
+
+html[data-skin="light"] :is(h1,h2,h3,.pay-card figcaption,.privacy-strip strong){
+  color:#1f2430;
+}
+html[data-skin="light"] :is(.hero-copy,.section-intro){
+  color:#475467;
+}
+html[data-skin="light"] :is(.topbar,.site-header){
+  background:rgba(255,255,255,.92);
+  border-color:#d9dee8;
+}
+html[data-skin="light"] :is(.conversion-flow,#analysisPanel){
+  background:#f4f6fa;
+}
+html[data-skin="light"] :is(.side-col .liveval .lvval,.side-col .liveval .lvunit,.cc-side .liveval .lvval,.cc-side .liveval .lvunit){
+  color:#1f2430;
+}
+html[data-skin="light"] :is(.side-col .msgtip,.cc-side .msgtip,#navNotice){
+  background:#1f2937;
+  color:#ffffff;
+}
+html[data-skin="light"] .secondary-link{
+  color:#344054;
+  background:#ffffff;
+  border-color:#cfd6e2;
+}
