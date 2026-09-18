@@ -1451,8 +1451,14 @@ function buildTooltip(sig){
 /* 曲线配色盘：10个高区分度颜色，按图表顺序循环分配（1-10、11-20…依次重复） */
 const CURVE_COLORS=['#ff5252','#ffd700','#4a9eff','#3ddc84','#c77dff','#ff8fab','#2dd4bf','#ffb454','#7dd3fc','#a8d15c'];
 let uiStyle = 'classic';   // 界面风格：'classic'=06c2dffb默认风格（侧栏内嵌卡片）| 'canalyzer'=最新风格（独立名称列）
+function chartSkinColors(){
+  const light=document.documentElement.dataset.skin==='light';
+  return light
+    ? {axis:'#667085',line:'#98a2b3',grid:'#e4e7ec',label:'#1f2430',curve:'#1677ff'}
+    : {axis:'#8b93a3',line:'#3a4150',grid:'#222732',label:'#ffffff',curve:'#4a9eff'};
+}
 function makeOption(series, sig, stats, color){
-  const tMin=ascData.tMin, tMax=ascData.tMax;
+  const tMin=ascData.tMin, tMax=ascData.tMax, theme=chartSkinColors();
   return {
     animation:false,
     grid:{left:78,right:8,top:0,bottom:0,containLabel:false},
@@ -1461,10 +1467,10 @@ function makeOption(series, sig, stats, color){
       axisLabel:{show:false},
       axisTick:{show:false},
       splitLine:{show:false}},
-    yAxis:{type:'value',name:sig.unit||'',nameTextStyle:{color:'#8b93a3'},
-      axisLine:{lineStyle:{color:'#3a4150'}},
-      axisLabel:{color:'#8b93a3',formatter:v=>fmtSigValue(v, sig)},   /* 纵坐标按DBC分辨率精度 */
-      splitLine:{lineStyle:{color:'#222732'}}},
+    yAxis:{type:'value',name:sig.unit||'',nameTextStyle:{color:theme.axis},
+      axisLine:{lineStyle:{color:theme.line}},
+      axisLabel:{color:theme.axis,formatter:v=>fmtSigValue(v, sig)},   /* 纵坐标按DBC分辨率精度 */
+      splitLine:{lineStyle:{color:theme.grid}}},
     dataZoom:[
       {id:'xZoom',type:'inside',xAxisIndex:0,zoomOnMouseWheel:false,moveOnMouseWheel:false,moveOnMouseMove:true,moveOnMouseUp:true,filterMode:'none'},
       {id:'yZoom',type:'inside',yAxisIndex:0,zoomOnMouseWheel:false,moveOnMouseWheel:false,moveOnMouseMove:false,moveOnMouseUp:false,filterMode:'none'}
@@ -1474,41 +1480,41 @@ function makeOption(series, sig, stats, color){
       type:'line',data:series,name:sig.name,showSymbol:false,symbol:'circle',symbolSize:4,
       clip:true, connectNulls:false,
       sampling:'lttb',large:true,progressive:3000,
-      lineStyle:{width:1.2,color:color||'#4a9eff'},
-      itemStyle:{color:color||'#4a9eff',borderColor:color||'#4a9eff'},
+      lineStyle:{width:1.2,color:color||theme.curve},
+      itemStyle:{color:color||theme.curve,borderColor:color||theme.curve},
       emphasis:{disabled:true}
     }]
   };
 }
 function makeEmptyOption(sig){
-  const tMin=ascData.tMin, tMax=ascData.tMax;
+  const tMin=ascData.tMin, tMax=ascData.tMax, theme=chartSkinColors();
   return {
     animation:false,
-    title:{text:'无数据',left:'center',top:'middle',textStyle:{color:'#8b93a3',fontSize:14}},
+    title:{text:'无数据',left:'center',top:'middle',textStyle:{color:theme.axis,fontSize:14}},
     grid:{left:78,right:8,top:0,bottom:0,containLabel:false},
     xAxis:{type:'value',min:tMin,max:tMax,
       axisLine:{show:false},
       axisLabel:{show:false},
       axisTick:{show:false},
       splitLine:{show:false}},
-    yAxis:{type:'value',name:sig.unit||'',nameTextStyle:{color:'#8b93a3'},
-      axisLine:{lineStyle:{color:'#3a4150'}},
-      axisLabel:{color:'#8b93a3',formatter:v=>fmtSigValue(v, sig)},   /* 纵坐标按DBC分辨率精度 */
-      splitLine:{lineStyle:{color:'#222732'}}},
+    yAxis:{type:'value',name:sig.unit||'',nameTextStyle:{color:theme.axis},
+      axisLine:{lineStyle:{color:theme.line}},
+      axisLabel:{color:theme.axis,formatter:v=>fmtSigValue(v, sig)},   /* 纵坐标按DBC分辨率精度 */
+      splitLine:{lineStyle:{color:theme.grid}}},
     dataZoom:[
       {id:'xZoom',type:'inside',xAxisIndex:0,zoomOnMouseWheel:false,moveOnMouseWheel:false,moveOnMouseMove:true,moveOnMouseUp:true,filterMode:'filter'}
     ]
   };
 }
 function makeXAxisOption(){
-  const tMin=ascData.tMin, tMax=ascData.tMax;
+  const tMin=ascData.tMin, tMax=ascData.tMax, theme=chartSkinColors();
   return {
     animation:false,
     grid:{left:78,right:8,top:0,bottom:20},
     xAxis:{type:'value',min:tMin,max:tMax,
-      axisLine:{lineStyle:{color:'#3a4150'}},
-      axisLabel:{color:'#8b93a3',formatter:v=>v.toFixed(2),margin:4},
-      axisTick:{lineStyle:{color:'#3a4150'}},
+      axisLine:{lineStyle:{color:theme.line}},
+      axisLabel:{color:theme.axis,formatter:v=>v.toFixed(2),margin:4},
+      axisTick:{lineStyle:{color:theme.line}},
       splitLine:{show:false}},
     yAxis:{type:'value',show:false,min:0,max:1},
     dataZoom:[
@@ -1516,6 +1522,17 @@ function makeXAxisOption(){
     ]
   };
 }
+function applyChartSkin(){
+  const theme=chartSkinColors();
+  charts.forEach(chart=>{
+    const option={yAxis:{nameTextStyle:{color:theme.axis},axisLine:{lineStyle:{color:theme.line}},axisLabel:{color:theme.axis},splitLine:{lineStyle:{color:theme.grid}}}};
+    if(chart._stats&&chart._stats.count===0) option.title={textStyle:{color:theme.axis}};
+    try{chart.setOption(option);}catch(e){}
+  });
+  if(xAxisChart)try{xAxisChart.setOption({xAxis:{axisLine:{lineStyle:{color:theme.line}},axisLabel:{color:theme.axis},axisTick:{lineStyle:{color:theme.line}}}});}catch(e){}
+  document.querySelectorAll('.cc-side .signame,.sc-row .lvval').forEach(node=>{node.style.color=theme.label;});
+}
+document.addEventListener('siteskinchange',applyChartSkin);
 /* 测量某列内容的最宽显示宽度（real 以 max 值+单位为参考） */
 function measureColumn(col){
   const tmp=document.createElement('span');
@@ -1758,7 +1775,7 @@ function renderCharts(){
     const realId=sig.messageId & 0x1FFFFFFF;
     const isExt=(sig.messageId & 0x80000000)!==0;
     /* 分配曲线颜色：默认风格全部亮蓝；CANalyzer风格按顺序循环取色 */
-    const color = uiStyle==='classic' ? '#4a9eff' : CURVE_COLORS[charts.length % CURVE_COLORS.length];
+    const color = uiStyle==='classic' ? chartSkinColors().curve : CURVE_COLORS[charts.length % CURVE_COLORS.length];
     if(uiStyle==='classic'){
       /* 默认风格（06c2dffb）：信号侧栏内嵌于曲线卡片（名称/Real/min/max 四行） */
       const side=el('div','cc-side');
@@ -1766,7 +1783,7 @@ function renderCharts(){
         <span class="signame">${escapeHtml(sig.name)}<span class="msgtip">${escapeHtml(sig.messageName)} ${fmtId(realId, isExt)}</span></span>
         ${has?`<span class="liveval"><span class="lvlabel">Real </span><span class="lvval"></span></span><span class="stat">min ${fmtSigValue(stats.min, sig)}</span><span class="stat">max ${fmtSigValue(stats.max, sig)}</span>`:'<span class="stat" style="color:var(--err)">无数据</span>'}`;
       const nmEl=side.querySelector('.signame');
-      if(nmEl) nmEl.style.color='#fff';   /* 默认风格：信号名称白色字体 */
+      if(nmEl) nmEl.style.color=chartSkinColors().label;   /* 信号名称随页面皮肤保持可读 */
       const body=el('div','cc-body');
       const cd=el('div','chart');
       body.appendChild(cd);
@@ -2196,13 +2213,13 @@ function updateHoverColors(hoveredChart){
     charts.forEach(c=>{
       const lv=c._liveEl; if(!lv) return;
       const ve=lv.querySelector('.lvval'); if(!ve) return;
-      ve.style.color = (c===hoveredChart) ? c._color : '#fff';
+      ve.style.color = (c===hoveredChart) ? c._color : chartSkinColors().label;
     });
   } else {
     charts.forEach(c=>{
       const side=c._sideEl; if(!side) return;
       const nm=side.querySelector('.signame'); if(!nm) return;
-      nm.style.color = (c===hoveredChart) ? '#4a9eff' : '#fff';   /* 默认风格：悬停曲线时名称亮蓝，离开恢复白色 */
+      nm.style.color = (c===hoveredChart) ? chartSkinColors().curve : chartSkinColors().label;   /* 默认风格：悬停曲线时名称亮蓝 */
     });
   }
 }
@@ -2211,13 +2228,13 @@ function resetHoverColors(){
     charts.forEach(c=>{
       const lv=c._liveEl; if(!lv) return;
       const ve=lv.querySelector('.lvval'); if(!ve) return;
-      ve.style.color='#fff';
+      ve.style.color=chartSkinColors().label;
     });
   } else {
     charts.forEach(c=>{
       const side=c._sideEl; if(!side) return;
       const nm=side.querySelector('.signame'); if(!nm) return;
-      nm.style.color='#fff';
+      nm.style.color=chartSkinColors().label;
     });
   }
 }
@@ -3012,7 +3029,7 @@ function reorderChartsBySelection(){
   }
   /* 按新顺序重新分配曲线颜色（默认风格全亮蓝；CANalyzer风格循环取色），信号名统一白色 */
   charts.forEach((c,i)=>{
-    const color = uiStyle==='classic' ? '#4a9eff' : CURVE_COLORS[i % CURVE_COLORS.length];
+    const color = uiStyle==='classic' ? chartSkinColors().curve : CURVE_COLORS[i % CURVE_COLORS.length];
     c._color=color;
     if(c._series){
       try{ c.setOption({series:[{lineStyle:{color:color}, itemStyle:{color:color, borderColor:color}}]}); }catch(e){}
