@@ -86,20 +86,9 @@
     .support{padding:68px 0 34px;border-top:1px solid var(--line);}
     .support-head{display:flex;align-items:end;justify-content:space-between;gap:28px;}
     .support-note{max-width:420px;margin:0;color:var(--muted);font-size:12px;line-height:1.7;text-align:right;}
-    .pay-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin-top:30px;}
-    .pay-card{margin:0;padding:26px;border:1px solid var(--line);border-radius:14px;background:linear-gradient(145deg,rgba(29,33,43,.9),rgba(23,26,33,.8));text-align:center;}
-    .pay-card figcaption{margin-bottom:18px;}
-    .pay-name{display:block;font-size:16px;font-weight:700;color:#f0f3f8;}
-    .pay-desc{display:block;margin-top:5px;color:var(--muted);font-size:11px;}
-    .qr-placeholder{position:relative;display:grid;place-items:center;width:min(270px,100%);aspect-ratio:1;margin:0 auto;border:1px dashed #485061;border-radius:12px;background:repeating-linear-gradient(45deg,rgba(255,255,255,.016) 0 10px,transparent 10px 20px);overflow:hidden;}
-    .qr-placeholder::before,.qr-placeholder::after{content:"";position:absolute;width:30px;height:30px;border-color:var(--qr-color);opacity:.8;}
-    .qr-placeholder::before{top:14px;left:14px;border-top:2px solid;border-left:2px solid;}
-    .qr-placeholder::after{right:14px;bottom:14px;border-right:2px solid;border-bottom:2px solid;}
-    .qr-placeholder.wechat{--qr-color:var(--wechat);}
-    .qr-placeholder.alipay{--qr-color:var(--alipay);}
-    .qr-image{display:block;width:min(270px,100%);aspect-ratio:1;margin:0 auto;border-radius:12px;object-fit:contain;background:#fff;}
-    .qr-copy{max-width:180px;color:var(--muted);font-size:12px;line-height:1.7;}
-    .qr-copy strong{display:block;margin-bottom:5px;color:var(--qr-color);font-size:13px;}
+    .pay-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));justify-items:center;gap:18px;margin-top:30px;}
+    .pay-card{margin:0;padding:0;border:0;background:none;}
+    .qr-image{display:block;width:135px;height:135px;max-width:100%;margin:0;object-fit:contain;background:transparent;}
     .support-foot{margin:16px 0 0;text-align:center;color:#6f7786;font-size:10px;}
     footer{padding:24px 0 calc(30px + env(safe-area-inset-bottom));border-top:1px solid var(--line);color:#6f7786;font-size:11px;}
     .footer-inner{display:flex;justify-content:space-between;gap:18px;}
