@@ -34,6 +34,11 @@ const server=createServer(async(req,res)=>{
     await languagePage.goto(base+'/');
     await languagePage.locator('#siteLanguage').waitFor();
     assert.equal(await languagePage.locator('#topNav > :last-child #siteLanguage').count(),1,'language selector must be the final navigation control');
+    assert.equal(await languagePage.locator('meta[name="description"]').count(),1,'CAN page must provide a search description');
+    assert.equal(await languagePage.locator('meta[property="og:title"]').count(),1,'CAN page must provide Open Graph metadata');
+    assert.equal(await languagePage.locator('#emptyGuide').count(),1,'CAN page must show a first-use guide');
+    assert.match(await languagePage.textContent('#emptyGuide'),/三步开始分析.*加载 DBC.*加载 ASC.*生成曲线/s);
+    assert.match(await languagePage.textContent('#emptyGuide'),/文件仅在当前浏览器本地处理/);
     assert.equal(await languagePage.inputValue('#siteLanguage'),'zh','new visitors must default to Chinese');
     assert.equal((await languagePage.textContent('.language-face')).trim(),'Language','Language must be a fixed visual overlay');
     assert.equal((await languagePage.textContent('.skin-face')).trim(),'默认风格','default skin must be shown as a fixed visual label');
@@ -43,6 +48,10 @@ const server=createServer(async(req,res)=>{
     assert.equal(await languagePage.getAttribute('html','data-skin'),'default');
     assert.equal(await languagePage.locator('.skin-control + .language-toggle').count(),1,'skin selector must sit to the left of the language control');
     assert.equal(await languagePage.locator('.language-toggle').isHidden(),true,'desktop navigation must hide the language globe');
+    await languagePage.evaluate(()=>window.__siteNav.collapse());
+    const collapsedNav=await languagePage.evaluate(()=>({height:getComputedStyle(document.getElementById('topNav')).height,font:getComputedStyle(document.querySelector('.nav-peek')).fontSize}));
+    assert.deepEqual(collapsedNav,{height:'20px',font:'11px'},'collapsed navigation must remain discoverable');
+    await languagePage.evaluate(()=>window.__siteNav.open());
     const desktopSelectorStyles=await languagePage.evaluate(()=>{
       const navItem=document.querySelector('.nav-item'),skinFace=document.querySelector('.skin-face'),skinSelect=document.getElementById('siteSkin'),languageFace=document.querySelector('.language-face'),languageSelect=document.getElementById('siteLanguage');
       const bounds=node=>{const rect=node.getBoundingClientRect();return [Math.round(rect.left),Math.round(rect.top),Math.round(rect.width),Math.round(rect.height)];};
@@ -98,7 +107,7 @@ const server=createServer(async(req,res)=>{
     assert.equal(await languagePage.inputValue('#siteLanguage'),'en');
     assert.equal(await languagePage.inputValue('#siteSkin'),'light','skin choice must persist on the convert page');
     assert.equal(await languagePage.locator('.converter').evaluate(node=>getComputedStyle(node).backgroundColor),'rgb(255, 255, 255)','converter must use the shared light surface');
-    assert.equal(await languagePage.locator('.converter').evaluate(node=>getComputedStyle(node).borderRadius),'8px','dark mode must use the compact reference-style cards');
+    assert.equal(await languagePage.locator('.converter').evaluate(node=>getComputedStyle(node).borderRadius),'8px','alternate skins must use compact reference-style cards');
     const convertUntranslated=await untranslated();assert.equal(convertUntranslated.length,0,'convert page must be fully translated to English: '+JSON.stringify(convertUntranslated));
     await languagePage.locator('#sourceFile').setInputFiles({name:'language.asc',mimeType:'text/plain',buffer:Buffer.from('base hex timestamps absolute\n0.125 1 123 Rx d 1 01\n')});
     await languagePage.waitForFunction(()=>!/文件|转换后|保存到/.test(document.querySelector('#fileMeta').textContent));
@@ -130,6 +139,13 @@ const server=createServer(async(req,res)=>{
     assert.equal(await languagePage.inputValue('#siteLanguage'),'zh');
     assert.equal(await languagePage.locator('.language-face').isHidden(),true,'compact icon layout must remain after a mobile choice');
     assert.match(await languagePage.textContent('#sourceSummary'),/选择源文件/);
+    await languagePage.goto(base+'/');
+    assert.equal(await languagePage.locator('.sig-col-title').count(),2,'signal columns must use non-wrapping title elements');
+    const mobileHeaders=await languagePage.locator('.sig-col-title').evaluateAll(nodes=>nodes.map(node=>getComputedStyle(node).whiteSpace));
+    assert.deepEqual(mobileHeaders,['nowrap','nowrap'],'signal column titles must not stack vertically on mobile');
+    assert.equal(await languagePage.locator('#btnDbc .mobile-file-label').isVisible(),true);
+    assert.equal((await languagePage.textContent('#btnDbc .mobile-file-label')).trim(),'DBC');
+    assert.equal(await languagePage.locator('#btnDbc .desktop-file-label').isHidden(),true);
     await languagePage.selectOption('#siteSkin','default');
     await languagePage.waitForFunction(()=>document.documentElement.dataset.skin==='default');
     assert.equal((await languagePage.textContent('.skin-face')).trim(),'默认风格','switching back must restore the default skin label');
@@ -178,6 +194,7 @@ const server=createServer(async(req,res)=>{
     assert.equal(await page.locator('#csvSelected').isHidden(),true,'CSV selected count must stay hidden before a DBC is loaded');
     assert.equal(await page.locator('#sourceAccordion .file-zone + .advanced').count(),1,'text encoding settings must follow the source file picker');
     assert.equal(await page.locator('.intro p').textContent(),'01 — 源文件 · 02 — 格式转换 · 03 — 信号 CSV');
+    assert.equal(await page.locator('.card-heading > span').count(),0,'workflow summary must not be duplicated in the converter heading');
     assert.equal(await page.locator('.format-strip').count(),0,'top format badges must be removed');
     await page.click('#formatSummary');assert.equal(await page.locator('#formatAccordion').getAttribute('open'),'');
     assert.equal(await page.locator('#formatSummary .when-open').isVisible(),true);
