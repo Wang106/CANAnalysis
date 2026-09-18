@@ -1,4 +1,4 @@
-#topNav{position:sticky;top:0;height:12px;flex:0 0 12px;z-index:140;background:var(--panel2);border-bottom:1px solid var(--line);outline:none;overflow:visible;}
+#topNav{position:sticky;top:0;height:20px;flex:0 0 20px;z-index:140;background:var(--panel2);border-bottom:1px solid var(--line);outline:none;overflow:visible;}
   #topNav.nav-fixed{height:44px;flex-basis:44px;}
   #topNav::before,#topNav::after{content:"";position:absolute;top:0;bottom:0;width:32%;z-index:0;pointer-events:none;opacity:0;will-change:transform,opacity;background:linear-gradient(90deg,transparent 0%,rgba(74,158,255,.2) 28%,var(--accent) 50%,rgba(74,158,255,.2) 72%,transparent 100%);}
   #topNav::before{left:0;}
@@ -7,7 +7,7 @@
   #topNav.nav-sweep::after{animation:navSweepRight 1s ease-out both;}
   @keyframes navSweepLeft{0%{transform:translateX(-50%);opacity:0;}12%{opacity:1;}72%{transform:translateX(106.25%);opacity:1;}100%{transform:translateX(106.25%);opacity:0;}}
   @keyframes navSweepRight{0%{transform:translateX(50%);opacity:0;}12%{opacity:1;}72%{transform:translateX(-106.25%);opacity:1;}100%{transform:translateX(-106.25%);opacity:0;}}
-  .nav-peek{all:unset;box-sizing:border-box;cursor:pointer;position:absolute;inset:0;z-index:1;display:flex;align-items:center;justify-content:center;gap:4px;color:var(--txt2);font-size:9px;line-height:1;letter-spacing:1px;transition:opacity .45s ease;}
+  .nav-peek{all:unset;box-sizing:border-box;cursor:pointer;position:absolute;inset:0;z-index:1;display:flex;align-items:center;justify-content:center;gap:4px;color:var(--txt2);font-size:11px;line-height:1;letter-spacing:1px;transition:opacity .45s ease;}
   .nav-peek::before,.nav-peek::after{content:"";width:32px;height:1px;background:linear-gradient(90deg,transparent,var(--accent));opacity:.7;}
   .nav-peek::after{background:linear-gradient(90deg,var(--accent),transparent);}
   .top-nav-inner{position:absolute;top:0;left:0;z-index:2;width:calc(100% - 221px);height:44px;display:flex;align-items:center;justify-content:center;gap:4px;padding:5px 14px;background:rgba(23,26,33,.98);border-bottom:0;box-shadow:0 8px 22px rgba(0,0,0,.36);opacity:0;transform:translateY(-34px);pointer-events:none;visibility:hidden;transition:width .2s ease,transform .65s cubic-bezier(.22,1,.36,1),opacity .5s ease,visibility 0s .65s;overflow-x:auto;overflow-y:hidden;white-space:nowrap;scrollbar-width:thin;}
