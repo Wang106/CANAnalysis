@@ -66,6 +66,12 @@ const server=createServer(async(req,res)=>{
     const indexUntranslated=await untranslated();assert.equal(indexUntranslated.length,0,'CAN analysis page must be fully translated to English: '+JSON.stringify(indexUntranslated));
     await languagePage.goto(base+'/aboutus');
     assert.equal(await languagePage.inputValue('#siteLanguage'),'en','language choice must persist across pages');
+    const paymentQrLayout=await languagePage.locator('.pay-card').evaluateAll(cards=>cards.map(card=>{
+      const image=card.querySelector('.qr-image'),box=image.getBoundingClientRect(),cardStyle=getComputedStyle(card),imageStyle=getComputedStyle(image);
+      return {width:Math.round(box.width),height:Math.round(box.height),cardBackground:cardStyle.backgroundImage,cardBorder:cardStyle.borderTopWidth,cardPadding:cardStyle.paddingTop,imageBackground:imageStyle.backgroundColor,captionCount:card.querySelectorAll('figcaption').length};
+    }));
+    assert.equal(paymentQrLayout.length,2,'about page must display two payment QR images');
+    for(const qr of paymentQrLayout)assert.deepEqual(qr,{width:135,height:135,cardBackground:'none',cardBorder:'0px',cardPadding:'0px',imageBackground:'rgba(0, 0, 0, 0)',captionCount:0},'payment QR must be a bare, uniform half-size image');
     const aboutUntranslated=await untranslated();assert.equal(aboutUntranslated.length,0,'about page must be fully translated to English: '+JSON.stringify(aboutUntranslated));
     await languagePage.goto(base+'/convert');
     assert.equal(await languagePage.inputValue('#siteLanguage'),'en');
