@@ -39,7 +39,7 @@ const server=createServer(async(req,res)=>{
     assert.equal((await languagePage.textContent('.skin-face')).trim(),'默认风格','default skin must be shown as a fixed visual label');
     assert.equal((await languagePage.locator('#siteLanguage option').allTextContents()).join('|'),'中文|English','native language selector must contain only two choices');
     assert.equal(await languagePage.inputValue('#siteSkin'),'default','default skin must be selected');
-    assert.equal(await languagePage.locator('#siteSkin option').count(),1,'only the default skin is currently available');
+    assert.equal((await languagePage.locator('#siteSkin option').allTextContents()).join('|'),'默认风格|深色模式','skin selector must offer default and dark modes');
     assert.equal(await languagePage.getAttribute('html','data-skin'),'default');
     assert.equal(await languagePage.locator('.skin-control + .language-toggle').count(),1,'skin selector must sit to the left of the language control');
     assert.equal(await languagePage.locator('.language-toggle').isHidden(),true,'desktop navigation must hide the language globe');
@@ -58,14 +58,26 @@ const server=createServer(async(req,res)=>{
     assert.equal(desktopSelectorStyles.languageArrow,'"⌄"','Language label must advertise its menu with an arrow');
     assert.deepEqual([desktopSelectorStyles.skinOpacity,desktopSelectorStyles.skinSelectBounds],['0',desktopSelectorStyles.skinFaceBounds],'hidden skin selector must cover its visible label');
     assert.deepEqual([desktopSelectorStyles.languageOpacity,desktopSelectorStyles.languageSelectBounds],['0',desktopSelectorStyles.languageFaceBounds],'hidden language selector must cover its visible label');
+    await languagePage.selectOption('#siteSkin','dark');
+    await languagePage.waitForFunction(()=>document.documentElement.dataset.skin==='dark');
+    assert.equal((await languagePage.textContent('.skin-face')).trim(),'深色模式','selected dark skin must be visible in Chinese');
+    const indexDark=await languagePage.evaluate(()=>{
+      const root=getComputedStyle(document.documentElement),body=getComputedStyle(document.body),active=getComputedStyle(document.querySelector('.nav-item.active'));
+      return {bg:root.getPropertyValue('--bg').trim(),panel:root.getPropertyValue('--panel').trim(),accent:root.getPropertyValue('--accent').trim(),body:body.backgroundColor,active:active.backgroundColor};
+    });
+    assert.deepEqual(indexDark,{bg:'#191b24',panel:'#242732',accent:'#1687ff',body:'rgb(25, 27, 36)',active:'rgb(47, 95, 153)'},'CAN analysis page must apply the reference-inspired dark palette');
     await languagePage.selectOption('#siteLanguage','en');
     await languagePage.waitForFunction(()=>document.documentElement.lang==='en');
     assert.equal(await languagePage.inputValue('#siteLanguage'),'en');
-    assert.equal((await languagePage.locator('#siteSkin option').first().textContent()).trim(),'Default Style');
+    assert.equal((await languagePage.locator('#siteSkin option').allTextContents()).join('|'),'Default Style|Dark Mode');
+    assert.equal((await languagePage.textContent('.skin-face')).trim(),'Dark Mode','selected skin label must be translated');
     await languagePage.waitForTimeout(80);
     const indexUntranslated=await untranslated();assert.equal(indexUntranslated.length,0,'CAN analysis page must be fully translated to English: '+JSON.stringify(indexUntranslated));
     await languagePage.goto(base+'/aboutus');
     assert.equal(await languagePage.inputValue('#siteLanguage'),'en','language choice must persist across pages');
+    assert.equal(await languagePage.inputValue('#siteSkin'),'dark','skin choice must persist on the about page');
+    assert.equal(await languagePage.getAttribute('html','data-skin'),'dark');
+    assert.equal(await languagePage.locator('.feature-card').evaluate(node=>getComputedStyle(node).backgroundColor),'rgb(36, 39, 50)','about cards must use the shared dark surface');
     const paymentQrLayout=await languagePage.locator('.pay-card').evaluateAll(cards=>cards.map(card=>{
       const image=card.querySelector('.qr-image'),caption=card.querySelector('figcaption'),box=image.getBoundingClientRect(),captionBox=caption.getBoundingClientRect(),cardStyle=getComputedStyle(card),imageStyle=getComputedStyle(image);
       return {width:Math.round(box.width),height:Math.round(box.height),cardBackground:cardStyle.backgroundImage,cardBorder:cardStyle.borderTopWidth,cardPadding:cardStyle.paddingTop,imageBackground:imageStyle.backgroundColor,captionCount:card.querySelectorAll('figcaption').length,title:caption.textContent.trim(),centerDelta:Math.round(Math.abs((box.left+box.width/2)-(captionBox.left+captionBox.width/2)))};
@@ -76,6 +88,9 @@ const server=createServer(async(req,res)=>{
     const aboutUntranslated=await untranslated();assert.equal(aboutUntranslated.length,0,'about page must be fully translated to English: '+JSON.stringify(aboutUntranslated));
     await languagePage.goto(base+'/convert');
     assert.equal(await languagePage.inputValue('#siteLanguage'),'en');
+    assert.equal(await languagePage.inputValue('#siteSkin'),'dark','skin choice must persist on the convert page');
+    assert.equal(await languagePage.locator('.converter').evaluate(node=>getComputedStyle(node).backgroundColor),'rgb(36, 39, 50)','converter must use the shared dark surface');
+    assert.equal(await languagePage.locator('.converter').evaluate(node=>getComputedStyle(node).borderRadius),'8px','dark mode must use the compact reference-style cards');
     const convertUntranslated=await untranslated();assert.equal(convertUntranslated.length,0,'convert page must be fully translated to English: '+JSON.stringify(convertUntranslated));
     await languagePage.locator('#sourceFile').setInputFiles({name:'language.asc',mimeType:'text/plain',buffer:Buffer.from('base hex timestamps absolute\n0.125 1 123 Rx d 1 01\n')});
     await languagePage.waitForFunction(()=>!/文件|转换后|保存到/.test(document.querySelector('#fileMeta').textContent));
@@ -107,6 +122,9 @@ const server=createServer(async(req,res)=>{
     assert.equal(await languagePage.inputValue('#siteLanguage'),'zh');
     assert.equal(await languagePage.locator('.language-face').isHidden(),true,'compact icon layout must remain after a mobile choice');
     assert.match(await languagePage.textContent('#sourceSummary'),/选择源文件/);
+    await languagePage.selectOption('#siteSkin','default');
+    await languagePage.waitForFunction(()=>document.documentElement.dataset.skin==='default');
+    assert.equal((await languagePage.textContent('.skin-face')).trim(),'默认风格','switching back must restore the default skin label');
     await languageContext.close();
     assert.equal(await page.inputValue('#targetFormat'),'asc');
     assert.equal(await page.locator('.format-card').count(),7);
