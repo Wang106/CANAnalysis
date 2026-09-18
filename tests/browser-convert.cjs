@@ -5,7 +5,7 @@ const {readFile}=require('node:fs/promises');
 const path=require('node:path');
 const assert=require('node:assert/strict');
 const root=path.resolve(__dirname,'..');
-const types={'.html':'text/html','.js':'text/javascript','.mjs':'text/javascript','.css':'text/css','.json':'application/json','.png':'image/png'};
+const types={'.html':'text/html','.js':'text/javascript','.mjs':'text/javascript','.css':'text/css','.json':'application/json','.png':'image/png','.jpeg':'image/jpeg','.jpg':'image/jpeg'};
 const server=createServer(async(req,res)=>{
   let url=new URL(req.url,'http://localhost').pathname;
   if(url==='/')url='/public/index.html';
