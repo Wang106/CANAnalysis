@@ -3,6 +3,12 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="description" content="在浏览器本地加载 DBC 与 CAN 日志，完成信号解析、曲线查看和报文统计。" />
+<meta property="og:type" content="website" />
+<meta property="og:title" content="CAN报文解析 · CANAnalysis" />
+<meta property="og:description" content="无需安装软件，在浏览器本地解析 DBC 与 CAN 日志并生成信号曲线。" />
+<meta property="og:url" content="https://can.whf969.com/" />
+<meta property="og:image" content="https://can.whf969.com/icon.png" />
 <link rel="icon" href="icon.png" type="image/png" />
 <link rel="preload" href="icon.png" as="image" type="image/png" fetchpriority="high" />
 <title>CAN报文解析</title>
@@ -278,15 +284,28 @@
   #confirmOverlay .txt{font-size:14px;color:var(--txt);}
   #confirmOverlay .row{display:flex;gap:12px;}
 
+  .empty-guide{align-self:center;width:min(560px,calc(100% - 32px));margin:auto;padding:24px;border:1px solid var(--line);border-radius:12px;background:var(--panel);box-shadow:0 8px 28px rgba(0,0,0,.18);display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;}
+  .empty-guide b{font-size:16px;color:var(--txt);}
+  .empty-guide .steps{font-size:13px;color:var(--txt);}
+  .empty-guide .dim{font-size:12px;color:var(--txt2);}
+  .sig-col-title{flex:none;white-space:nowrap;}
+  .mobile-file-label{display:none;}
+  .side-col .liveval,.side-col .stat,.cc-side .liveval,.cc-side .stat{font-size:11px;font-variant-numeric:tabular-nums;}
   /* iPhone：生成曲线后压缩顶部区域，工具栏可横向滑动，桌面布局保持不变。 */
   @media (max-width:760px), (max-height:520px){
+    .sig-col-head{flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;white-space:nowrap;scrollbar-width:none;}
+    .sig-col-head::-webkit-scrollbar{display:none;}
+    .empty-guide{width:calc(100% - 20px);padding:18px 14px;gap:8px;}
+    .empty-guide .steps{font-size:12px;}
     #app.mobile-charts #header{padding:3px 6px;gap:6px;}
     #app.mobile-charts .header-left{gap:6px;}
     #app.mobile-charts .header-left .icon{display:none;}
     #app.mobile-charts .header-left .htitle-wrap{width:96px;flex-basis:96px;}
     #app.mobile-charts .header-left .htitle{font-size:14px;letter-spacing:0;}
     #app.mobile-charts .file-row{gap:4px;}
-    #app.mobile-charts .file-row button{width:88px;padding:4px 5px;font-size:11px;}
+    .file-row button{width:64px;padding:4px 5px;font-size:11px;}
+    .desktop-file-label{display:none;}
+    .mobile-file-label{display:inline;}
     #app.mobile-charts .file-row .finput{padding:4px 6px;font-size:11px;}
     #app.mobile-charts .file-row .source-select{max-width:116px;padding:3px 4px;font-size:11px;}
     #app.mobile-charts #sigBar.collapsed .sig-bar-head{padding:4px 6px;gap:5px;flex-wrap:nowrap;}
@@ -318,7 +337,7 @@
   @media (max-height:520px){
     #app.mobile-charts .header-left{display:none;}
     #app.mobile-charts #header{padding-top:2px;padding-bottom:2px;}
-    #app.mobile-charts .file-row button{width:82px;}
+    #app.mobile-charts .file-row button{width:64px;}
     #app.mobile-charts #sigBar.collapsed .sig-bar-head{padding-top:3px;padding-bottom:3px;}
   }
 </style>
@@ -346,19 +365,19 @@
       <img src="icon.png" class="icon" alt="CAN报文解析" width="38" height="38" loading="eager" decoding="sync" fetchpriority="high" />
       <div class="htitle-wrap">
         <span class="htitle">CAN报文解析</span>
-        <span class="hcommit" id="hcommit" title="GitHub 提交号 3e94e76fbc527291b3e7b53ca0447dd3476b4191">3e94e76f</span>
+        <span class="hcommit" id="hcommit" title="GitHub 提交号 3b9c1cbe34bcc4079f8c7a2df0ad59a226bf6aea">3b9c1cbe</span>
         <span class="hmodtime" id="hmodtime"></span>
       </div>
     </div>
     <div class="header-right">
       <div class="file-row">
         <div class="finput" id="dbcInfo">未加载</div>
-        <button id="btnDbc" class="primary">加载DBC文件</button>
+        <button id="btnDbc" class="primary" aria-label="加载 DBC 文件"><span class="desktop-file-label">加载DBC文件</span><span class="mobile-file-label" aria-hidden="true">DBC</span></button>
       </div>
       <div class="file-row">
         <div class="finput" id="ascInfo">未加载</div>
         <select id="ascSource" class="source-select hidden" aria-label="ASC 数据源"></select>
-        <button id="btnAsc" class="primary">加载ASC文件</button>
+        <button id="btnAsc" class="primary" aria-label="加载 ASC 文件"><span class="desktop-file-label">加载ASC文件</span><span class="mobile-file-label" aria-hidden="true">ASC</span></button>
       </div>
     </div>
   </div>
@@ -376,15 +395,15 @@
     </div>
     <div class="sig-list-wrap">
       <div class="sig-col">
-        <div class="sig-col-head">可选信号<button id="btnFilterEmpty" class="col-btn">筛除无数据信号</button><button id="btnSelectAll" class="col-btn">全选</button><span class="cnt" id="availCount">0</span></div>
+        <div class="sig-col-head"><span class="sig-col-title">可选信号</span><button id="btnFilterEmpty" class="col-btn">筛除无数据信号</button><button id="btnSelectAll" class="col-btn">全选</button><span class="cnt" id="availCount">0</span></div>
         <div class="sig-col-body" id="sigList">
           <div class="empty-hint">请先加载 DBC 文件</div>
         </div>
       </div>
       <div class="sig-col">
-        <div class="sig-col-head">已选信号<button id="btnClearNoData" class="col-btn">清空无数据信号</button><button id="btnClearAll" class="col-btn">清空</button><span class="cnt" id="pickedCount">0</span></div>
+        <div class="sig-col-head"><span class="sig-col-title">已选信号</span><button id="btnClearNoData" class="col-btn">清空无数据信号</button><button id="btnClearAll" class="col-btn">清空</button><span class="cnt" id="pickedCount">0</span></div>
         <div class="sig-col-body" id="sigPicked">
-          <div class="empty-hint">请先加载DBC文件</div>
+          <div class="empty-hint">请先加载 DBC 文件</div>
         </div>
       </div>
     </div>
@@ -417,7 +436,13 @@
           <div class="sc-body" id="scBody"></div>
         </div>
         <div class="cc-divider"></div>
-        <div id="chartArea"></div>
+        <div id="chartArea">
+          <div id="emptyGuide" class="empty-guide">
+            <b>三步开始分析</b>
+            <span class="steps">① 加载 DBC 文件 → ② 加载 ASC 日志 → ③ 选择信号并生成曲线</span>
+            <span class="dim">支持把文件直接拖入窗口 · 文件仅在当前浏览器本地处理</span>
+          </div>
+        </div>
       </div>
       <div id="xaxisContainer"></div>
       <div id="analysisDivider"></div>
@@ -1194,7 +1219,7 @@ function renderSignalList(){
 }
 function renderPickedList(){
   const picked=$('sigPicked'); picked.innerHTML='';
-  if(!dbcData){ picked.innerHTML='<div class="empty-hint">请先加载DBC文件</div>'; $('pickedCount').textContent='0'; return; }
+  if(!dbcData){ picked.innerHTML='<div class="empty-hint">请先加载 DBC 文件</div>'; $('pickedCount').textContent='0'; return; }
   const sigs=selectedSignals();
   $('pickedCount').textContent=selectedSet.size;
   if(!sigs.length){ picked.innerHTML='<div class="empty-hint">勾选左侧信号后自动出现在此</div>'; return; }
@@ -1404,6 +1429,13 @@ function selectedSignals(){
 
 /* ---------- chart rendering ---------- */
 let analysisReady = false;   // 当前曲线是否已生成过分析结果
+function emptyGuideMarkup(){
+  return '<div id="emptyGuide" class="empty-guide"><b>三步开始分析</b><span class="steps">① 加载 DBC 文件 → ② 加载 ASC 日志 → ③ 选择信号并生成曲线</span><span class="dim">支持把文件直接拖入窗口 · 文件仅在当前浏览器本地处理</span></div>';
+}
+function showEmptyGuide(){
+  const area=$('chartArea');
+  if(area&&!area.querySelector('#emptyGuide')) area.insertAdjacentHTML('beforeend',emptyGuideMarkup());
+}
 function disposeCharts(){
   const st=$('btnStyleToggle'); if(st) st.disabled=true;   /* 无曲线时禁用样式切换 */
   if(fsMode) exitFullscreen();
@@ -1412,7 +1444,7 @@ function disposeCharts(){
   if(cvo){ cvo.classList.remove('show'); const l=cvo.querySelector('#chLine'); if(l) l.setAttribute('display','none'); }
   if(xAxisChart){try{xAxisChart.dispose();}catch(e){} xAxisChart=null;}
   charts.forEach(c=>{try{c.dispose();}catch(e){}});
-  charts=[]; yTargetChart=null; $('chartArea').innerHTML='';
+  charts=[]; yTargetChart=null; $('chartArea').innerHTML=''; showEmptyGuide();
   $('app').classList.remove('mobile-charts');
   const sb=$('scBody'); if(sb) sb.innerHTML='';   /* 清空独立信号名称列 */
   const sh=document.querySelector('.side-head'); if(sh) sh.remove();   /* 移除侧栏表头 */
@@ -1451,8 +1483,14 @@ function buildTooltip(sig){
 /* 曲线配色盘：10个高区分度颜色，按图表顺序循环分配（1-10、11-20…依次重复） */
 const CURVE_COLORS=['#ff5252','#ffd700','#4a9eff','#3ddc84','#c77dff','#ff8fab','#2dd4bf','#ffb454','#7dd3fc','#a8d15c'];
 let uiStyle = 'classic';   // 界面风格：'classic'=06c2dffb默认风格（侧栏内嵌卡片）| 'canalyzer'=最新风格（独立名称列）
+function chartSkinColors(){
+  const light=document.documentElement.dataset.skin==='light';
+  return light
+    ? {axis:'#667085',line:'#98a2b3',grid:'#e4e7ec',label:'#1f2430',curve:'#1677ff'}
+    : {axis:'#8b93a3',line:'#3a4150',grid:'#222732',label:'#ffffff',curve:'#4a9eff'};
+}
 function makeOption(series, sig, stats, color){
-  const tMin=ascData.tMin, tMax=ascData.tMax;
+  const tMin=ascData.tMin, tMax=ascData.tMax, theme=chartSkinColors();
   return {
     animation:false,
     grid:{left:78,right:8,top:0,bottom:0,containLabel:false},
@@ -1461,10 +1499,10 @@ function makeOption(series, sig, stats, color){
       axisLabel:{show:false},
       axisTick:{show:false},
       splitLine:{show:false}},
-    yAxis:{type:'value',name:sig.unit||'',nameTextStyle:{color:'#8b93a3'},
-      axisLine:{lineStyle:{color:'#3a4150'}},
-      axisLabel:{color:'#8b93a3',formatter:v=>fmtSigValue(v, sig)},   /* 纵坐标按DBC分辨率精度 */
-      splitLine:{lineStyle:{color:'#222732'}}},
+    yAxis:{type:'value',name:sig.unit||'',nameTextStyle:{color:theme.axis},
+      axisLine:{lineStyle:{color:theme.line}},
+      axisLabel:{color:theme.axis,formatter:v=>fmtSigValue(v, sig)},   /* 纵坐标按DBC分辨率精度 */
+      splitLine:{lineStyle:{color:theme.grid}}},
     dataZoom:[
       {id:'xZoom',type:'inside',xAxisIndex:0,zoomOnMouseWheel:false,moveOnMouseWheel:false,moveOnMouseMove:true,moveOnMouseUp:true,filterMode:'none'},
       {id:'yZoom',type:'inside',yAxisIndex:0,zoomOnMouseWheel:false,moveOnMouseWheel:false,moveOnMouseMove:false,moveOnMouseUp:false,filterMode:'none'}
@@ -1474,41 +1512,41 @@ function makeOption(series, sig, stats, color){
       type:'line',data:series,name:sig.name,showSymbol:false,symbol:'circle',symbolSize:4,
       clip:true, connectNulls:false,
       sampling:'lttb',large:true,progressive:3000,
-      lineStyle:{width:1.2,color:color||'#4a9eff'},
-      itemStyle:{color:color||'#4a9eff',borderColor:color||'#4a9eff'},
+      lineStyle:{width:1.2,color:color||theme.curve},
+      itemStyle:{color:color||theme.curve,borderColor:color||theme.curve},
       emphasis:{disabled:true}
     }]
   };
 }
 function makeEmptyOption(sig){
-  const tMin=ascData.tMin, tMax=ascData.tMax;
+  const tMin=ascData.tMin, tMax=ascData.tMax, theme=chartSkinColors();
   return {
     animation:false,
-    title:{text:'无数据',left:'center',top:'middle',textStyle:{color:'#8b93a3',fontSize:14}},
+    title:{text:'无数据',left:'center',top:'middle',textStyle:{color:theme.axis,fontSize:14}},
     grid:{left:78,right:8,top:0,bottom:0,containLabel:false},
     xAxis:{type:'value',min:tMin,max:tMax,
       axisLine:{show:false},
       axisLabel:{show:false},
       axisTick:{show:false},
       splitLine:{show:false}},
-    yAxis:{type:'value',name:sig.unit||'',nameTextStyle:{color:'#8b93a3'},
-      axisLine:{lineStyle:{color:'#3a4150'}},
-      axisLabel:{color:'#8b93a3',formatter:v=>fmtSigValue(v, sig)},   /* 纵坐标按DBC分辨率精度 */
-      splitLine:{lineStyle:{color:'#222732'}}},
+    yAxis:{type:'value',name:sig.unit||'',nameTextStyle:{color:theme.axis},
+      axisLine:{lineStyle:{color:theme.line}},
+      axisLabel:{color:theme.axis,formatter:v=>fmtSigValue(v, sig)},   /* 纵坐标按DBC分辨率精度 */
+      splitLine:{lineStyle:{color:theme.grid}}},
     dataZoom:[
       {id:'xZoom',type:'inside',xAxisIndex:0,zoomOnMouseWheel:false,moveOnMouseWheel:false,moveOnMouseMove:true,moveOnMouseUp:true,filterMode:'filter'}
     ]
   };
 }
 function makeXAxisOption(){
-  const tMin=ascData.tMin, tMax=ascData.tMax;
+  const tMin=ascData.tMin, tMax=ascData.tMax, theme=chartSkinColors();
   return {
     animation:false,
     grid:{left:78,right:8,top:0,bottom:20},
     xAxis:{type:'value',min:tMin,max:tMax,
-      axisLine:{lineStyle:{color:'#3a4150'}},
-      axisLabel:{color:'#8b93a3',formatter:v=>v.toFixed(2),margin:4},
-      axisTick:{lineStyle:{color:'#3a4150'}},
+      axisLine:{lineStyle:{color:theme.line}},
+      axisLabel:{color:theme.axis,formatter:v=>v.toFixed(2),margin:4},
+      axisTick:{lineStyle:{color:theme.line}},
       splitLine:{show:false}},
     yAxis:{type:'value',show:false,min:0,max:1},
     dataZoom:[
@@ -1516,6 +1554,18 @@ function makeXAxisOption(){
     ]
   };
 }
+function applyChartSkin(){
+  const theme=chartSkinColors();
+  charts.forEach(chart=>{
+    const option={yAxis:{nameTextStyle:{color:theme.axis},axisLine:{lineStyle:{color:theme.line}},axisLabel:{color:theme.axis},splitLine:{lineStyle:{color:theme.grid}}}};
+    if(chart._stats&&chart._stats.count===0) option.title={textStyle:{color:theme.axis}};
+    if(uiStyle==='classic'&&chart._series){option.series=[{lineStyle:{color:theme.curve},itemStyle:{color:theme.curve,borderColor:theme.curve}}];chart._color=theme.curve;}
+    try{chart.setOption(option);}catch(e){}
+  });
+  if(xAxisChart)try{xAxisChart.setOption({xAxis:{axisLine:{lineStyle:{color:theme.line}},axisLabel:{color:theme.axis},axisTick:{lineStyle:{color:theme.line}}}});}catch(e){}
+  document.querySelectorAll('.cc-side .signame,.sc-row .lvval').forEach(node=>{node.style.color=theme.label;});
+}
+document.addEventListener('siteskinchange',applyChartSkin);
 /* 测量某列内容的最宽显示宽度（real 以 max 值+单位为参考） */
 function measureColumn(col){
   const tmp=document.createElement('span');
@@ -1642,6 +1692,7 @@ function renderCharts(){
   disposeCharts();
   const sigs=selectedSignals();
   if(!sigs.length){ $('contentTitle').textContent='请选择至少一个信号'; return; }
+  $('emptyGuide')?.remove();
   $('contentTitle').textContent=`正在渲染 ${sigs.length} 条曲线…`;
   const token = startBusy('正在渲染曲线…', ()=>{ token.cancelled=true; }, {immediate:true});
   let renderCount=0, emptyCount=0;
@@ -1758,7 +1809,7 @@ function renderCharts(){
     const realId=sig.messageId & 0x1FFFFFFF;
     const isExt=(sig.messageId & 0x80000000)!==0;
     /* 分配曲线颜色：默认风格全部亮蓝；CANalyzer风格按顺序循环取色 */
-    const color = uiStyle==='classic' ? '#4a9eff' : CURVE_COLORS[charts.length % CURVE_COLORS.length];
+    const color = uiStyle==='classic' ? chartSkinColors().curve : CURVE_COLORS[charts.length % CURVE_COLORS.length];
     if(uiStyle==='classic'){
       /* 默认风格（06c2dffb）：信号侧栏内嵌于曲线卡片（名称/Real/min/max 四行） */
       const side=el('div','cc-side');
@@ -1766,7 +1817,7 @@ function renderCharts(){
         <span class="signame">${escapeHtml(sig.name)}<span class="msgtip">${escapeHtml(sig.messageName)} ${fmtId(realId, isExt)}</span></span>
         ${has?`<span class="liveval"><span class="lvlabel">Real </span><span class="lvval"></span></span><span class="stat">min ${fmtSigValue(stats.min, sig)}</span><span class="stat">max ${fmtSigValue(stats.max, sig)}</span>`:'<span class="stat" style="color:var(--err)">无数据</span>'}`;
       const nmEl=side.querySelector('.signame');
-      if(nmEl) nmEl.style.color='#fff';   /* 默认风格：信号名称白色字体 */
+      if(nmEl) nmEl.style.color=chartSkinColors().label;   /* 信号名称随页面皮肤保持可读 */
       const body=el('div','cc-body');
       const cd=el('div','chart');
       body.appendChild(cd);
@@ -2196,13 +2247,13 @@ function updateHoverColors(hoveredChart){
     charts.forEach(c=>{
       const lv=c._liveEl; if(!lv) return;
       const ve=lv.querySelector('.lvval'); if(!ve) return;
-      ve.style.color = (c===hoveredChart) ? c._color : '#fff';
+      ve.style.color = (c===hoveredChart) ? c._color : chartSkinColors().label;
     });
   } else {
     charts.forEach(c=>{
       const side=c._sideEl; if(!side) return;
       const nm=side.querySelector('.signame'); if(!nm) return;
-      nm.style.color = (c===hoveredChart) ? '#4a9eff' : '#fff';   /* 默认风格：悬停曲线时名称亮蓝，离开恢复白色 */
+      nm.style.color = (c===hoveredChart) ? chartSkinColors().curve : chartSkinColors().label;   /* 默认风格：悬停曲线时名称亮蓝 */
     });
   }
 }
@@ -2211,13 +2262,13 @@ function resetHoverColors(){
     charts.forEach(c=>{
       const lv=c._liveEl; if(!lv) return;
       const ve=lv.querySelector('.lvval'); if(!ve) return;
-      ve.style.color='#fff';
+      ve.style.color=chartSkinColors().label;
     });
   } else {
     charts.forEach(c=>{
       const side=c._sideEl; if(!side) return;
       const nm=side.querySelector('.signame'); if(!nm) return;
-      nm.style.color='#fff';
+      nm.style.color=chartSkinColors().label;
     });
   }
 }
@@ -3012,7 +3063,7 @@ function reorderChartsBySelection(){
   }
   /* 按新顺序重新分配曲线颜色（默认风格全亮蓝；CANalyzer风格循环取色），信号名统一白色 */
   charts.forEach((c,i)=>{
-    const color = uiStyle==='classic' ? '#4a9eff' : CURVE_COLORS[i % CURVE_COLORS.length];
+    const color = uiStyle==='classic' ? chartSkinColors().curve : CURVE_COLORS[i % CURVE_COLORS.length];
     c._color=color;
     if(c._series){
       try{ c.setOption({series:[{lineStyle:{color:color}, itemStyle:{color:color, borderColor:color}}]}); }catch(e){}
