@@ -95,6 +95,8 @@ const server=createServer(async(req,res)=>{
     assert.equal(await languagePage.inputValue('#siteSkin'),'light','skin choice must persist on the about page');
     assert.equal(await languagePage.getAttribute('html','data-skin'),'light');
     assert.equal(await languagePage.locator('.feature-card').evaluate(node=>getComputedStyle(node).backgroundColor),'rgb(255, 255, 255)','about cards must use the shared light surface');
+    assert.equal(await languagePage.locator('h1').evaluate(node=>getComputedStyle(node).color),'rgb(31, 36, 48)','about heading must remain readable in light mode');
+    assert.equal(await languagePage.locator('.pay-card figcaption').first().evaluate(node=>getComputedStyle(node).color),'rgb(31, 36, 48)','payment titles must remain readable in light mode');
     const paymentQrLayout=await languagePage.locator('.pay-card').evaluateAll(cards=>cards.map(card=>{
       const image=card.querySelector('.qr-image'),caption=card.querySelector('figcaption'),box=image.getBoundingClientRect(),captionBox=caption.getBoundingClientRect(),cardStyle=getComputedStyle(card),imageStyle=getComputedStyle(image);
       return {width:Math.round(box.width),height:Math.round(box.height),cardBackground:cardStyle.backgroundImage,cardBorder:cardStyle.borderTopWidth,cardPadding:cardStyle.paddingTop,imageBackground:imageStyle.backgroundColor,captionCount:card.querySelectorAll('figcaption').length,title:caption.textContent.trim(),centerDelta:Math.round(Math.abs((box.left+box.width/2)-(captionBox.left+captionBox.width/2)))};
@@ -108,6 +110,8 @@ const server=createServer(async(req,res)=>{
     assert.equal(await languagePage.inputValue('#siteSkin'),'light','skin choice must persist on the convert page');
     assert.equal(await languagePage.locator('.converter').evaluate(node=>getComputedStyle(node).backgroundColor),'rgb(255, 255, 255)','converter must use the shared light surface');
     assert.equal(await languagePage.locator('.converter').evaluate(node=>getComputedStyle(node).borderRadius),'8px','alternate skins must use compact reference-style cards');
+    assert.equal(await languagePage.locator('h1').evaluate(node=>getComputedStyle(node).color),'rgb(31, 36, 48)','converter heading must remain readable in light mode');
+    assert.equal(await languagePage.locator('.conversion-flow').evaluate(node=>getComputedStyle(node).backgroundColor),'rgb(244, 246, 250)','conversion flow must use the light canvas');
     const convertUntranslated=await untranslated();assert.equal(convertUntranslated.length,0,'convert page must be fully translated to English: '+JSON.stringify(convertUntranslated));
     await languagePage.locator('#sourceFile').setInputFiles({name:'language.asc',mimeType:'text/plain',buffer:Buffer.from('base hex timestamps absolute\n0.125 1 123 Rx d 1 01\n')});
     await languagePage.waitForFunction(()=>!/文件|转换后|保存到/.test(document.querySelector('#fileMeta').textContent));
