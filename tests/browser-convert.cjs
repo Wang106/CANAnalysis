@@ -71,9 +71,9 @@ const server=createServer(async(req,res)=>{
     assert.equal((await languagePage.textContent('.skin-face')).trim(),'亮白模式','selected light skin must be visible in Chinese');
     const indexLight=await languagePage.evaluate(()=>{
       const root=getComputedStyle(document.documentElement),body=getComputedStyle(document.body),active=getComputedStyle(document.querySelector('.nav-item.active'));
-      return {bg:root.getPropertyValue('--bg').trim(),panel:root.getPropertyValue('--panel').trim(),accent:root.getPropertyValue('--accent').trim(),body:body.backgroundColor,active:active.backgroundColor};
+      return {bg:root.getPropertyValue('--bg').trim(),panel:root.getPropertyValue('--panel').trim(),accent:root.getPropertyValue('--accent').trim(),body:body.backgroundColor,active:active.backgroundColor,chart:chartSkinColors()};
     });
-    assert.deepEqual(indexLight,{bg:'#f4f6fa',panel:'#ffffff',accent:'#1677ff',body:'rgb(244, 246, 250)',active:'rgb(219, 234, 254)'},'CAN analysis page must apply the bright white palette');
+    assert.deepEqual(indexLight,{bg:'#f4f6fa',panel:'#ffffff',accent:'#1677ff',body:'rgb(244, 246, 250)',active:'rgb(219, 234, 254)',chart:{axis:'#667085',line:'#98a2b3',grid:'#e4e7ec',label:'#1f2430',curve:'#1677ff'}},'CAN analysis page and charts must apply the bright white palette');
     await languagePage.selectOption('#siteLanguage','en');
     await languagePage.waitForFunction(()=>document.documentElement.lang==='en');
     assert.equal(await languagePage.inputValue('#siteLanguage'),'en');
