@@ -3,6 +3,12 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="description" content="在浏览器本地加载 DBC 与 CAN 日志，完成信号解析、曲线查看和报文统计。" />
+<meta property="og:type" content="website" />
+<meta property="og:title" content="CAN报文解析 · CANAnalysis" />
+<meta property="og:description" content="无需安装软件，在浏览器本地解析 DBC 与 CAN 日志并生成信号曲线。" />
+<meta property="og:url" content="https://can.whf969.com/" />
+<meta property="og:image" content="https://can.whf969.com/icon.png" />
 <link rel="icon" href="icon.png" type="image/png" />
 <link rel="preload" href="icon.png" as="image" type="image/png" fetchpriority="high" />
 <title>CAN报文解析</title>
@@ -278,15 +284,28 @@
   #confirmOverlay .txt{font-size:14px;color:var(--txt);}
   #confirmOverlay .row{display:flex;gap:12px;}
 
+  .empty-guide{align-self:center;width:min(560px,calc(100% - 32px));margin:auto;padding:24px;border:1px solid var(--line);border-radius:12px;background:var(--panel);box-shadow:0 8px 28px rgba(0,0,0,.18);display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;}
+  .empty-guide b{font-size:16px;color:var(--txt);}
+  .empty-guide .steps{font-size:13px;color:var(--txt);}
+  .empty-guide .dim{font-size:12px;color:var(--txt2);}
+  .sig-col-title{flex:none;white-space:nowrap;}
+  .mobile-file-label{display:none;}
+  .side-col .liveval,.side-col .stat,.cc-side .liveval,.cc-side .stat{font-size:11px;font-variant-numeric:tabular-nums;}
   /* iPhone：生成曲线后压缩顶部区域，工具栏可横向滑动，桌面布局保持不变。 */
   @media (max-width:760px), (max-height:520px){
+    .sig-col-head{flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;white-space:nowrap;scrollbar-width:none;}
+    .sig-col-head::-webkit-scrollbar{display:none;}
+    .empty-guide{width:calc(100% - 20px);padding:18px 14px;gap:8px;}
+    .empty-guide .steps{font-size:12px;}
     #app.mobile-charts #header{padding:3px 6px;gap:6px;}
     #app.mobile-charts .header-left{gap:6px;}
     #app.mobile-charts .header-left .icon{display:none;}
     #app.mobile-charts .header-left .htitle-wrap{width:96px;flex-basis:96px;}
     #app.mobile-charts .header-left .htitle{font-size:14px;letter-spacing:0;}
     #app.mobile-charts .file-row{gap:4px;}
-    #app.mobile-charts .file-row button{width:88px;padding:4px 5px;font-size:11px;}
+    #app.mobile-charts .file-row button{width:64px;padding:4px 5px;font-size:11px;}
+    .desktop-file-label{display:none;}
+    .mobile-file-label{display:inline;}
     #app.mobile-charts .file-row .finput{padding:4px 6px;font-size:11px;}
     #app.mobile-charts .file-row .source-select{max-width:116px;padding:3px 4px;font-size:11px;}
     #app.mobile-charts #sigBar.collapsed .sig-bar-head{padding:4px 6px;gap:5px;flex-wrap:nowrap;}
@@ -353,12 +372,12 @@
     <div class="header-right">
       <div class="file-row">
         <div class="finput" id="dbcInfo">未加载</div>
-        <button id="btnDbc" class="primary">加载DBC文件</button>
+        <button id="btnDbc" class="primary" aria-label="加载 DBC 文件"><span class="desktop-file-label">加载DBC文件</span><span class="mobile-file-label" aria-hidden="true">DBC</span></button>
       </div>
       <div class="file-row">
         <div class="finput" id="ascInfo">未加载</div>
         <select id="ascSource" class="source-select hidden" aria-label="ASC 数据源"></select>
-        <button id="btnAsc" class="primary">加载ASC文件</button>
+        <button id="btnAsc" class="primary" aria-label="加载 ASC 文件"><span class="desktop-file-label">加载ASC文件</span><span class="mobile-file-label" aria-hidden="true">ASC</span></button>
       </div>
     </div>
   </div>
@@ -376,15 +395,15 @@
     </div>
     <div class="sig-list-wrap">
       <div class="sig-col">
-        <div class="sig-col-head">可选信号<button id="btnFilterEmpty" class="col-btn">筛除无数据信号</button><button id="btnSelectAll" class="col-btn">全选</button><span class="cnt" id="availCount">0</span></div>
+        <div class="sig-col-head"><span class="sig-col-title">可选信号</span><button id="btnFilterEmpty" class="col-btn">筛除无数据信号</button><button id="btnSelectAll" class="col-btn">全选</button><span class="cnt" id="availCount">0</span></div>
         <div class="sig-col-body" id="sigList">
           <div class="empty-hint">请先加载 DBC 文件</div>
         </div>
       </div>
       <div class="sig-col">
-        <div class="sig-col-head">已选信号<button id="btnClearNoData" class="col-btn">清空无数据信号</button><button id="btnClearAll" class="col-btn">清空</button><span class="cnt" id="pickedCount">0</span></div>
+        <div class="sig-col-head"><span class="sig-col-title">已选信号</span><button id="btnClearNoData" class="col-btn">清空无数据信号</button><button id="btnClearAll" class="col-btn">清空</button><span class="cnt" id="pickedCount">0</span></div>
         <div class="sig-col-body" id="sigPicked">
-          <div class="empty-hint">请先加载DBC文件</div>
+          <div class="empty-hint">请先加载 DBC 文件</div>
         </div>
       </div>
     </div>
@@ -417,7 +436,13 @@
           <div class="sc-body" id="scBody"></div>
         </div>
         <div class="cc-divider"></div>
-        <div id="chartArea"></div>
+        <div id="chartArea">
+          <div id="emptyGuide" class="empty-guide">
+            <b>三步开始分析</b>
+            <span class="steps">① 加载 DBC 文件 → ② 加载 ASC 日志 → ③ 选择信号并生成曲线</span>
+            <span class="dim">支持把文件直接拖入窗口 · 文件仅在当前浏览器本地处理</span>
+          </div>
+        </div>
       </div>
       <div id="xaxisContainer"></div>
       <div id="analysisDivider"></div>
@@ -1194,7 +1219,7 @@ function renderSignalList(){
 }
 function renderPickedList(){
   const picked=$('sigPicked'); picked.innerHTML='';
-  if(!dbcData){ picked.innerHTML='<div class="empty-hint">请先加载DBC文件</div>'; $('pickedCount').textContent='0'; return; }
+  if(!dbcData){ picked.innerHTML='<div class="empty-hint">请先加载 DBC 文件</div>'; $('pickedCount').textContent='0'; return; }
   const sigs=selectedSignals();
   $('pickedCount').textContent=selectedSet.size;
   if(!sigs.length){ picked.innerHTML='<div class="empty-hint">勾选左侧信号后自动出现在此</div>'; return; }
@@ -1404,6 +1429,13 @@ function selectedSignals(){
 
 /* ---------- chart rendering ---------- */
 let analysisReady = false;   // 当前曲线是否已生成过分析结果
+function emptyGuideMarkup(){
+  return '<div id="emptyGuide" class="empty-guide"><b>三步开始分析</b><span class="steps">① 加载 DBC 文件 → ② 加载 ASC 日志 → ③ 选择信号并生成曲线</span><span class="dim">支持把文件直接拖入窗口 · 文件仅在当前浏览器本地处理</span></div>';
+}
+function showEmptyGuide(){
+  const area=$('chartArea');
+  if(area&&!area.querySelector('#emptyGuide')) area.insertAdjacentHTML('beforeend',emptyGuideMarkup());
+}
 function disposeCharts(){
   const st=$('btnStyleToggle'); if(st) st.disabled=true;   /* 无曲线时禁用样式切换 */
   if(fsMode) exitFullscreen();
@@ -1412,7 +1444,7 @@ function disposeCharts(){
   if(cvo){ cvo.classList.remove('show'); const l=cvo.querySelector('#chLine'); if(l) l.setAttribute('display','none'); }
   if(xAxisChart){try{xAxisChart.dispose();}catch(e){} xAxisChart=null;}
   charts.forEach(c=>{try{c.dispose();}catch(e){}});
-  charts=[]; yTargetChart=null; $('chartArea').innerHTML='';
+  charts=[]; yTargetChart=null; $('chartArea').innerHTML=''; showEmptyGuide();
   $('app').classList.remove('mobile-charts');
   const sb=$('scBody'); if(sb) sb.innerHTML='';   /* 清空独立信号名称列 */
   const sh=document.querySelector('.side-head'); if(sh) sh.remove();   /* 移除侧栏表头 */
@@ -1660,6 +1692,7 @@ function renderCharts(){
   disposeCharts();
   const sigs=selectedSignals();
   if(!sigs.length){ $('contentTitle').textContent='请选择至少一个信号'; return; }
+  $('emptyGuide')?.remove();
   $('contentTitle').textContent=`正在渲染 ${sigs.length} 条曲线…`;
   const token = startBusy('正在渲染曲线…', ()=>{ token.cancelled=true; }, {immediate:true});
   let renderCount=0, emptyCount=0;
