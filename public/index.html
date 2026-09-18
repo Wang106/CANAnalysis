@@ -1527,6 +1527,7 @@ function applyChartSkin(){
   charts.forEach(chart=>{
     const option={yAxis:{nameTextStyle:{color:theme.axis},axisLine:{lineStyle:{color:theme.line}},axisLabel:{color:theme.axis},splitLine:{lineStyle:{color:theme.grid}}}};
     if(chart._stats&&chart._stats.count===0) option.title={textStyle:{color:theme.axis}};
+    if(uiStyle==='classic'&&chart._series){option.series=[{lineStyle:{color:theme.curve},itemStyle:{color:theme.curve,borderColor:theme.curve}}];chart._color=theme.curve;}
     try{chart.setOption(option);}catch(e){}
   });
   if(xAxisChart)try{xAxisChart.setOption({xAxis:{axisLine:{lineStyle:{color:theme.line}},axisLabel:{color:theme.axis},axisTick:{lineStyle:{color:theme.line}}}});}catch(e){}
