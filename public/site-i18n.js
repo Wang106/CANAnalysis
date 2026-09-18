@@ -130,7 +130,7 @@
   }
   function setSkin(next,{persist=true}={}) {
     skin=['dark','light'].includes(next)?next:'default';if(persist)localStorage.setItem(SKIN_KEY,skin);
-    document.documentElement.dataset.skin=skin;updateSwitcher();
+    document.documentElement.dataset.skin=skin;updateSwitcher();document.dispatchEvent(new CustomEvent('siteskinchange',{detail:{skin}}));
   }
   function setLanguage(next,{persist=true}={}) {
     language=next==='en'?'en':'zh';if(persist)localStorage.setItem(STORAGE_KEY,language);
