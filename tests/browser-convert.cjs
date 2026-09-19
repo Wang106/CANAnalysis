@@ -101,7 +101,7 @@ const server=createServer(async(req,res)=>{
       return {bg:root.getPropertyValue('--bg').trim(),panel:root.getPropertyValue('--panel').trim(),accent:root.getPropertyValue('--accent').trim(),body:body.backgroundColor,active:active.backgroundColor,chart:chartSkinColors()};
     });
     assert.deepEqual(indexLight,{bg:'#f4f6fa',panel:'#ffffff',accent:'#0b63ce',body:'rgb(244, 246, 250)',active:'rgb(219, 234, 254)',chart:{axis:'#475467',line:'#98a2b3',grid:'#e4e7ec',label:'#1f2430',curve:'#0b63ce'}},'CAN analysis page and charts must apply the accessible bright white palette');
-    for(const selector of ['#btnDbc','#btnAsc','#help b','.selstat b','#topNav .nav-item:not(.active)','.skin-face','.language-face'])await assertReadable(languagePage,selector);
+    for(const selector of ['#btnDbc','#btnAsc','#help b','.selstat b','#sigToggle','#topNav .nav-item:not(.active)','.skin-face','.language-face'])await assertReadable(languagePage,selector);
     await languagePage.selectOption('#siteLanguage','en');
     await languagePage.waitForFunction(()=>document.documentElement.lang==='en');
     assert.equal(await languagePage.inputValue('#siteLanguage'),'en');
@@ -124,6 +124,11 @@ const server=createServer(async(req,res)=>{
     assert.equal(paymentQrLayout.length,2,'about page must display two payment QR images');
     assert.deepEqual(paymentQrLayout.map(qr=>qr.title),['WeChat Pay','Alipay'],'payment QR titles must identify each payment method');
     for(const qr of paymentQrLayout)assert.deepEqual({...qr,title:undefined},{width:135,height:135,cardBackground:'none',cardBorder:'0px',cardPadding:'0px',imageBackground:'rgba(0, 0, 0, 0)',captionCount:1,centerDelta:0,title:undefined},'payment QR title and half-size image must be centered without a card background');
+    await languagePage.selectOption('#siteSkin','default');
+    await languagePage.waitForFunction(()=>document.documentElement.dataset.skin==='default');
+    for(const selector of ['.support-foot','footer','.privacy-icon'])await assertReadable(languagePage,selector);
+    await languagePage.selectOption('#siteSkin','light');
+    await languagePage.waitForFunction(()=>document.documentElement.dataset.skin==='light');
     const aboutUntranslated=await untranslated();assert.equal(aboutUntranslated.length,0,'about page must be fully translated to English: '+JSON.stringify(aboutUntranslated));
     await languagePage.goto(base+'/convert');
     assert.equal(await languagePage.inputValue('#siteLanguage'),'en');
