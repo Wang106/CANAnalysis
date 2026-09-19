@@ -33,12 +33,13 @@
     </div>
   </nav>
 
-  <header class="site-header shell">
-    <a class="brand" href="/" aria-label="CANAnalysis 首页">
-      <img src="/icon.png" width="38" height="38" alt="">
-      <span>CANAnalysis<small>CAN DATA WORKSPACE</small></span>
-    </a>
-    <span class="local-badge"><i aria-hidden="true"></i>数据优先在本地处理</span>
+  <header class="can-brandbar">
+    <div class="shell can-brandbar-inner">
+      <a class="can-brand" href="/" aria-label="返回 CANAnalysis 首页">
+        <img src="/icon.png" width="34" height="34" alt="">
+        <span>CANAnalysis<small>CAN DATA WORKSPACE</small></span>
+      </a>
+    </div>
   </header>
 
   <main class="shell">
@@ -50,57 +51,60 @@
 
     <section class="page-grid" aria-label="本站全部页面">
       <a class="page-card online-card" href="/online">
-        <span class="card-icon" aria-hidden="true">⌁</span>
         <span class="card-state available">可使用</span>
         <h2>在线连接</h2>
+        <div class="card-visual hardware-visual">
+          <img src="/can-hardware.webp" width="800" height="328" alt="PCAN、Vector 与周立功 CAN 接口设备">
+          <div class="hardware-labels" aria-hidden="true"><span>PCAN</span><span>Vector</span><span>周立功</span></div>
+        </div>
         <p>连接 PCAN、周立功或 Vector 设备，配置通道和波特率，安全地实时接收 CAN 报文。</p>
         <span class="card-action">进入在线连接 <b aria-hidden="true">→</b></span>
       </a>
 
       <a class="page-card offline-card" href="/offline">
-        <span class="card-icon" aria-hidden="true">⌇</span>
         <span class="card-state available">可使用</span>
         <h2>离线报文解析</h2>
+        <div class="card-visual curve-visual" aria-hidden="true"><svg viewBox="0 0 440 128" preserveAspectRatio="none"><g class="chart-grid"><path d="M0 32H440M0 64H440M0 96H440M88 0V128M176 0V128M264 0V128M352 0V128"/></g><path class="curve-one" d="M0 97H42V82H92V100H132V46H182V68H230V28H286V57H336V38H382V18H440"/><path class="curve-two" d="M0 112C58 112 62 93 110 94S168 116 215 76S290 57 330 73 390 52 440 44"/></svg><span>DBC + ASC · SIGNAL CHART</span></div>
         <p>加载 DBC 与 ASC 日志，选择信号、生成同步曲线，并进行报文统计和异常检查。</p>
         <span class="card-action">进入离线解析 <b aria-hidden="true">→</b></span>
       </a>
 
       <a class="page-card convert-card" href="/convert">
-        <span class="card-icon" aria-hidden="true">⇄</span>
         <span class="card-state available">可使用</span>
         <h2>格式转换</h2>
+        <div class="card-visual format-visual" aria-hidden="true"><span>BLF</span><b>→</b><span>ASC</span><b>→</b><span>CSV</span></div>
         <p>在 ASC、LOG、TRC、BLF、TXT、MF4、MDF 之间转换，并导出 DBC 信号 CSV。</p>
         <span class="card-action">进入格式转换 <b aria-hidden="true">→</b></span>
       </a>
 
       <article class="page-card pending" aria-disabled="true" title="开发中">
-        <span class="card-icon" aria-hidden="true">27</span>
         <span class="card-state">开发中</span>
         <h2>27930报文分析</h2>
+        <div class="card-visual protocol-visual" aria-hidden="true"><span>CRM</span><i></i><span>BRM</span><i></i><span>BCP</span><i></i><span>BCL</span></div>
         <p>面向充电通信场景的 GB/T 27930 报文识别、流程整理与异常辅助分析。</p>
         <span class="card-action">暂未开放</span>
       </article>
 
       <article class="page-card pending" aria-disabled="true" title="开发中">
-        <span class="card-icon" aria-hidden="true">19</span>
         <span class="card-state">开发中</span>
         <h2>J1939分析</h2>
+        <div class="card-visual network-visual" aria-hidden="true"><span>PGN</span><span>SPN</span><span>TP</span><b></b></div>
         <p>面向 SAE J1939 网络的 PGN、SPN 与多包报文解析及通信状态分析。</p>
         <span class="card-action">暂未开放</span>
       </article>
 
       <article class="page-card pending" aria-disabled="true" title="开发中">
-        <span class="card-icon" aria-hidden="true">↗</span>
         <span class="card-state">开发中</span>
         <h2>友情链接</h2>
+        <div class="card-visual links-visual" aria-hidden="true"><span>CAN</span><i>↗</i><span>DBC</span><i>↗</i><span>TOOLS</span></div>
         <p>整理 CAN 总线、DBC、日志格式与常用工程工具的参考资源。</p>
         <span class="card-action">暂未开放</span>
       </article>
 
       <a class="page-card about-card" href="/aboutus">
-        <span class="card-icon" aria-hidden="true">i</span>
         <span class="card-state available">可使用</span>
         <h2>关于本站</h2>
+        <div class="card-visual about-visual" aria-hidden="true"><img src="/icon.png" width="72" height="72" alt=""><span>CANAnalysis<small>LOCAL · PRIVATE · PRACTICAL</small></span></div>
         <p>了解 CANAnalysis 的功能定位、本地数据处理原则以及后续维护计划。</p>
         <span class="card-action">了解本站 <b aria-hidden="true">→</b></span>
       </a>
