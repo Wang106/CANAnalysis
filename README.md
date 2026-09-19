@@ -13,6 +13,7 @@
 - **自动分析**：汇总报文总数/时间范围/报文率/未知ID，并检测信号超量程、恒定/卡死、报文丢帧等问题
 - **固定导航**：页面向下滚动时栏目导航保持在屏幕顶部；CAN 解析页生成曲线后自动缩回，释放曲线空间
 - **中英双语**：导航栏右侧可在中文与 English 之间切换，选择会跨页面保留，静态内容与运行时状态同步切换
+- **在线连接**：`/online` 通过只监听本机的连接服务接入 PCAN、周立功 USBCAN 与 Vector 设备，首版固定为只接收模式
 
 ## 在线访问
 
@@ -118,6 +119,30 @@ node tests/browser-convert.cjs
 独立样本由 `tests/generate-convert-fixtures.py` 生成，提交的 JSON 样本让 Node 回归测试无需 Python 依赖。Python 交叉验证使用 python-can / asammdf 读取本引擎生成的真实文件，不仅依靠自有读写器互测。浏览器测试检查七种原始日志下载、混合格式多文件队列、同格式跳过、DBC 信号 CSV、移动布局、取消/错误流程及原有解析/导航回归；可通过 `PLAYWRIGHT_MODULE`、`CHROMIUM_PATH` 指定现有安装。
 
 格式参考：[python-can BLF 实现](https://python-can.readthedocs.io/en/stable/_modules/can/io/blf.html)、[PEAK TRC 官方格式](https://www.peak-system.com/produktcd/Pdf/English/PEAK_CAN_TRC_File_Format.pdf)、[asammdf 原始总线日志](https://asammdf.readthedocs.io/en/latest/buslogging.html)。
+
+## 在线连接 CAN 设备
+
+访问 `/online`（导航中的「在线连接」）可以配置设备型号、设备序号、通道、
+Classical CAN/CAN FD、仲裁波特率与数据波特率。网页本身不直接加载厂商 DLL，
+而是连接当前 Windows 电脑上的 `bridge/cananalysis_bridge.py`；CAN 数据只经过
+本机回环地址，不上传到 Cloudflare。
+
+首批设备配置包括：
+
+- PEAK PCAN-USB、PCAN-USB FD；
+- 周立功 USBCAN-I、USBCAN-II、USBCANFD；
+- Vector VN16xx、VN56xx。
+
+本机服务的驱动准备和启动方法见 [`bridge/README.md`](bridge/README.md)。由于仓库
+不能包含厂商驱动和硬件，自动测试使用模拟总线验证连接生命周期；每种型号正式
+使用前仍需在对应驱动版本和实物设备上完成回归。
+
+在线连接相关测试：
+
+```bash
+node tests/online-page.test.cjs
+python -m unittest tests.test_bridge
+```
 
 ## 许可
 

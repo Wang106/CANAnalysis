@@ -1,0 +1,1 @@
+"""CANAnalysis local hardware bridge."""
