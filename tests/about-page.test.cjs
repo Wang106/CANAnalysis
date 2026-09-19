@@ -18,6 +18,9 @@ assert.ok(supportTitle>=0&&supportNote>supportTitle&&supportNote<payGrid,'suppor
 assert.ok(supportButton>payGrid,'support button must sit below the payment QR codes');
 assert.match(html,/<button type="button" id="supportButton" class="secondary-link">支持本站<\/button>/,'support control must not add a persistent URL anchor');
 assert.match(html,/#support[^\n]+history\.replaceState/,'legacy support hashes must be removed without changing the current scroll position');
+assert.match(html,/navigation\?\.type===['"]reload['"]/,'about page must distinguish a reload from ordinary navigation');
+assert.match(html,/sessionStorage\.setItem\(scrollKey[\s\S]*?y:scrollY/,'about page must remember its scroll position before reload');
+assert.match(html,/history\.scrollRestoration=['"]manual['"][\s\S]*?scrollTo\(0,saved\.y\)/,'about page must explicitly restore the saved position after reload');
 assert.doesNotMatch(html,/请在付款前核对收款方信息/,'obsolete payment-recipient warning must be removed');
 assert.doesNotMatch(html,/移动鼠标，附近的动物会慢慢靠近你/,'ocean interaction hint must be removed');
 

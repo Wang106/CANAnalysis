@@ -5,7 +5,28 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#0f1115">
   <meta name="description" content="CANAnalysis 是一款在浏览器本地解析 DBC 与 ASC 文件的 CAN 报文分析工具。">
-  <script>if(location.hash==='#support'||location.hash==='#support-title')history.replaceState(null,'',location.pathname+location.search);</script>
+  <script>
+    (()=>{
+      const scrollKey='cananalysis.aboutus.scroll.v1';
+      const pageKey=location.pathname+location.search;
+      if(location.hash==='#support'||location.hash==='#support-title')history.replaceState(null,'',pageKey);
+      const navigation=performance.getEntriesByType('navigation')[0];
+      let saved=null;
+      try{saved=JSON.parse(sessionStorage.getItem(scrollKey)||'null');}catch{}
+      if(navigation?.type==='reload'&&saved?.page===pageKey&&Number.isFinite(saved.y)){
+        history.scrollRestoration='manual';
+        const restore=()=>requestAnimationFrame(()=>requestAnimationFrame(()=>scrollTo(0,saved.y)));
+        addEventListener('DOMContentLoaded',restore,{once:true});
+        addEventListener('load',restore,{once:true});
+      }else{
+        history.scrollRestoration='auto';
+        sessionStorage.removeItem(scrollKey);
+      }
+      addEventListener('pagehide',()=>{
+        try{sessionStorage.setItem(scrollKey,JSON.stringify({page:pageKey,y:scrollY}));}catch{}
+      });
+    })();
+  </script>
   <title>关于本站 · CANAnalysis</title>
   <link rel="icon" href="icon.png" type="image/png">
   <style>

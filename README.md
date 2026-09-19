@@ -107,10 +107,12 @@ node tests/convert.test.mjs
 node tests/batch.test.mjs
 node tests/csv.test.mjs
 node tests/nav-state.test.cjs
+node tests/about-page.test.cjs
 pip install python-can asammdf
 python tests/verify-convert-output.py
 npm install --no-save playwright
 npx playwright install chromium
+node tests/about-scroll.test.cjs
 node tests/browser-convert.cjs
 ```
 
