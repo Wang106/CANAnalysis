@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#0f1115">
   <meta name="description" content="CANAnalysis 是一款在浏览器本地解析 DBC 与 ASC 文件的 CAN 报文分析工具。">
+  <script>if(location.hash==='#support'||location.hash==='#support-title')history.replaceState(null,'',location.pathname+location.search);</script>
   <title>关于本站 · CANAnalysis</title>
   <link rel="icon" href="icon.png" type="image/png">
   <style>
@@ -42,27 +43,13 @@
     #navNotice.show{visibility:visible;animation:navNoticeShow 1.8s ease both;}
     @keyframes navNoticeShow{0%{opacity:0;transform:translate(0,5px);}12%,72%{opacity:1;transform:translate(0,0);}100%{opacity:0;transform:translate(0,-4px);visibility:hidden;}}
     .shell{width:min(1080px,calc(100% - 32px));margin:0 auto;}
-    .topbar{
-      position:sticky;
-      top:0;
-      z-index:10;
-      border-bottom:1px solid rgba(42,47,58,.85);
-      background:rgba(15,17,21,.82);
-      backdrop-filter:blur(14px);
-      -webkit-backdrop-filter:blur(14px);
-    }
-    .topbar-inner{height:62px;display:flex;align-items:center;justify-content:space-between;gap:16px;}
-    .brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:.3px;}
-    .brand img{width:34px;height:34px;border-radius:50%;background:#fff;box-shadow:0 0 0 1px var(--line);}
-    .brand small{display:block;margin-top:1px;color:var(--muted);font-size:10px;font-weight:500;letter-spacing:.8px;}
     main{padding:72px 0 44px;}
     .hero{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(260px,.6fr);align-items:center;gap:54px;padding-bottom:74px;}
     .eyebrow{display:inline-flex;align-items:center;gap:7px;color:var(--green);font-size:12px;font-weight:700;letter-spacing:1px;}
     .eyebrow::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 14px rgba(61,220,132,.8);}
     h1{margin:18px 0 20px;max-width:720px;font-size:clamp(38px,7vw,72px);line-height:1.06;letter-spacing:-2px;color:#f3f6fb;}
     .hero-copy{max-width:680px;margin:0;color:#aeb5c3;font-size:clamp(15px,2vw,18px);line-height:1.9;}
-    .hero-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:28px;}
-    .secondary-link{display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:0 18px;border-radius:8px;font-size:13px;font-weight:700;}
+    .secondary-link{display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:0 18px;border-radius:8px;color:var(--text);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;}
     .secondary-link{border:1px solid var(--line);background:rgba(29,33,43,.75);}
     .contact-note{max-width:620px;margin:13px 0 0;color:var(--muted);font-size:12px;line-height:1.7;}
     .contact-note a{color:var(--blue);font-weight:700;text-decoration:underline;text-decoration-color:color-mix(in srgb,var(--blue) 45%,transparent);text-underline-offset:3px;}
@@ -87,28 +74,24 @@
     .privacy-strip strong{display:block;margin-bottom:4px;color:#e7f8ee;font-size:14px;}
     .privacy-strip span{color:var(--muted);font-size:12px;line-height:1.6;}
     .support{padding:68px 0 34px;border-top:1px solid var(--line);}
-    .support-head{display:flex;align-items:end;justify-content:space-between;gap:28px;}
-    .support-note{max-width:420px;margin:0;color:var(--muted);font-size:12px;line-height:1.7;text-align:right;}
+    .support-head{display:block;}
+    .support-note{max-width:680px;margin:12px 0 0;color:var(--muted);font-size:12px;line-height:1.7;text-align:left;}
     .pay-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));justify-items:center;gap:18px;margin-top:30px;}
     .pay-card{display:flex;margin:0;padding:0;border:0;flex-direction:column;align-items:center;background:none;text-align:center;}
     .pay-card figcaption{margin:0 0 10px;color:#f0f3f8;font-size:14px;font-weight:700;line-height:1;}
     .qr-image{display:block;width:135px;height:135px;max-width:100%;margin:0;object-fit:contain;background:transparent;}
-    .support-foot{margin:16px 0 0;text-align:center;color:#6f7786;font-size:10px;}
+    .support-actions{display:flex;justify-content:center;margin-top:18px;}
     .ocean-scene{position:relative;min-height:310px;margin:14px 0 58px;border:1px solid color-mix(in srgb,var(--blue) 28%,var(--line));border-radius:18px;background:linear-gradient(180deg,color-mix(in srgb,var(--blue) 14%,var(--panel2)),color-mix(in srgb,#052f46 72%,var(--bg)));overflow:hidden;isolation:isolate;box-shadow:inset 0 1px rgba(255,255,255,.05);}
     .ocean-scene::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 12% 16%,rgba(255,255,255,.16) 0 2px,transparent 3px),radial-gradient(circle at 78% 28%,rgba(255,255,255,.1) 0 3px,transparent 4px),linear-gradient(180deg,rgba(255,255,255,.04),transparent 30%);background-size:90px 92px,136px 144px,100% 100%;pointer-events:none;}
     .ocean-copy{position:absolute;top:18px;left:20px;z-index:2;pointer-events:none;}
     .ocean-copy h3{margin:0;color:#e8f7ff;font-size:15px;letter-spacing:.4px;}
-    .ocean-copy p{margin:5px 0 0;color:#a9cfdf;font-size:11px;}
     #oceanCanvas{position:absolute;inset:0;display:block;width:100%;height:100%;touch-action:pan-y;}
     html[data-skin="light"] .ocean-scene{background:linear-gradient(180deg,#dff4ff,#83c9e6);border-color:#9dcfe3;}
     html[data-skin="light"] .ocean-copy h3{color:#12384a;}
-    html[data-skin="light"] .ocean-copy p{color:#315c70;}
     footer{padding:24px 0 calc(30px + env(safe-area-inset-bottom));border-top:1px solid var(--line);color:#6f7786;font-size:11px;}
     .footer-inner{display:flex;justify-content:space-between;gap:18px;}
     @media (max-width:760px){
       .shell{width:min(100% - 24px,1080px);}
-      .topbar-inner{height:56px;}
-      .brand small{display:none;}
       main{padding-top:44px;}
       .hero{grid-template-columns:1fr;gap:34px;padding-bottom:52px;}
       h1{font-size:43px;letter-spacing:-1.5px;}
@@ -116,8 +99,6 @@
       .features,.support{padding:50px 0;}
       .feature-grid,.pay-grid{grid-template-columns:1fr;}
       .feature-card{min-height:0;}
-      .support-head{display:block;}
-      .support-note{margin-top:12px;text-align:left;}
       .ocean-scene{min-height:245px;margin-bottom:42px;border-radius:14px;}
       .ocean-copy{top:14px;left:15px;}
 
@@ -147,10 +128,10 @@
       <span class="nav-item active" aria-current="page">关于本站</span>
     </div>
   </nav>
-  <header class="topbar">
-    <div class="shell topbar-inner">
-      <a class="brand" href="/" aria-label="返回 CANAnalysis 首页">
-        <img src="icon.png" width="34" height="34" alt="">
+  <header class="can-brandbar">
+    <div class="shell can-brandbar-inner">
+      <a class="can-brand" href="/" aria-label="返回 CANAnalysis 首页">
+        <img src="/icon.png" width="34" height="34" alt="">
         <span>CANAnalysis<small>CAN DATA WORKSPACE</small></span>
       </a>
     </div>
@@ -162,9 +143,6 @@
         <span class="eyebrow">纯前端 · 本地分析</span>
         <h1 id="hero-title">让 CAN 报文<br>更容易看懂</h1>
         <p class="hero-copy">CANAnalysis 是一款面向测试与工程人员的浏览器工具。加载 DBC 与 ASC 文件后，即可完成信号解码、曲线查看和报文统计，不需要安装软件，也不依赖后端服务。</p>
-        <div class="hero-actions">
-          <a class="secondary-link" href="#support">支持本站</a>
-        </div>
         <p class="contact-note"><span>如在使用过程中遇到问题，或有功能建议与其他需求，欢迎发送邮件联系：</span> <a href="mailto:whf969@foxmail.com">whf969@foxmail.com</a></p>
       </div>
       <div class="signal-card" aria-label="CAN 信号曲线示意图">
@@ -211,7 +189,7 @@
 
     <section class="support" id="support" aria-labelledby="support-title">
       <div class="support-head">
-        <div><p class="section-kicker">Support</p><h2 id="support-title">支持这个小工具</h2></div>
+        <p class="section-kicker">Support</p><h2 id="support-title">支持这个小工具</h2>
         <p class="support-note">如果它帮你节省了排查时间，可以自愿支持后续维护。支持与否不会影响任何功能的使用。</p>
       </div>
       <div class="pay-grid">
@@ -224,10 +202,10 @@
           <img class="qr-image" src="alipay-pay.jpeg" alt="支付宝收款二维码" width="1171" height="1171">
         </figure>
       </div>
-      <p class="support-foot">请在付款前核对收款方信息。</p>
+      <div class="support-actions"><button type="button" id="supportButton" class="secondary-link">支持本站</button></div>
     </section>
     <section class="ocean-scene" aria-labelledby="ocean-title">
-      <div class="ocean-copy"><h3 id="ocean-title">海洋伙伴</h3><p>移动鼠标，附近的动物会慢慢靠近你</p></div>
+      <div class="ocean-copy"><h3 id="ocean-title">海洋伙伴</h3></div>
       <canvas id="oceanCanvas" aria-hidden="true"></canvas>
     </section>
   </main>
