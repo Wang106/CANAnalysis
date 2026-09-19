@@ -64,6 +64,9 @@
     .hero-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:28px;}
     .secondary-link{display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:0 18px;border-radius:8px;font-size:13px;font-weight:700;}
     .secondary-link{border:1px solid var(--line);background:rgba(29,33,43,.75);}
+    .contact-note{max-width:620px;margin:13px 0 0;color:var(--muted);font-size:12px;line-height:1.7;}
+    .contact-note a{color:var(--blue);font-weight:700;text-decoration:underline;text-decoration-color:color-mix(in srgb,var(--blue) 45%,transparent);text-underline-offset:3px;}
+    .contact-note a:hover,.contact-note a:focus-visible{color:var(--green);text-decoration-color:currentColor;outline:none;}
     .signal-card{position:relative;min-height:280px;border:1px solid var(--line);border-radius:18px;background:linear-gradient(145deg,rgba(29,33,43,.94),rgba(23,26,33,.82));overflow:hidden;box-shadow:0 22px 60px rgba(0,0,0,.25);}
     .signal-card::before{content:"CAN SIGNAL";position:absolute;top:18px;left:20px;color:var(--muted);font:10px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:2px;}
     .signal-grid{position:absolute;inset:52px 18px 18px;background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:38px 38px;border-radius:9px;opacity:.68;}
@@ -91,6 +94,15 @@
     .pay-card figcaption{margin:0 0 10px;color:#f0f3f8;font-size:14px;font-weight:700;line-height:1;}
     .qr-image{display:block;width:135px;height:135px;max-width:100%;margin:0;object-fit:contain;background:transparent;}
     .support-foot{margin:16px 0 0;text-align:center;color:#6f7786;font-size:10px;}
+    .ocean-scene{position:relative;min-height:310px;margin:14px 0 58px;border:1px solid color-mix(in srgb,var(--blue) 28%,var(--line));border-radius:18px;background:linear-gradient(180deg,color-mix(in srgb,var(--blue) 14%,var(--panel2)),color-mix(in srgb,#052f46 72%,var(--bg)));overflow:hidden;isolation:isolate;box-shadow:inset 0 1px rgba(255,255,255,.05);}
+    .ocean-scene::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 12% 16%,rgba(255,255,255,.16) 0 2px,transparent 3px),radial-gradient(circle at 78% 28%,rgba(255,255,255,.1) 0 3px,transparent 4px),linear-gradient(180deg,rgba(255,255,255,.04),transparent 30%);background-size:90px 92px,136px 144px,100% 100%;pointer-events:none;}
+    .ocean-copy{position:absolute;top:18px;left:20px;z-index:2;pointer-events:none;}
+    .ocean-copy h3{margin:0;color:#e8f7ff;font-size:15px;letter-spacing:.4px;}
+    .ocean-copy p{margin:5px 0 0;color:#a9cfdf;font-size:11px;}
+    #oceanCanvas{position:absolute;inset:0;display:block;width:100%;height:100%;touch-action:pan-y;}
+    html[data-skin="light"] .ocean-scene{background:linear-gradient(180deg,#dff4ff,#83c9e6);border-color:#9dcfe3;}
+    html[data-skin="light"] .ocean-copy h3{color:#12384a;}
+    html[data-skin="light"] .ocean-copy p{color:#315c70;}
     footer{padding:24px 0 calc(30px + env(safe-area-inset-bottom));border-top:1px solid var(--line);color:#6f7786;font-size:11px;}
     .footer-inner{display:flex;justify-content:space-between;gap:18px;}
     @media (max-width:760px){
@@ -106,6 +118,8 @@
       .feature-card{min-height:0;}
       .support-head{display:block;}
       .support-note{margin-top:12px;text-align:left;}
+      .ocean-scene{min-height:245px;margin-bottom:42px;border-radius:14px;}
+      .ocean-copy{top:14px;left:15px;}
 
       .footer-inner{display:block;line-height:1.8;}
     }
@@ -117,17 +131,18 @@
 <link rel="stylesheet" href="site-nav.css">
 <script src="site-i18n.js" defer></script>
 <script src="site-nav.js" defer></script>
+<script src="about-ocean.js" defer></script>
 </head>
 <body>
   <nav id="topNav" class="nav-open" aria-label="本站栏目">
     <button type="button" class="nav-peek" aria-expanded="true" aria-controls="navLinks"><span>栏目导航</span><span aria-hidden="true">⌄</span></button>
     <div class="top-nav-inner" id="navLinks">
-      <span class="nav-item pending" aria-disabled="true">首页</span>
-      <span class="nav-item pending" aria-disabled="true">在线解析</span>
-      <a class="nav-item" href="/">离线报文解析</a>
+      <a class="nav-item" href="/">首页</a>
+      <a class="nav-item" href="/online">在线连接</a>
+      <a class="nav-item" href="/offline">离线报文解析</a>
       <a class="nav-item" href="/convert">格式转换</a>
       <span class="nav-item pending" aria-disabled="true">27930报文分析</span>
-      <span class="nav-item pending" aria-disabled="true">J939分析</span>
+      <span class="nav-item pending" aria-disabled="true">J1939分析</span>
       <span class="nav-item pending" aria-disabled="true">友情链接</span>
       <span class="nav-item active" aria-current="page">关于本站</span>
     </div>
@@ -150,6 +165,7 @@
         <div class="hero-actions">
           <a class="secondary-link" href="#support">支持本站</a>
         </div>
+        <p class="contact-note"><span>如在使用过程中遇到问题，或有功能建议与其他需求，欢迎发送邮件联系：</span> <a href="mailto:whf969@foxmail.com">whf969@foxmail.com</a></p>
       </div>
       <div class="signal-card" aria-label="CAN 信号曲线示意图">
         <span class="signal-meta">0x180 · Rx</span>
@@ -201,7 +217,7 @@
       <div class="pay-grid">
         <figure class="pay-card" data-qr="wechat">
           <figcaption>微信</figcaption>
-          <img class="qr-image" src="wechat-pay.jpeg" alt="微信收款二维码" width="390" height="390">
+          <img class="qr-image" src="wechat-pay.jpeg" alt="微信收款二维码" width="382" height="382">
         </figure>
         <figure class="pay-card" data-qr="alipay">
           <figcaption>支付宝</figcaption>
@@ -209,6 +225,10 @@
         </figure>
       </div>
       <p class="support-foot">请在付款前核对收款方信息。</p>
+    </section>
+    <section class="ocean-scene" aria-labelledby="ocean-title">
+      <div class="ocean-copy"><h3 id="ocean-title">海洋伙伴</h3><p>移动鼠标，附近的动物会慢慢靠近你</p></div>
+      <canvas id="oceanCanvas" aria-hidden="true"></canvas>
     </section>
   </main>
 

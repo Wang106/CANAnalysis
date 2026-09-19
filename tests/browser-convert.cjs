@@ -9,7 +9,7 @@ const types={'.html':'text/html','.js':'text/javascript','.mjs':'text/javascript
 const server=createServer(async(req,res)=>{
   let url=new URL(req.url,'http://localhost').pathname;
   if(url==='/')url='/public/index.html';
-  else if(['/convert','/aboutus'].includes(url))url='/public'+url+'.html';
+  else if(['/offline','/online','/convert','/aboutus'].includes(url))url='/public'+url+'.html';
   else if(!url.startsWith('/tests/')&&!url.startsWith('/public/'))url='/public'+url;
   const file=path.resolve(root,'.'+url);
   if(!file.startsWith(root+path.sep)){res.writeHead(403).end();return;}
@@ -47,11 +47,12 @@ const server=createServer(async(req,res)=>{
       });
       assert.ok(result.ratio>=min,`${selector} contrast ${result.ratio.toFixed(2)} is below ${min}: ${JSON.stringify(result)}`);
     };
-    await languagePage.goto(base+'/');
+    await languagePage.goto(base+'/offline');
     await languagePage.locator('#siteLanguage').waitFor();
     assert.equal(await languagePage.locator('#topNav > :last-child #siteLanguage').count(),1,'language selector must be the final navigation control');
-    assert.equal((await languagePage.locator('#navLinks .nav-item').allTextContents()).join('|'),'首页|在线解析|离线报文解析|格式转换|27930报文分析|J939分析|友情链接|关于本站','navigation must insert online analysis before renamed offline analysis');
-    assert.deepEqual(await languagePage.locator('#navLinks .nav-item').nth(1).evaluate(node=>({pending:node.classList.contains('pending'),disabled:node.getAttribute('aria-disabled')})),{pending:true,disabled:'true'},'online analysis must remain a non-routing placeholder until its page exists');
+    assert.equal((await languagePage.locator('#navLinks .nav-item').allTextContents()).join('|'),'首页|在线连接|离线报文解析|格式转换|27930报文分析|J1939分析|友情链接|关于本站','navigation must link online connection before offline analysis');
+    assert.equal(await languagePage.locator('#navLinks .nav-item').first().getAttribute('href'),'/', 'offline analysis must link back to the home page');
+    assert.equal(await languagePage.locator('#navLinks .nav-item').nth(1).getAttribute('href'),'/online','online connection must route to its page');
     assert.equal(await languagePage.locator('meta[name="description"]').count(),1,'CAN page must provide a search description');
     assert.equal(await languagePage.locator('meta[property="og:title"]').count(),1,'CAN page must provide Open Graph metadata');
     assert.equal(await languagePage.locator('#emptyGuide').count(),1,'CAN page must show a first-use guide');
@@ -77,10 +78,10 @@ const server=createServer(async(req,res)=>{
     });
     assert.equal(desktopSelectorStyles.skinFont,desktopSelectorStyles.navFont,'default skin label must use the navigation font size');
     assert.equal(desktopSelectorStyles.languageFont,desktopSelectorStyles.navFont,'Language label must use the navigation font size');
-    assert.equal(desktopSelectorStyles.skinBorder,'solid','default skin label must have a clickable outline');
-    assert.equal(desktopSelectorStyles.languageBorder,'solid','Language label must have a clickable outline');
-    assert.notEqual(desktopSelectorStyles.skinBackground,'rgba(0, 0, 0, 0)','default skin label must have a clickable background');
-    assert.notEqual(desktopSelectorStyles.languageBackground,'rgba(0, 0, 0, 0)','Language label must have a clickable background');
+    assert.equal(desktopSelectorStyles.skinBorder,'none','default skin label must sit directly on the navigation');
+    assert.equal(desktopSelectorStyles.languageBorder,'none','Language label must sit directly on the navigation');
+    assert.equal(desktopSelectorStyles.skinBackground,'rgba(0, 0, 0, 0)','default skin label must not add a background panel');
+    assert.equal(desktopSelectorStyles.languageBackground,'rgba(0, 0, 0, 0)','Language label must not add a background panel');
     assert.equal(desktopSelectorStyles.skinArrow,'"⌄"','default skin label must advertise its menu with an arrow');
     assert.equal(desktopSelectorStyles.languageArrow,'"⌄"','Language label must advertise its menu with an arrow');
     assert.deepEqual([desktopSelectorStyles.skinOpacity,desktopSelectorStyles.skinSelectBounds],['0',desktopSelectorStyles.skinFaceBounds],'hidden skin selector must cover its visible label');
@@ -109,7 +110,7 @@ const server=createServer(async(req,res)=>{
     assert.equal(await languagePage.inputValue('#siteLanguage'),'en');
     assert.equal((await languagePage.locator('#siteSkin option').allTextContents()).join('|'),'Default Style|Dark Mode|Light Mode');
     assert.equal((await languagePage.textContent('.skin-face')).trim(),'Light Mode','selected skin label must be translated');
-    assert.equal((await languagePage.locator('#navLinks .nav-item').allTextContents()).join('|'),'Home|Online Analysis|Offline Message Analysis|Format Conversion|GB/T 27930 Analysis|J1939 Analysis|Links|About','new navigation labels must be translated consistently');
+    assert.equal((await languagePage.locator('#navLinks .nav-item').allTextContents()).join('|'),'Home|Online Connection|Offline Message Analysis|Format Conversion|GB/T 27930 Analysis|J1939 Analysis|Links|About','new navigation labels must be translated consistently');
     await languagePage.waitForTimeout(80);
     const indexUntranslated=await untranslated();assert.equal(indexUntranslated.length,0,'CAN analysis page must be fully translated to English: '+JSON.stringify(indexUntranslated));
     await languagePage.goto(base+'/aboutus');
@@ -119,6 +120,12 @@ const server=createServer(async(req,res)=>{
     assert.equal(await languagePage.locator('.feature-card').evaluate(node=>getComputedStyle(node).backgroundColor),'rgb(255, 255, 255)','about cards must use the shared light surface');
     assert.equal(await languagePage.locator('h1').evaluate(node=>getComputedStyle(node).color),'rgb(31, 36, 48)','about heading must remain readable in light mode');
     assert.equal(await languagePage.locator('.pay-card figcaption').first().evaluate(node=>getComputedStyle(node).color),'rgb(31, 36, 48)','payment titles must remain readable in light mode');
+    assert.equal(await languagePage.locator('.contact-note a').getAttribute('href'),'mailto:whf969@foxmail.com','support button must be followed by a clickable contact address');
+    assert.match(await languagePage.textContent('.contact-note'),/If you encounter a problem or have a feature request.*whf969@foxmail\.com/s,'contact guidance must be translated to English');
+    assert.equal(await languagePage.locator('#oceanCanvas').getAttribute('aria-hidden'),'true','ocean canvas must remain decorative');
+    assert.equal(await languagePage.locator('.ocean-scene').count(),1,'support area must contain one ocean animation');
+    const oceanState=await languagePage.evaluate(()=>window.__aboutOcean&&({count:window.__aboutOcean.creatureCount,reduced:window.__aboutOcean.reducedMotion}));
+    assert.ok(oceanState&&oceanState.count>=12&&oceanState.count<=18,'ocean animation must keep a mobile-safe animal count: '+JSON.stringify(oceanState));
     for(const selector of ['.eyebrow','.section-kicker','.support-foot','footer'])await assertReadable(languagePage,selector);
     const paymentQrLayout=await languagePage.locator('.pay-card').evaluateAll(cards=>cards.map(card=>{
       const image=card.querySelector('.qr-image'),caption=card.querySelector('figcaption'),box=image.getBoundingClientRect(),captionBox=caption.getBoundingClientRect(),cardStyle=getComputedStyle(card),imageStyle=getComputedStyle(image);
@@ -172,7 +179,7 @@ const server=createServer(async(req,res)=>{
     assert.equal(await languagePage.inputValue('#siteLanguage'),'zh');
     assert.equal(await languagePage.locator('.language-face').isHidden(),true,'compact icon layout must remain after a mobile choice');
     assert.match(await languagePage.textContent('#sourceSummary'),/选择源文件/);
-    await languagePage.goto(base+'/');
+    await languagePage.goto(base+'/offline');
     assert.equal(await languagePage.locator('.sig-col-title').count(),2,'signal columns must use non-wrapping title elements');
     const mobileHeaders=await languagePage.locator('.sig-col-title').evaluateAll(nodes=>nodes.map(node=>getComputedStyle(node).whiteSpace));
     assert.deepEqual(mobileHeaders,['nowrap','nowrap'],'signal column titles must not stack vertically on mobile');
@@ -182,6 +189,11 @@ const server=createServer(async(req,res)=>{
     await languagePage.selectOption('#siteSkin','default');
     await languagePage.waitForFunction(()=>document.documentElement.dataset.skin==='default');
     assert.equal((await languagePage.textContent('.skin-face')).trim(),'默认风格','switching back must restore the default skin label');
+    await languagePage.goto(base+'/');
+    assert.equal(await languagePage.locator('.page-card').count(),7,'home must show all seven page destinations');
+    assert.equal(await languagePage.locator('a.page-card').count(),4,'home must enable the four implemented destinations');
+    assert.equal(await languagePage.locator('.page-card.pending').count(),3,'home must gray out the three unimplemented destinations');
+    assert.equal(await languagePage.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'home must not overflow on mobile');
     await languageContext.close();
     assert.equal(await page.inputValue('#targetFormat'),'asc');
     assert.equal(await page.locator('.format-card').count(),7);

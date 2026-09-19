@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0f1115">
+  <meta name="description" content="通过本机连接服务连接 PCAN、周立功 USBCAN 与 Vector CAN 设备，安全地实时接收 CAN 报文。">
+  <meta property="og:title" content="在线连接 · CANAnalysis">
+  <meta property="og:description" content="连接本机 CAN 接口并在浏览器中实时查看 CAN 报文。">
+  <meta property="og:url" content="https://can.whf969.com/online">
+  <title>在线连接 · CANAnalysis</title>
+  <link rel="icon" href="icon.png" type="image/png">
+  <link rel="stylesheet" href="online.css">
+  <link rel="stylesheet" href="site-nav.css">
+  <script src="site-i18n.js" defer></script>
+  <script src="site-nav.js" defer></script>
+  <script src="online.js" defer></script>
+</head>
+<body>
+  <nav id="topNav" class="nav-open" aria-label="本站栏目">
+    <button type="button" class="nav-peek" aria-expanded="true" aria-controls="navLinks"><span>栏目导航</span><span aria-hidden="true">⌄</span></button>
+    <div class="top-nav-inner" id="navLinks">
+      <a class="nav-item" href="/">首页</a>
+      <span class="nav-item active" aria-current="page">在线连接</span>
+      <a class="nav-item" href="/offline">离线报文解析</a>
+      <a class="nav-item" href="/convert">格式转换</a>
+      <span class="nav-item pending" aria-disabled="true">27930报文分析</span>
+      <span class="nav-item pending" aria-disabled="true">J1939分析</span>
+      <span class="nav-item pending" aria-disabled="true">友情链接</span>
+      <a class="nav-item" href="/aboutus">关于本站</a>
+    </div>
+  </nav>
+
+  <header class="site-header shell">
+    <a class="brand" href="/"><img src="icon.png" width="34" height="34" alt=""><span>CANAnalysis<small>CAN DATA WORKSPACE</small></span></a>
+    <span class="safety-badge"><i aria-hidden="true"></i>只接收（安全模式）</span>
+  </header>
+
+  <main class="shell">
+    <section class="intro">
+      <span class="eyebrow">CAN HARDWARE BRIDGE</span>
+      <h1>在线连接 CAN 设备</h1>
+      <p>通过本机连接服务读取 CAN 总线，数据只在当前电脑与浏览器之间流转。</p>
+    </section>
+
+    <section class="bridge-card" aria-labelledby="bridge-title">
+      <div class="section-heading">
+        <div><span>01</span><h2 id="bridge-title">本机连接服务</h2></div>
+        <strong id="bridgeStatus" class="status idle"><i></i><span>未检测</span></strong>
+      </div>
+      <div class="bridge-row">
+        <p>需要先在 Windows 电脑上安装并启动 CANAnalysis 本机连接服务。首版仅接收报文，不会向 CAN 总线发送数据。</p>
+        <button id="probeButton" type="button" class="secondary">检测服务</button>
+      </div>
+    </section>
+
+    <section class="config-card" aria-labelledby="config-title">
+      <div class="section-heading"><div><span>02</span><h2 id="config-title">设备配置</h2></div></div>
+      <form id="connectionForm">
+        <div class="config-grid">
+          <label>设备型号<select id="deviceModel" name="deviceModel"></select></label>
+          <label>设备序号<select id="deviceIndex" name="deviceIndex"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></label>
+          <label>通道号<select id="channel" name="channel"></select></label>
+          <label>总线类型<select id="busType" name="busType"><option value="classic">经典 CAN</option><option value="fd">CAN FD</option></select></label>
+          <label>仲裁波特率<select id="bitrate" name="bitrate"></select></label>
+          <label id="dataBitrateField" hidden>数据波特率<select id="dataBitrate" name="dataBitrate"></select></label>
+        </div>
+        <div class="action-row">
+          <span class="receive-only"><i aria-hidden="true">✓</i>只接收（安全模式）</span>
+          <div>
+            <button id="disconnectButton" type="button" class="secondary" disabled>断开连接</button>
+            <button id="connectButton" type="submit" class="primary" disabled>连接设备</button>
+          </div>
+        </div>
+      </form>
+    </section>
+
+    <section class="monitor-card" aria-labelledby="monitor-title">
+      <div class="section-heading monitor-heading">
+        <div><span>03</span><h2 id="monitor-title">实时状态</h2></div>
+        <strong id="connectionStatus" class="connection-state">等待连接本机服务</strong>
+      </div>
+      <div class="metrics">
+        <div><span>接收帧数</span><strong id="frameCount">0</strong></div>
+        <div><span>错误数</span><strong id="errorCount">0</strong></div>
+        <div><span>丢帧数</span><strong id="dropCount">0</strong></div>
+      </div>
+      <div class="table-heading"><h3>实时报文</h3><button id="clearButton" type="button" class="text-button">清空列表</button></div>
+      <div class="frame-table-wrap">
+        <table class="frame-table">
+          <thead><tr><th>时间</th><th>通道</th><th>CAN ID</th><th>长度</th><th>数据</th><th>方向</th></tr></thead>
+          <tbody id="frameBody"><tr class="empty-row"><td colspan="6">尚未收到报文</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+  <footer>CANAnalysis · 本地连接 · 数据不上传</footer>
+</body>
+</html>

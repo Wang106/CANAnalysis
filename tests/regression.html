@@ -13,7 +13,7 @@
 <h1>CANAnalysis 回归测试</h1>
 <p id="summary">运行中…</p>
 <ol id="results"></ol>
-<iframe id="app" src="../public/index.html?regression=1"></iframe>
+<iframe id="app" src="../public/offline.html?regression=1"></iframe>
 <script>
 'use strict';
 const tests=[];
@@ -49,14 +49,16 @@ document.getElementById('app').addEventListener('load',async()=>{
     assert(alipayResponse.ok&&alipayResponse.headers.get('content-type')==='image/jpeg','支付宝收款二维码图片无法加载');
     const aboutNav=about.getElementById('topNav');
     const aboutItems=Array.from(aboutNav?.querySelectorAll('.nav-item')||[]);
-    assert(aboutItems.map(item=>item.textContent).join('|')==='首页|在线解析|离线报文解析|格式转换|27930报文分析|J939分析|友情链接|关于本站','关于本站栏目顺序或标题与主页面不一致');
+    assert(aboutItems.map(item=>item.textContent).join('|')==='首页|在线连接|离线报文解析|格式转换|27930报文分析|J1939分析|友情链接|关于本站','关于本站栏目顺序或标题与主页面不一致');
+    assert(aboutNav.querySelector('a.nav-item[href="/online"]')?.textContent==='在线连接','关于本站导航缺少在线连接入口');
     assert(aboutItems[7].getAttribute('aria-current')==='page'&&aboutItems[7].classList.contains('active'),'关于本站未标记为当前栏目');
-    assert(aboutNav.querySelector('a.nav-item[href="/"]')?.textContent==='离线报文解析','关于本站导航缺少返回离线报文解析的链接');
+    assert(aboutNav.querySelector('a.nav-item[href="/"]')?.textContent==='首页','关于本站导航缺少返回首页的链接');
+    assert(aboutNav.querySelector('a.nav-item[href="/offline"]')?.textContent==='离线报文解析','关于本站导航缺少离线报文解析入口');
     assert(aboutNav.querySelector('a[href="/convert"]'),'关于本站缺少格式转换入口');
-    assert(aboutItems.filter(item=>item.classList.contains('pending')&&item.getAttribute('aria-disabled')==='true').length===5,'关于本站未开放栏目缺少禁用语义');
+    assert(aboutItems.filter(item=>item.classList.contains('pending')&&item.getAttribute('aria-disabled')==='true').length===3,'关于本站未开放栏目缺少禁用语义');
   });
 
-  for(const page of ['index.html','aboutus.html','convert.html']){
+  for(const page of ['offline.html','index.html','aboutus.html','convert.html','online.html']){
     await record(page+' 导航固定及 CAN 生成曲线后收起',async()=>{
       const probe=document.createElement('iframe');
       probe.style.width='390px';
@@ -78,7 +80,7 @@ document.getElementById('app').addEventListener('load',async()=>{
         nav.dispatchEvent(new view.PointerEvent('pointerleave',{pointerType:'mouse'}));
         pageDoc.body.dispatchEvent(new view.PointerEvent('pointerdown',{bubbles:true,pointerType:'touch'}));
         assert(nav.classList.contains('nav-open'),'固定导航因鼠标离开或外部点击收起');
-        if(page==='index.html'){
+        if(page==='offline.html'){
           assert(nav.dataset.collapse==='charts','CAN 页未标记为曲线生成后收起');
           view.__siteNav.collapse();
           assert(!nav.classList.contains('nav-open')&&!nav.classList.contains('nav-fixed'),'CAN 页生成曲线后导航未收起');
@@ -335,13 +337,14 @@ document.getElementById('app').addEventListener('load',async()=>{
   await record('顶部横条启动高亮、当前页与占位提示正确',async()=>{
     const nav=doc.getElementById('topNav');
     const items=Array.from(nav.querySelectorAll('.nav-item'));
-    assert(items.map(item=>item.textContent).join('|')==='首页|在线解析|离线报文解析|格式转换|27930报文分析|J939分析|友情链接|关于本站','栏目顺序或标题错误');
-    assert(items[1].classList.contains('pending')&&items[1].getAttribute('aria-disabled')==='true','在线解析应作为开发中栏目显示');
+    assert(items.map(item=>item.textContent).join('|')==='首页|在线连接|离线报文解析|格式转换|27930报文分析|J1939分析|友情链接|关于本站','栏目顺序或标题错误');
+    assert(items[0].getAttribute('href')==='/','离线报文解析页缺少首页链接');
+    assert(items[1].getAttribute('href')==='/online','在线连接应跳转到在线连接页面');
     assert(items[2].getAttribute('aria-current')==='page'&&items[2].classList.contains('active'),'离线报文解析未标记为当前栏目');
     const aboutLink=nav.querySelector('a.nav-item[href="/aboutus"]');
     assert(aboutLink?.textContent==='关于本站','主页面导航缺少关于本站链接');
     assert(nav.querySelector('a[href="/convert"]'),'主页面缺少格式转换入口');
-    assert(items.filter(item=>item.classList.contains('pending')&&item.getAttribute('aria-disabled')==='true').length===4,'未开放栏目缺少禁用语义');
+    assert(items.filter(item=>item.classList.contains('pending')&&item.getAttribute('aria-disabled')==='true').length===3,'未开放栏目缺少禁用语义');
     nav.dispatchEvent(new win.PointerEvent('pointerenter',{pointerType:'mouse'}));
     nav.dispatchEvent(new win.PointerEvent('pointerleave',{pointerType:'mouse'}));
     assert(win.getComputedStyle(nav).height==='12px','导航栏默认未处于收缩状态');
@@ -350,7 +353,7 @@ document.getElementById('app').addEventListener('load',async()=>{
     const peekStyle=win.getComputedStyle(nav.querySelector('.nav-peek'));
     assert(win.matchMedia('(prefers-reduced-motion: reduce)').matches||leftSweep.animationName==='navSweepLeft'&&rightSweep.animationName==='navSweepRight'&&leftSweep.animationDuration==='1s'&&rightSweep.animationDuration==='1s','顶部横条缺少左右向中心聚拢的 1 秒亮色动画');
     assert(peekStyle.animationName==='none','“栏目导航”文字不应执行颜色动画');
-    items[0].dispatchEvent(new win.MouseEvent('click',{bubbles:true,clientX:80,clientY:8}));
+    items[4].dispatchEvent(new win.MouseEvent('click',{bubbles:true,clientX:80,clientY:8}));
     const notice=doc.getElementById('navNotice');
     assert(notice.classList.contains('show'),'点击未开放栏目后未显示鼠标旁提示');
     assert(notice.textContent==='页面还未完成开发，不急不急～','未开放栏目提示文字错误');

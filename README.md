@@ -1,6 +1,6 @@
-# CAN·Scope — CAN 信号波形分析工具
+# CANAnalysis — CAN 数据分析工作区
 
-一个纯前端的 CAN 总线信号分析网页工具，基于 DBC 数据库文件与 ASC 日志文件，解析 CAN 信号并可视化为波形曲线，支持多信号同步缩放与自动异常检测。
+一个面向 CAN 测试与工程分析的网页工具集，包含在线设备连接、DBC/ASC 离线解析、日志格式转换、信号 CSV 导出和站点功能说明。
 
 ## 功能特性
 
@@ -13,6 +13,7 @@
 - **自动分析**：汇总报文总数/时间范围/报文率/未知ID，并检测信号超量程、恒定/卡死、报文丢帧等问题
 - **固定导航**：页面向下滚动时栏目导航保持在屏幕顶部；CAN 解析页生成曲线后自动缩回，释放曲线空间
 - **中英双语**：导航栏右侧可在中文与 English 之间切换，选择会跨页面保留，静态内容与运行时状态同步切换
+- **在线连接**：`/online` 通过只监听本机的连接服务接入 PCAN、周立功 USBCAN 与 Vector 设备，首版固定为只接收模式
 
 ## 在线访问
 
@@ -25,12 +26,10 @@ https://can-analysis.<your-subdomain>.workers.dev
 ## 本地使用方法
 
 1. 克隆或下载本仓库
-2. 用浏览器（推荐 Chrome）打开 `public/index.html`
-3. 依次点击「加载 DBC 文件」「加载 ASC 文件」
-4. 在左侧勾选需要分析的信号
+2. 在仓库根目录运行 `npx wrangler dev`
+3. 用浏览器（推荐 Chrome）打开终端显示的本地地址；进入 `/offline` 使用离线解析
+4. 依次加载 DBC 与 ASC 文件，在左侧勾选需要分析的信号
 5. 点击「生成曲线」，需要异常汇总时再点击「报文分析」
-
-> 若仅拷贝 `index.html` 单文件，联网时会自动从 CDN 加载图表库，无需额外文件。
 
 ## 部署到 Cloudflare
 
@@ -118,6 +117,39 @@ node tests/browser-convert.cjs
 独立样本由 `tests/generate-convert-fixtures.py` 生成，提交的 JSON 样本让 Node 回归测试无需 Python 依赖。Python 交叉验证使用 python-can / asammdf 读取本引擎生成的真实文件，不仅依靠自有读写器互测。浏览器测试检查七种原始日志下载、混合格式多文件队列、同格式跳过、DBC 信号 CSV、移动布局、取消/错误流程及原有解析/导航回归；可通过 `PLAYWRIGHT_MODULE`、`CHROMIUM_PATH` 指定现有安装。
 
 格式参考：[python-can BLF 实现](https://python-can.readthedocs.io/en/stable/_modules/can/io/blf.html)、[PEAK TRC 官方格式](https://www.peak-system.com/produktcd/Pdf/English/PEAK_CAN_TRC_File_Format.pdf)、[asammdf 原始总线日志](https://asammdf.readthedocs.io/en/latest/buslogging.html)。
+
+## 页面与路由
+
+- `/`：首页，展示全部页面入口；未实现栏目以灰色卡片标记为“开发中”。
+- `/online`：在线连接 PCAN、周立功 USBCAN 和 Vector 设备。
+- `/offline`：DBC 与 ASC 离线报文解析、曲线和统计。
+- `/convert`：CAN 日志格式转换与 DBC 信号 CSV。
+- `/aboutus`：本站介绍、数据隐私说明与支持方式。
+- 27930 报文分析、J1939 分析和友情链接为规划栏目，首页显示但暂不可进入。
+
+## 在线连接 CAN 设备
+
+访问 `/online`（导航中的「在线连接」）可以配置设备型号、设备序号、通道、
+Classical CAN/CAN FD、仲裁波特率与数据波特率。网页本身不直接加载厂商 DLL，
+而是连接当前 Windows 电脑上的 `bridge/cananalysis_bridge.py`；CAN 数据只经过
+本机回环地址，不上传到 Cloudflare。
+
+首批设备配置包括：
+
+- PEAK PCAN-USB、PCAN-USB FD；
+- 周立功 USBCAN-I、USBCAN-II、USBCANFD；
+- Vector VN16xx、VN56xx。
+
+本机服务的驱动准备和启动方法见 [`bridge/README.md`](bridge/README.md)。由于仓库
+不能包含厂商驱动和硬件，自动测试使用模拟总线验证连接生命周期；每种型号正式
+使用前仍需在对应驱动版本和实物设备上完成回归。
+
+在线连接相关测试：
+
+```bash
+node tests/online-page.test.cjs
+python -m unittest tests.test_bridge
+```
 
 ## 许可
 
