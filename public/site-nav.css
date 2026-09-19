@@ -19,6 +19,8 @@
   .nav-item:not(.active):hover{color:var(--txt);background:var(--panel2);}
   .nav-item.active{color:#071523;background:var(--accent);font-weight:700;box-shadow:0 0 0 1px rgba(255,255,255,.08) inset;}
   .nav-item.active::after{display:none;}
+  html[data-skin="default"] #topNav .nav-item:not(.active){color:#98a2b3;}
+  html[data-skin="default"] .file-row button.primary{color:#071523;}
   .language-switcher{position:absolute;right:8px;top:6px;z-index:4;display:inline-flex;align-items:center;gap:5px;height:32px;padding:0 7px;border-left:1px solid var(--line);background:rgba(23,26,33,.98);color:var(--accent);font-size:13px;cursor:pointer;opacity:0;visibility:hidden;pointer-events:none;transform:translateY(-34px);transition:width .2s ease,transform .65s cubic-bezier(.22,1,.36,1),opacity .5s ease,visibility 0s .65s;}
   .language-switcher::after{content:"";position:absolute;right:-8px;bottom:-6px;width:100vw;height:1px;background:rgba(74,158,255,.38);pointer-events:none;}
   #topNav.nav-open .language-switcher{opacity:1;visibility:visible;pointer-events:auto;transform:translateY(0);transition-delay:0s;}
@@ -63,10 +65,10 @@ html[data-skin="dark"]{
   --line:#3a3e4d;
   --txt:#f1f3f8;
   --txt2:#aeb4c2;
-  --accent:#1687ff;
+  --accent:#4a9eff;
   --accent2:#32d16d;
   --green:#32d16d;
-  --blue:#1687ff;
+  --blue:#4a9eff;
   --text:#f1f3f8;
   --muted:#aeb4c2;
   color-scheme:dark;
@@ -112,7 +114,7 @@ html[data-skin="dark"] :is(input,select,textarea){
   border-color:#454a5a;
 }
 html[data-skin="dark"] :is(input,select,textarea):focus{
-  border-color:#1687ff;
+  border-color:#4a9eff;
   box-shadow:0 0 0 2px rgba(22,135,255,.16);
   outline:none;
 }
@@ -120,7 +122,7 @@ html[data-skin="dark"] :is(button,.btn,.format-card){
   border-color:#454a5a;
 }
 html[data-skin="dark"] :is(button,.btn):not(:disabled):hover{
-  border-color:#1687ff;
+  border-color:#4a9eff;
 }
 html[data-skin="dark"] :is(#header,#sigBar,.globalbar,.converter,.conversion-accordion,.compatibility,.signal-card,.feature-card){
   background:#242732;
@@ -144,8 +146,8 @@ html[data-skin="dark"] :is(.format-card[aria-pressed="true"],.format-card.active
 }
 html[data-skin="dark"] :is(.primary,.btn-primary,#btnStart,#startFormatConvert,#startCsvConvert){
   color:#fff;
-  background:#1687ff;
-  border-color:#1687ff;
+  background:#0b63ce;
+  border-color:#0b63ce;
   box-shadow:none;
 }
 html[data-skin="dark"] :is(.success,.btn-success){
@@ -173,6 +175,17 @@ html[data-skin="dark"] :is(.chart-area,.chart-wrap,#chartArea,#analysisWrap){
 html[data-skin="dark"] :is(.muted,.sub,.meta,.hint){
   color:#aeb4c2;
 }
+html[data-skin="dark"] :is(.support-foot,footer){
+  color:#aeb4c2;
+}
+html[data-skin="dark"] .csv-heading{
+  --section-accent:#c4b5fd;
+  --section-tint:rgba(196,181,253,.14);
+}
+html[data-skin="dark"] .compatibility-accordion>summary{
+  --section-accent:#fbbf24;
+  --section-tint:rgba(251,191,36,.13);
+}
 html[data-skin="dark"] ::selection{
   background:rgba(22,135,255,.42);
   color:#fff;
@@ -186,13 +199,13 @@ html[data-skin="light"]{
   --panel2:#eef1f6;
   --line:#d9dee8;
   --txt:#1f2430;
-  --txt2:#667085;
-  --accent:#1677ff;
-  --accent2:#22a65a;
-  --green:#22a65a;
-  --blue:#1677ff;
+  --txt2:#475467;
+  --accent:#0b63ce;
+  --accent2:#087a3e;
+  --green:#087a3e;
+  --blue:#0b63ce;
   --text:#1f2430;
-  --muted:#667085;
+  --muted:#475467;
   --err:#d92d20;
   color-scheme:light;
 }
@@ -209,7 +222,7 @@ html[data-skin="light"] #topNav .language-switcher{
 }
 html[data-skin="light"] #topNav .nav-peek{
   background:#ffffff;
-  color:#667085;
+  color:#475467;
 }
 html[data-skin="light"] #topNav .nav-item{
   color:#475467;
@@ -241,7 +254,7 @@ html[data-skin="light"] :is(input,select,textarea)::placeholder{
   color:#98a2b3;
 }
 html[data-skin="light"] :is(input,select,textarea):focus{
-  border-color:#1677ff;
+  border-color:#0b63ce;
   box-shadow:0 0 0 2px rgba(22,119,255,.13);
   outline:none;
 }
@@ -252,7 +265,7 @@ html[data-skin="light"] :is(button,.btn,.format-card){
 }
 html[data-skin="light"] :is(button,.btn):not(:disabled):hover{
   color:#0b63ce;
-  border-color:#1677ff;
+  border-color:#0b63ce;
 }
 html[data-skin="light"] :is(#header,#sigBar,.globalbar,.converter,.conversion-accordion,.compatibility,.signal-card,.feature-card){
   background:#ffffff;
@@ -277,14 +290,14 @@ html[data-skin="light"] :is(.format-card[aria-pressed="true"],.format-card.activ
 }
 html[data-skin="light"] :is(.primary,.btn-primary,#btnStart,#startFormatConvert,#startCsvConvert){
   color:#ffffff;
-  background:#1677ff;
-  border-color:#1677ff;
+  background:#0b63ce;
+  border-color:#0b63ce;
   box-shadow:none;
 }
 html[data-skin="light"] :is(.success,.btn-success){
   color:#ffffff;
-  background:#22a65a;
-  border-color:#22a65a;
+  background:#087a3e;
+  border-color:#087a3e;
 }
 html[data-skin="light"] :is(.intro,.hero,.page-header){
   background:transparent;
@@ -304,7 +317,7 @@ html[data-skin="light"] :is(.chart-area,.chart-wrap,#chartArea,#analysisWrap){
   background:#f4f6fa;
 }
 html[data-skin="light"] :is(.muted,.sub,.meta,.hint){
-  color:#667085;
+  color:#475467;
 }
 html[data-skin="light"] ::selection{
   background:rgba(22,119,255,.25);
@@ -325,6 +338,34 @@ html[data-skin="light"] :is(.topbar,.site-header){
 }
 html[data-skin="light"] :is(.conversion-flow,#analysisPanel){
   background:#f4f6fa;
+}
+html[data-skin="light"] :is(.support-foot,footer){
+  color:#475467;
+}
+html[data-skin="light"] .source-heading{
+  --section-accent:#0369a1;
+  --section-tint:rgba(3,105,161,.12);
+}
+html[data-skin="light"] .format-heading{
+  --section-accent:#087a3e;
+  --section-tint:rgba(8,122,62,.11);
+}
+html[data-skin="light"] .csv-heading{
+  --section-accent:#6d28d9;
+  --section-tint:rgba(109,40,217,.11);
+}
+html[data-skin="light"] .compatibility-accordion>summary{
+  --section-accent:#9a4d00;
+  --section-tint:rgba(154,77,0,.1);
+}
+html[data-skin="light"] :is(.workflow-heading,.conversion-accordion[open]>summary,.compatibility-accordion>summary){
+  background:linear-gradient(90deg,var(--section-tint),#f8fafc 76%);
+}
+html[data-skin="light"] :is(.source-pane>.advanced,.action-bar,thead){
+  background:#f8fafc;
+}
+html[data-skin="light"] .notes strong{
+  color:#344054;
 }
 html[data-skin="light"] :is(.side-col .liveval .lvval,.side-col .liveval .lvunit,.cc-side .liveval .lvval,.cc-side .liveval .lvunit){
   color:#1f2430;

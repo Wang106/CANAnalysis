@@ -31,6 +31,22 @@ const server=createServer(async(req,res)=>{
       for(const node of document.querySelectorAll('[aria-label],[placeholder],[title]'))if(!node.closest('[data-no-i18n]'))values.push(node.getAttribute('aria-label')||'',node.getAttribute('placeholder')||'',node.getAttribute('title')||'');
       return values.filter(value=>/[\u3400-\u9fff]/.test(value.trim()));
     });
+    const assertReadable=async(currentPage,selector,min=4.5)=>{
+      const result=await currentPage.locator(selector).first().evaluate(node=>{
+        const parse=value=>{const match=value.match(/[\d.]+/g);return match?match.slice(0,4).map(Number):[0,0,0,0];};
+        const composite=(top,bottom)=>{const alpha=(top[3]??1);return [0,1,2].map(index=>top[index]*alpha+bottom[index]*(1-alpha));};
+        let background=[255,255,255];
+        for(let current=node;current;current=current.parentElement){
+          const rgba=parse(getComputedStyle(current).backgroundColor);
+          if((rgba[3]??1)>0){background=composite(rgba,background);if((rgba[3]??1)===1)break;}
+        }
+        const foreground=parse(getComputedStyle(node).color).slice(0,3);
+        const luminance=rgb=>{const linear=rgb.map(channel=>{const value=channel/255;return value<=.04045?value/12.92:Math.pow((value+.055)/1.055,2.4);});return .2126*linear[0]+.7152*linear[1]+.0722*linear[2];};
+        const values=[luminance(foreground),luminance(background)].sort((a,b)=>b-a);
+        return {ratio:(values[0]+.05)/(values[1]+.05),foreground:getComputedStyle(node).color,background:background.map(Math.round).join(', ')};
+      });
+      assert.ok(result.ratio>=min,`${selector} contrast ${result.ratio.toFixed(2)} is below ${min}: ${JSON.stringify(result)}`);
+    };
     await languagePage.goto(base+'/');
     await languagePage.locator('#siteLanguage').waitFor();
     assert.equal(await languagePage.locator('#topNav > :last-child #siteLanguage').count(),1,'language selector must be the final navigation control');
@@ -67,6 +83,7 @@ const server=createServer(async(req,res)=>{
     assert.equal(desktopSelectorStyles.languageArrow,'"⌄"','Language label must advertise its menu with an arrow');
     assert.deepEqual([desktopSelectorStyles.skinOpacity,desktopSelectorStyles.skinSelectBounds],['0',desktopSelectorStyles.skinFaceBounds],'hidden skin selector must cover its visible label');
     assert.deepEqual([desktopSelectorStyles.languageOpacity,desktopSelectorStyles.languageSelectBounds],['0',desktopSelectorStyles.languageFaceBounds],'hidden language selector must cover its visible label');
+    for(const selector of ['#btnDbc','#btnAsc','#help b','.selstat b','#topNav .nav-item:not(.active)'])await assertReadable(languagePage,selector);
     await languagePage.selectOption('#siteSkin','dark');
     await languagePage.waitForFunction(()=>document.documentElement.dataset.skin==='dark');
     assert.equal((await languagePage.textContent('.skin-face')).trim(),'深色模式','selected dark skin must be visible in Chinese');
@@ -74,7 +91,8 @@ const server=createServer(async(req,res)=>{
       const root=getComputedStyle(document.documentElement),body=getComputedStyle(document.body),active=getComputedStyle(document.querySelector('.nav-item.active'));
       return {bg:root.getPropertyValue('--bg').trim(),panel:root.getPropertyValue('--panel').trim(),accent:root.getPropertyValue('--accent').trim(),body:body.backgroundColor,active:active.backgroundColor};
     });
-    assert.deepEqual(indexDark,{bg:'#191b24',panel:'#242732',accent:'#1687ff',body:'rgb(25, 27, 36)',active:'rgb(47, 95, 153)'},'CAN analysis page must apply the reference-inspired dark palette');
+    assert.deepEqual(indexDark,{bg:'#191b24',panel:'#242732',accent:'#4a9eff',body:'rgb(25, 27, 36)',active:'rgb(47, 95, 153)'},'CAN analysis page must apply the accessible reference-inspired dark palette');
+    for(const selector of ['#btnDbc','#btnAsc','#help b','.selstat b','#topNav .nav-item:not(.active)'])await assertReadable(languagePage,selector);
     await languagePage.selectOption('#siteSkin','light');
     await languagePage.waitForFunction(()=>document.documentElement.dataset.skin==='light');
     assert.equal((await languagePage.textContent('.skin-face')).trim(),'亮白模式','selected light skin must be visible in Chinese');
@@ -82,7 +100,8 @@ const server=createServer(async(req,res)=>{
       const root=getComputedStyle(document.documentElement),body=getComputedStyle(document.body),active=getComputedStyle(document.querySelector('.nav-item.active'));
       return {bg:root.getPropertyValue('--bg').trim(),panel:root.getPropertyValue('--panel').trim(),accent:root.getPropertyValue('--accent').trim(),body:body.backgroundColor,active:active.backgroundColor,chart:chartSkinColors()};
     });
-    assert.deepEqual(indexLight,{bg:'#f4f6fa',panel:'#ffffff',accent:'#1677ff',body:'rgb(244, 246, 250)',active:'rgb(219, 234, 254)',chart:{axis:'#667085',line:'#98a2b3',grid:'#e4e7ec',label:'#1f2430',curve:'#1677ff'}},'CAN analysis page and charts must apply the bright white palette');
+    assert.deepEqual(indexLight,{bg:'#f4f6fa',panel:'#ffffff',accent:'#0b63ce',body:'rgb(244, 246, 250)',active:'rgb(219, 234, 254)',chart:{axis:'#475467',line:'#98a2b3',grid:'#e4e7ec',label:'#1f2430',curve:'#0b63ce'}},'CAN analysis page and charts must apply the accessible bright white palette');
+    for(const selector of ['#btnDbc','#btnAsc','#help b','.selstat b','#topNav .nav-item:not(.active)','.skin-face','.language-face'])await assertReadable(languagePage,selector);
     await languagePage.selectOption('#siteLanguage','en');
     await languagePage.waitForFunction(()=>document.documentElement.lang==='en');
     assert.equal(await languagePage.inputValue('#siteLanguage'),'en');
@@ -97,6 +116,7 @@ const server=createServer(async(req,res)=>{
     assert.equal(await languagePage.locator('.feature-card').evaluate(node=>getComputedStyle(node).backgroundColor),'rgb(255, 255, 255)','about cards must use the shared light surface');
     assert.equal(await languagePage.locator('h1').evaluate(node=>getComputedStyle(node).color),'rgb(31, 36, 48)','about heading must remain readable in light mode');
     assert.equal(await languagePage.locator('.pay-card figcaption').first().evaluate(node=>getComputedStyle(node).color),'rgb(31, 36, 48)','payment titles must remain readable in light mode');
+    for(const selector of ['.eyebrow','.section-kicker','.support-foot','footer'])await assertReadable(languagePage,selector);
     const paymentQrLayout=await languagePage.locator('.pay-card').evaluateAll(cards=>cards.map(card=>{
       const image=card.querySelector('.qr-image'),caption=card.querySelector('figcaption'),box=image.getBoundingClientRect(),captionBox=caption.getBoundingClientRect(),cardStyle=getComputedStyle(card),imageStyle=getComputedStyle(image);
       return {width:Math.round(box.width),height:Math.round(box.height),cardBackground:cardStyle.backgroundImage,cardBorder:cardStyle.borderTopWidth,cardPadding:cardStyle.paddingTop,imageBackground:imageStyle.backgroundColor,captionCount:card.querySelectorAll('figcaption').length,title:caption.textContent.trim(),centerDelta:Math.round(Math.abs((box.left+box.width/2)-(captionBox.left+captionBox.width/2)))};
@@ -112,6 +132,7 @@ const server=createServer(async(req,res)=>{
     assert.equal(await languagePage.locator('.converter').evaluate(node=>getComputedStyle(node).borderRadius),'8px','alternate skins must use compact reference-style cards');
     assert.equal(await languagePage.locator('h1').evaluate(node=>getComputedStyle(node).color),'rgb(31, 36, 48)','converter heading must remain readable in light mode');
     assert.equal(await languagePage.locator('.conversion-flow').evaluate(node=>getComputedStyle(node).backgroundColor),'rgb(244, 246, 250)','conversion flow must use the light canvas');
+    for(const selector of ['.source-heading .accordion-index','.format-heading .accordion-index','.csv-heading .accordion-index','.compatibility-action','.notes strong','.format-card>span'])await assertReadable(languagePage,selector);
     const convertUntranslated=await untranslated();assert.equal(convertUntranslated.length,0,'convert page must be fully translated to English: '+JSON.stringify(convertUntranslated));
     await languagePage.locator('#sourceFile').setInputFiles({name:'language.asc',mimeType:'text/plain',buffer:Buffer.from('base hex timestamps absolute\n0.125 1 123 Rx d 1 01\n')});
     await languagePage.waitForFunction(()=>!/文件|转换后|保存到/.test(document.querySelector('#fileMeta').textContent));
