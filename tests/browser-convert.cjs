@@ -5,7 +5,7 @@ const {readFile}=require('node:fs/promises');
 const path=require('node:path');
 const assert=require('node:assert/strict');
 const root=path.resolve(__dirname,'..');
-const types={'.html':'text/html','.js':'text/javascript','.mjs':'text/javascript','.css':'text/css','.json':'application/json','.png':'image/png','.jpeg':'image/jpeg','.jpg':'image/jpeg'};
+const types={'.html':'text/html','.js':'text/javascript','.mjs':'text/javascript','.css':'text/css','.json':'application/json','.png':'image/png','.jpeg':'image/jpeg','.jpg':'image/jpeg','.webp':'image/webp'};
 const server=createServer(async(req,res)=>{
   let url=new URL(req.url,'http://localhost').pathname;
   if(url==='/')url='/public/index.html';
@@ -126,7 +126,10 @@ const server=createServer(async(req,res)=>{
     assert.equal(await languagePage.locator('.ocean-scene').count(),1,'support area must contain one ocean animation');
     const oceanState=await languagePage.evaluate(()=>window.__aboutOcean&&({count:window.__aboutOcean.creatureCount,reduced:window.__aboutOcean.reducedMotion}));
     assert.ok(oceanState&&oceanState.count>=12&&oceanState.count<=18,'ocean animation must keep a mobile-safe animal count: '+JSON.stringify(oceanState));
-    for(const selector of ['.eyebrow','.section-kicker','.support-foot','footer'])await assertReadable(languagePage,selector);
+    assert.equal(await languagePage.locator('.ocean-copy p').count(),0,'obsolete ocean interaction hint must be absent');
+    await languagePage.locator('#oceanCanvas').click({position:{x:180,y:120}});
+    assert.ok(await languagePage.evaluate(()=>window.__aboutOcean.rippleCount)>0,'clicking the ocean must create a visible ripple');
+    for(const selector of ['.eyebrow','.section-kicker','.support-note','footer'])await assertReadable(languagePage,selector);
     const paymentQrLayout=await languagePage.locator('.pay-card').evaluateAll(cards=>cards.map(card=>{
       const image=card.querySelector('.qr-image'),caption=card.querySelector('figcaption'),box=image.getBoundingClientRect(),captionBox=caption.getBoundingClientRect(),cardStyle=getComputedStyle(card),imageStyle=getComputedStyle(image);
       return {width:Math.round(box.width),height:Math.round(box.height),cardBackground:cardStyle.backgroundImage,cardBorder:cardStyle.borderTopWidth,cardPadding:cardStyle.paddingTop,imageBackground:imageStyle.backgroundColor,captionCount:card.querySelectorAll('figcaption').length,title:caption.textContent.trim(),centerDelta:Math.round(Math.abs((box.left+box.width/2)-(captionBox.left+captionBox.width/2)))};
@@ -136,7 +139,7 @@ const server=createServer(async(req,res)=>{
     for(const qr of paymentQrLayout)assert.deepEqual({...qr,title:undefined},{width:135,height:135,cardBackground:'none',cardBorder:'0px',cardPadding:'0px',imageBackground:'rgba(0, 0, 0, 0)',captionCount:1,centerDelta:0,title:undefined},'payment QR title and half-size image must be centered without a card background');
     await languagePage.selectOption('#siteSkin','default');
     await languagePage.waitForFunction(()=>document.documentElement.dataset.skin==='default');
-    for(const selector of ['.support-foot','footer','.privacy-icon'])await assertReadable(languagePage,selector);
+    for(const selector of ['.support-note','footer','.privacy-icon'])await assertReadable(languagePage,selector);
     await languagePage.selectOption('#siteSkin','light');
     await languagePage.waitForFunction(()=>document.documentElement.dataset.skin==='light');
     const aboutUntranslated=await untranslated();assert.equal(aboutUntranslated.length,0,'about page must be fully translated to English: '+JSON.stringify(aboutUntranslated));
