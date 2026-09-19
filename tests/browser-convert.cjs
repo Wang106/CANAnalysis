@@ -78,10 +78,10 @@ const server=createServer(async(req,res)=>{
     });
     assert.equal(desktopSelectorStyles.skinFont,desktopSelectorStyles.navFont,'default skin label must use the navigation font size');
     assert.equal(desktopSelectorStyles.languageFont,desktopSelectorStyles.navFont,'Language label must use the navigation font size');
-    assert.equal(desktopSelectorStyles.skinBorder,'solid','default skin label must have a clickable outline');
-    assert.equal(desktopSelectorStyles.languageBorder,'solid','Language label must have a clickable outline');
-    assert.notEqual(desktopSelectorStyles.skinBackground,'rgba(0, 0, 0, 0)','default skin label must have a clickable background');
-    assert.notEqual(desktopSelectorStyles.languageBackground,'rgba(0, 0, 0, 0)','Language label must have a clickable background');
+    assert.equal(desktopSelectorStyles.skinBorder,'none','default skin label must sit directly on the navigation');
+    assert.equal(desktopSelectorStyles.languageBorder,'none','Language label must sit directly on the navigation');
+    assert.equal(desktopSelectorStyles.skinBackground,'rgba(0, 0, 0, 0)','default skin label must not add a background panel');
+    assert.equal(desktopSelectorStyles.languageBackground,'rgba(0, 0, 0, 0)','Language label must not add a background panel');
     assert.equal(desktopSelectorStyles.skinArrow,'"⌄"','default skin label must advertise its menu with an arrow');
     assert.equal(desktopSelectorStyles.languageArrow,'"⌄"','Language label must advertise its menu with an arrow');
     assert.deepEqual([desktopSelectorStyles.skinOpacity,desktopSelectorStyles.skinSelectBounds],['0',desktopSelectorStyles.skinFaceBounds],'hidden skin selector must cover its visible label');
@@ -120,6 +120,12 @@ const server=createServer(async(req,res)=>{
     assert.equal(await languagePage.locator('.feature-card').evaluate(node=>getComputedStyle(node).backgroundColor),'rgb(255, 255, 255)','about cards must use the shared light surface');
     assert.equal(await languagePage.locator('h1').evaluate(node=>getComputedStyle(node).color),'rgb(31, 36, 48)','about heading must remain readable in light mode');
     assert.equal(await languagePage.locator('.pay-card figcaption').first().evaluate(node=>getComputedStyle(node).color),'rgb(31, 36, 48)','payment titles must remain readable in light mode');
+    assert.equal(await languagePage.locator('.contact-note a').getAttribute('href'),'mailto:whf969@foxmail.com','support button must be followed by a clickable contact address');
+    assert.match(await languagePage.textContent('.contact-note'),/If you encounter a problem or have a feature request.*whf969@foxmail\.com/s,'contact guidance must be translated to English');
+    assert.equal(await languagePage.locator('#oceanCanvas').getAttribute('aria-hidden'),'true','ocean canvas must remain decorative');
+    assert.equal(await languagePage.locator('.ocean-scene').count(),1,'support area must contain one ocean animation');
+    const oceanState=await languagePage.evaluate(()=>window.__aboutOcean&&({count:window.__aboutOcean.creatureCount,reduced:window.__aboutOcean.reducedMotion}));
+    assert.ok(oceanState&&oceanState.count>=12&&oceanState.count<=18,'ocean animation must keep a mobile-safe animal count: '+JSON.stringify(oceanState));
     for(const selector of ['.eyebrow','.section-kicker','.support-foot','footer'])await assertReadable(languagePage,selector);
     const paymentQrLayout=await languagePage.locator('.pay-card').evaluateAll(cards=>cards.map(card=>{
       const image=card.querySelector('.qr-image'),caption=card.querySelector('figcaption'),box=image.getBoundingClientRect(),captionBox=caption.getBoundingClientRect(),cardStyle=getComputedStyle(card),imageStyle=getComputedStyle(image);
