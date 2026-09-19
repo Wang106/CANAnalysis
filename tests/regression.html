@@ -49,11 +49,11 @@ document.getElementById('app').addEventListener('load',async()=>{
     assert(alipayResponse.ok&&alipayResponse.headers.get('content-type')==='image/jpeg','支付宝收款二维码图片无法加载');
     const aboutNav=about.getElementById('topNav');
     const aboutItems=Array.from(aboutNav?.querySelectorAll('.nav-item')||[]);
-    assert(aboutItems.map(item=>item.textContent).join('|')==='首页|CAN报文解析|格式转换|27930报文分析|J939分析|友情链接|关于本站','关于本站栏目顺序或标题与主页面不一致');
-    assert(aboutItems[6].getAttribute('aria-current')==='page'&&aboutItems[6].classList.contains('active'),'关于本站未标记为当前栏目');
-    assert(aboutNav.querySelector('a.nav-item[href="/"]')?.textContent==='CAN报文解析','关于本站导航缺少返回 CAN 报文解析的链接');
+    assert(aboutItems.map(item=>item.textContent).join('|')==='首页|在线解析|离线报文解析|格式转换|27930报文分析|J939分析|友情链接|关于本站','关于本站栏目顺序或标题与主页面不一致');
+    assert(aboutItems[7].getAttribute('aria-current')==='page'&&aboutItems[7].classList.contains('active'),'关于本站未标记为当前栏目');
+    assert(aboutNav.querySelector('a.nav-item[href="/"]')?.textContent==='离线报文解析','关于本站导航缺少返回离线报文解析的链接');
     assert(aboutNav.querySelector('a[href="/convert"]'),'关于本站缺少格式转换入口');
-    assert(aboutItems.filter(item=>item.classList.contains('pending')&&item.getAttribute('aria-disabled')==='true').length===4,'关于本站未开放栏目缺少禁用语义');
+    assert(aboutItems.filter(item=>item.classList.contains('pending')&&item.getAttribute('aria-disabled')==='true').length===5,'关于本站未开放栏目缺少禁用语义');
   });
 
   for(const page of ['index.html','aboutus.html','convert.html']){
@@ -335,8 +335,9 @@ document.getElementById('app').addEventListener('load',async()=>{
   await record('顶部横条启动高亮、当前页与占位提示正确',async()=>{
     const nav=doc.getElementById('topNav');
     const items=Array.from(nav.querySelectorAll('.nav-item'));
-    assert(items.map(item=>item.textContent).join('|')==='首页|CAN报文解析|格式转换|27930报文分析|J939分析|友情链接|关于本站','栏目顺序或标题错误');
-    assert(items[1].getAttribute('aria-current')==='page'&&items[1].classList.contains('active'),'CAN报文解析未标记为当前栏目');
+    assert(items.map(item=>item.textContent).join('|')==='首页|在线解析|离线报文解析|格式转换|27930报文分析|J939分析|友情链接|关于本站','栏目顺序或标题错误');
+    assert(items[1].classList.contains('pending')&&items[1].getAttribute('aria-disabled')==='true','在线解析应作为开发中栏目显示');
+    assert(items[2].getAttribute('aria-current')==='page'&&items[2].classList.contains('active'),'离线报文解析未标记为当前栏目');
     const aboutLink=nav.querySelector('a.nav-item[href="/aboutus"]');
     assert(aboutLink?.textContent==='关于本站','主页面导航缺少关于本站链接');
     assert(nav.querySelector('a[href="/convert"]'),'主页面缺少格式转换入口');
