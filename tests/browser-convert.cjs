@@ -9,7 +9,7 @@ const types={'.html':'text/html','.js':'text/javascript','.mjs':'text/javascript
 const server=createServer(async(req,res)=>{
   let url=new URL(req.url,'http://localhost').pathname;
   if(url==='/')url='/public/index.html';
-  else if(['/convert','/aboutus'].includes(url))url='/public'+url+'.html';
+  else if(['/offline','/online','/convert','/aboutus'].includes(url))url='/public'+url+'.html';
   else if(!url.startsWith('/tests/')&&!url.startsWith('/public/'))url='/public'+url;
   const file=path.resolve(root,'.'+url);
   if(!file.startsWith(root+path.sep)){res.writeHead(403).end();return;}
@@ -47,10 +47,11 @@ const server=createServer(async(req,res)=>{
       });
       assert.ok(result.ratio>=min,`${selector} contrast ${result.ratio.toFixed(2)} is below ${min}: ${JSON.stringify(result)}`);
     };
-    await languagePage.goto(base+'/');
+    await languagePage.goto(base+'/offline');
     await languagePage.locator('#siteLanguage').waitFor();
     assert.equal(await languagePage.locator('#topNav > :last-child #siteLanguage').count(),1,'language selector must be the final navigation control');
-    assert.equal((await languagePage.locator('#navLinks .nav-item').allTextContents()).join('|'),'首页|在线连接|离线报文解析|格式转换|27930报文分析|J939分析|友情链接|关于本站','navigation must link online connection before offline analysis');
+    assert.equal((await languagePage.locator('#navLinks .nav-item').allTextContents()).join('|'),'首页|在线连接|离线报文解析|格式转换|27930报文分析|J1939分析|友情链接|关于本站','navigation must link online connection before offline analysis');
+    assert.equal(await languagePage.locator('#navLinks .nav-item').first().getAttribute('href'),'/', 'offline analysis must link back to the home page');
     assert.equal(await languagePage.locator('#navLinks .nav-item').nth(1).getAttribute('href'),'/online','online connection must route to its page');
     assert.equal(await languagePage.locator('meta[name="description"]').count(),1,'CAN page must provide a search description');
     assert.equal(await languagePage.locator('meta[property="og:title"]').count(),1,'CAN page must provide Open Graph metadata');
@@ -172,7 +173,7 @@ const server=createServer(async(req,res)=>{
     assert.equal(await languagePage.inputValue('#siteLanguage'),'zh');
     assert.equal(await languagePage.locator('.language-face').isHidden(),true,'compact icon layout must remain after a mobile choice');
     assert.match(await languagePage.textContent('#sourceSummary'),/选择源文件/);
-    await languagePage.goto(base+'/');
+    await languagePage.goto(base+'/offline');
     assert.equal(await languagePage.locator('.sig-col-title').count(),2,'signal columns must use non-wrapping title elements');
     const mobileHeaders=await languagePage.locator('.sig-col-title').evaluateAll(nodes=>nodes.map(node=>getComputedStyle(node).whiteSpace));
     assert.deepEqual(mobileHeaders,['nowrap','nowrap'],'signal column titles must not stack vertically on mobile');
@@ -182,6 +183,11 @@ const server=createServer(async(req,res)=>{
     await languagePage.selectOption('#siteSkin','default');
     await languagePage.waitForFunction(()=>document.documentElement.dataset.skin==='default');
     assert.equal((await languagePage.textContent('.skin-face')).trim(),'默认风格','switching back must restore the default skin label');
+    await languagePage.goto(base+'/');
+    assert.equal(await languagePage.locator('.page-card').count(),7,'home must show all seven page destinations');
+    assert.equal(await languagePage.locator('a.page-card').count(),4,'home must enable the four implemented destinations');
+    assert.equal(await languagePage.locator('.page-card.pending').count(),3,'home must gray out the three unimplemented destinations');
+    assert.equal(await languagePage.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'home must not overflow on mobile');
     await languageContext.close();
     assert.equal(await page.inputValue('#targetFormat'),'asc');
     assert.equal(await page.locator('.format-card').count(),7);

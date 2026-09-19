@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 
 const html=fs.readFileSync('public/online.html','utf8');
 const script=fs.readFileSync('public/online.js','utf8');
-const pages=['public/index.html','public/aboutus.html','public/convert.html','public/online.html'];
+const pages=['public/index.html','public/offline.html','public/aboutus.html','public/convert.html','public/online.html'];
 
 for(const page of pages){
   const source=fs.readFileSync(page,'utf8');
