@@ -113,6 +113,7 @@ python tests/verify-convert-output.py
 npm install --no-save playwright
 npx playwright install chromium
 node tests/about-scroll.test.cjs
+node tests/about-ocean-motion.test.cjs
 node tests/browser-convert.cjs
 ```
 

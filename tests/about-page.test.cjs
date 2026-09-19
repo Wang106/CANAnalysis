@@ -12,11 +12,13 @@ assert.match(i18n,/If you encounter a problem or have a feature request/,'contac
 
 const supportTitle=html.indexOf('支持这个小工具');
 const supportNote=html.indexOf('如果它帮你节省了排查时间');
+const contactNote=html.indexOf('class="contact-note"');
 const payGrid=html.indexOf('class="pay-grid"');
 const supportButton=html.lastIndexOf('>支持本站<');
 assert.ok(supportTitle>=0&&supportNote>supportTitle&&supportNote<payGrid,'support guidance must sit directly below the support title');
-assert.ok(supportButton>payGrid,'support button must sit below the payment QR codes');
+assert.ok(contactNote>=0&&supportButton>contactNote&&supportButton<payGrid,'support button must sit directly below the contact guidance and above the payment area');
 assert.match(html,/<button type="button" id="supportButton" class="secondary-link">支持本站<\/button>/,'support control must not add a persistent URL anchor');
+assert.match(html,/supportButton[^\n]+addEventListener\(['"]click['"][\s\S]*?support[^\n]+scrollIntoView/,'support button must reveal the payment section without writing a URL hash');
 assert.match(html,/#support[^\n]+history\.replaceState/,'legacy support hashes must be removed without changing the current scroll position');
 assert.match(html,/navigation\?\.type===['"]reload['"]/,'about page must distinguish a reload from ordinary navigation');
 assert.match(html,/sessionStorage\.setItem\(scrollKey[\s\S]*?y:scrollY/,'about page must remember its scroll position before reload');
@@ -40,6 +42,11 @@ assert.match(ocean,/drawSeabed/,'ocean scene must include a seabed');
 assert.match(ocean,/drawSeaweed/,'ocean scene must include seaweed');
 assert.match(ocean,/ripples/,'ocean scene must track click ripples');
 assert.match(ocean,/addEventListener\(['"]click['"]/,'clicking the ocean scene must create a ripple');
+assert.match(ocean,/maxRadius:Math\.hypot/,'click ripples must calculate enough radius to cover the entire canvas');
+assert.match(ocean,/ctx\.arc\(ripple\.x,ripple\.y,radius/,'click ripples must expand as circles on the screen plane');
+assert.match(ocean,/drawTurtleFlippers|drawAnimatedTurtle/,'turtles must animate their flippers independently');
+assert.match(ocean,/drawCrabLegs|drawAnimatedCrab/,'crabs must animate their articulated legs independently');
+assert.match(ocean,/seaweedClusters/,'the seabed must use a denser set of tall seaweed clusters');
 for(const asset of ['ocean-fish.webp','ocean-turtle.webp','ocean-crab.webp']){
   assert.equal(fs.existsSync('public/'+asset),true,asset+' must exist');
 }
