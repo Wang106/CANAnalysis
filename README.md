@@ -1,6 +1,6 @@
-# CAN·Scope — CAN 信号波形分析工具
+# CANAnalysis — CAN 数据分析工作区
 
-一个纯前端的 CAN 总线信号分析网页工具，基于 DBC 数据库文件与 ASC 日志文件，解析 CAN 信号并可视化为波形曲线，支持多信号同步缩放与自动异常检测。
+一个面向 CAN 测试与工程分析的网页工具集，包含在线设备连接、DBC/ASC 离线解析、日志格式转换、信号 CSV 导出和站点功能说明。
 
 ## 功能特性
 
@@ -26,12 +26,10 @@ https://can-analysis.<your-subdomain>.workers.dev
 ## 本地使用方法
 
 1. 克隆或下载本仓库
-2. 用浏览器（推荐 Chrome）打开 `public/index.html`
-3. 依次点击「加载 DBC 文件」「加载 ASC 文件」
-4. 在左侧勾选需要分析的信号
+2. 在仓库根目录运行 `npx wrangler dev`
+3. 用浏览器（推荐 Chrome）打开终端显示的本地地址；进入 `/offline` 使用离线解析
+4. 依次加载 DBC 与 ASC 文件，在左侧勾选需要分析的信号
 5. 点击「生成曲线」，需要异常汇总时再点击「报文分析」
-
-> 若仅拷贝 `index.html` 单文件，联网时会自动从 CDN 加载图表库，无需额外文件。
 
 ## 部署到 Cloudflare
 
@@ -119,6 +117,15 @@ node tests/browser-convert.cjs
 独立样本由 `tests/generate-convert-fixtures.py` 生成，提交的 JSON 样本让 Node 回归测试无需 Python 依赖。Python 交叉验证使用 python-can / asammdf 读取本引擎生成的真实文件，不仅依靠自有读写器互测。浏览器测试检查七种原始日志下载、混合格式多文件队列、同格式跳过、DBC 信号 CSV、移动布局、取消/错误流程及原有解析/导航回归；可通过 `PLAYWRIGHT_MODULE`、`CHROMIUM_PATH` 指定现有安装。
 
 格式参考：[python-can BLF 实现](https://python-can.readthedocs.io/en/stable/_modules/can/io/blf.html)、[PEAK TRC 官方格式](https://www.peak-system.com/produktcd/Pdf/English/PEAK_CAN_TRC_File_Format.pdf)、[asammdf 原始总线日志](https://asammdf.readthedocs.io/en/latest/buslogging.html)。
+
+## 页面与路由
+
+- `/`：首页，展示全部页面入口；未实现栏目以灰色卡片标记为“开发中”。
+- `/online`：在线连接 PCAN、周立功 USBCAN 和 Vector 设备。
+- `/offline`：DBC 与 ASC 离线报文解析、曲线和统计。
+- `/convert`：CAN 日志格式转换与 DBC 信号 CSV。
+- `/aboutus`：本站介绍、数据隐私说明与支持方式。
+- 27930 报文分析、J1939 分析和友情链接为规划栏目，首页显示但暂不可进入。
 
 ## 在线连接 CAN 设备
 
