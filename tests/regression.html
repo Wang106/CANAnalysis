@@ -100,7 +100,7 @@ document.getElementById('app').addEventListener('load',async()=>{
 
   await record('初始提交号与已选信号提示可见',async()=>{
     assert(/^[0-9a-f]{8}$/i.test(doc.getElementById('hcommit').textContent.trim()),'左上角未显示 8 位提交号');
-    assert(doc.getElementById('sigPicked').textContent.trim()==='请先加载DBC文件','已选信号区域初始提示错误');
+    assert(doc.getElementById('sigPicked').textContent.trim()==='请先加载 DBC 文件','已选信号区域初始提示错误');
   });
 
   await record('iPhone 文件选择器不限制自定义扩展名',async()=>{
@@ -112,8 +112,8 @@ document.getElementById('app').addEventListener('load',async()=>{
 
   await record('左上角本地图标预加载且占位固定',async()=>{
     const icon=doc.querySelector('.header-left .icon');
-    const preload=doc.querySelector('link[rel="preload"][as="image"][href="icon.png"]');
-    assert(icon&&icon.getAttribute('src')==='icon.png','左上角图标未使用本地资源');
+    const preload=doc.querySelector('link[rel="preload"][as="image"][href="/icon.png"]');
+    assert(icon&&icon.getAttribute('src')==='/icon.png','左上角图标未使用本地资源');
     assert(icon.getAttribute('width')==='38'&&icon.getAttribute('height')==='38','图标缺少固定宽高属性');
     assert(icon.loading==='eager'&&icon.getAttribute('decoding')==='sync','图标未启用启动阶段优先加载与同步解码');
     assert(preload&&preload.getAttribute('fetchpriority')==='high','本地图标缺少高优先级预加载');
@@ -347,7 +347,7 @@ document.getElementById('app').addEventListener('load',async()=>{
     assert(items.filter(item=>item.classList.contains('pending')&&item.getAttribute('aria-disabled')==='true').length===3,'未开放栏目缺少禁用语义');
     nav.dispatchEvent(new win.PointerEvent('pointerenter',{pointerType:'mouse'}));
     nav.dispatchEvent(new win.PointerEvent('pointerleave',{pointerType:'mouse'}));
-    assert(win.getComputedStyle(nav).height==='12px','导航栏默认未处于收缩状态');
+    assert(!nav.classList.contains('nav-open')&&!nav.classList.contains('nav-fixed')&&win.getComputedStyle(nav).height==='20px','生成曲线后导航栏未恢复紧凑状态');
     const leftSweep=win.getComputedStyle(nav,'::before');
     const rightSweep=win.getComputedStyle(nav,'::after');
     const peekStyle=win.getComputedStyle(nav.querySelector('.nav-peek'));

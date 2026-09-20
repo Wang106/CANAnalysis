@@ -4,6 +4,7 @@ const assert=require('node:assert/strict');
 const html=fs.readFileSync('public/aboutus.html','utf8');
 const navCss=fs.readFileSync('public/site-nav.css','utf8');
 const ocean=fs.readFileSync('public/about-ocean.js','utf8');
+const oceanLoader=fs.readFileSync('public/about-ocean-loader.js','utf8');
 const i18n=fs.readFileSync('public/site-i18n.js','utf8');
 
 assert.match(html,/href="mailto:whf969@foxmail\.com"/,'about page must expose a clickable contact email');
@@ -28,29 +29,31 @@ assert.doesNotMatch(html,/移动鼠标，附近的动物会慢慢靠近你/,'oce
 
 assert.match(html,/<section class="ocean-scene"[^>]+aria-labelledby="ocean-title"/,'support area must include an accessible ocean scene');
 assert.match(html,/<canvas id="oceanCanvas"[^>]+aria-hidden="true"/,'ocean animation must be decorative to assistive technology');
-assert.match(html,/<script src="about-ocean\.js" defer><\/script>/,'ocean behavior must be isolated from the page');
+assert.match(html,/<script src="about-ocean-loader\.js" defer><\/script>/,'ocean animation must use the page-ready lazy loader');
+assert.match(oceanLoader,/addEventListener\(['"]load['"]/,'ocean assets must load only after the About page has opened');
+assert.match(oceanLoader,/requestIdleCallback/,'ocean loading must avoid competing with the initial page render');
 assert.match(ocean,/IntersectionObserver/,'ocean animation must pause while off screen');
 assert.match(ocean,/visibilitychange/,'ocean animation must pause in a background tab');
 assert.match(ocean,/prefers-reduced-motion:\s*reduce/,'ocean animation must support reduced motion');
 assert.match(ocean,/Math\.min\(devicePixelRatio\s*\|\|\s*1,\s*2\)/,'canvas pixel density must be capped for mobile performance');
 assert.match(ocean,/pointerenter|pointerdown/,'nearby animals must react to mouse and touch pointers');
 assert.match(ocean,/['"](?:fish|turtle|crab)['"]/,'scene must contain multiple animal types');
-assert.match(html,/ocean-cartoon-bg\.jpg/,'ocean scene must use the original painted cartoon background');
-assert.match(ocean,/drawFish/,'fish must be rendered as articulated cartoon characters');
-assert.match(ocean,/drawTurtle/,'turtles must be rendered as articulated cartoon characters');
-assert.match(ocean,/drawCrab/,'crabs must be rendered as articulated cartoon characters');
-assert.match(ocean,/drawWaterLight/,'ocean scene must include animated underwater light');
-assert.match(ocean,/drawForegroundWeeds/,'ocean scene must include animated foreground seaweed');
+assert.match(html,/ocean-cartoon-bg-v2\.jpg/,'ocean scene must use the brighter painted background');
+for(const asset of ['ocean-fish-v2.png','ocean-turtle-v2.png','ocean-crab-v2.png'])assert.match(oceanLoader,new RegExp(asset.replace('.','\\.')),'lazy loader must preload '+asset);
+assert.match(ocean,/drawCreature/,'animals must share smooth image-led motion rendering');
+assert.match(ocean,/drawCaustics/,'ocean scene must include animated underwater light');
+assert.match(ocean,/drawGrass/,'ocean scene must include animated foreground seaweed');
 assert.match(ocean,/ripples/,'ocean scene must track click ripples');
 assert.match(ocean,/addEventListener\(['"]click['"]/,'clicking the ocean scene must create a ripple');
 assert.match(ocean,/maxRadius:Math\.hypot/,'click ripples must calculate enough radius to cover the entire canvas');
 assert.match(ocean,/ctx\.arc\(ripple\.x,ripple\.y,ringProgress\*ripple\.maxRadius/,'click ripples must expand as circles on the screen plane');
-assert.match(ocean,/const front=Math\.sin\(swim\)/,'turtles must animate their flippers independently');
-assert.match(ocean,/for\(let leg=0;leg<4;leg\+\+\)/,'crabs must animate all articulated legs independently');
-assert.match(ocean,/tailWave=Math\.sin\(swim\)/,'fish must animate their tails independently');
-const background='public/ocean-cartoon-bg.jpg';
-assert.equal(fs.existsSync(background),true,'painted ocean background must exist');
-assert.ok(fs.statSync(background).size>100000,'painted ocean background must not be an empty placeholder');
+assert.match(ocean,/easeInOut/,'motion must use eased timing rather than rigid linear steps');
+assert.match(ocean,/breatheX=1\+wave/,'fish motion must include organic body deformation');
+assert.match(ocean,/shear=Math\.sin/,'turtle motion must include a soft swimming shear');
+assert.match(ocean,/Math\.abs\(wave\)/,'crab motion must include a softened walking bounce');
+for(const asset of ['ocean-cartoon-bg-v2.jpg','ocean-fish-v2.png','ocean-turtle-v2.png','ocean-crab-v2.png']){
+  const file='public/'+asset;assert.equal(fs.existsSync(file),true,asset+' must exist');assert.ok(fs.statSync(file).size>100000,asset+' must not be an empty placeholder');
+}
 
 assert.match(navCss,/\.skin-face\{[^}]*border:0[^}]*background:transparent/,'skin selector must sit transparently on the navigation');
 assert.match(navCss,/\.language-face\{[^}]*border:0[^}]*background:transparent/,'language selector must sit transparently on the navigation');

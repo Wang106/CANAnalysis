@@ -310,7 +310,11 @@ const server=createServer(async(req,res)=>{
       window.showOpenFilePicker=async()=>[sourceHandle];
       window.showSaveFilePicker=async options=>{window.__saveTest={options,sourceHandle};return {name:options.suggestedName,createWritable:async()=>({write:async blob=>window.__saveTest.bytes=blob.size,close:async()=>window.__saveTest.closed=true})};};
     });
-    await savePage.goto(base+'/convert');await savePage.click('#chooseFile');await savePage.click('#formatSummary');await savePage.click('.format-card[data-format="trc"]');await savePage.click('#startFormatConvert');
+    await savePage.goto(base+'/convert');
+    if(!await savePage.locator('#chooseFile').isVisible())await savePage.click('#sourceSummary');
+    await savePage.click('#chooseFile');
+    if(!await savePage.locator('.format-card[data-format="trc"]').isVisible())await savePage.click('#formatSummary');
+    await savePage.click('.format-card[data-format="trc"]');await savePage.click('#startFormatConvert');
     await savePage.locator('#result').waitFor({state:'visible'});
     const saveState=await savePage.evaluate(()=>({name:__saveTest.options.suggestedName,startIn:__saveTest.options.startIn===__saveTest.sourceHandle,bytes:__saveTest.bytes,closed:__saveTest.closed,status:document.getElementById('saveResult').textContent,downloadHidden:document.getElementById('download').hidden}));
     assert.equal(saveState.name,'vehicle.log.trc');assert.equal(saveState.startIn,true);assert.ok(saveState.bytes>0);assert.equal(saveState.closed,true);assert.match(saveState.status,/原文件所在位置/);assert.equal(saveState.downloadHidden,true);
@@ -318,6 +322,7 @@ const server=createServer(async(req,res)=>{
     await savePage.click('.format-card[data-format="blf"]');await savePage.click('#startFormatConvert');await savePage.locator('#result').waitFor({state:'visible'});
     assert.match(await savePage.textContent('#saveResult'),/写入失败/);assert.equal(await savePage.locator('#download').isVisible(),true);assert.equal(await savePage.getAttribute('#download','download'),'vehicle.log.blf');
     await savePage.close();
+    await page.evaluate(()=>localStorage.clear());
     await page.goto(base+'/tests/regression.html');
     await page.waitForFunction(()=>Array.isArray(window.__TEST_RESULTS__),{},{timeout:90000});
     const results=await page.evaluate(()=>window.__TEST_RESULTS__);

@@ -102,8 +102,9 @@
     .pay-card{display:flex;margin:0;padding:0;border:0;flex-direction:column;align-items:center;background:none;text-align:center;}
     .pay-card figcaption{margin:0 0 10px;color:#f0f3f8;font-size:14px;font-weight:700;line-height:1;}
     .qr-image{display:block;width:135px;height:135px;max-width:100%;margin:0;object-fit:contain;background:transparent;}
-    .ocean-scene{position:relative;min-height:420px;margin:14px 0 58px;border:1px solid rgba(148,221,234,.42);border-radius:18px;background:#2f8ba5 url('/ocean-cartoon-bg.jpg') center/cover no-repeat;overflow:hidden;isolation:isolate;box-shadow:inset 0 1px rgba(255,255,255,.25),0 24px 55px rgba(0,25,36,.24);}
-    .ocean-scene::before{content:"";position:absolute;inset:0;z-index:1;background:linear-gradient(180deg,rgba(12,79,112,.08),rgba(8,56,72,.03) 55%,rgba(13,35,37,.15)),radial-gradient(circle at 50% -12%,rgba(241,255,225,.2),transparent 48%);pointer-events:none;}
+    .ocean-scene{position:relative;min-height:420px;margin:14px 0 58px;border:1px solid rgba(124,218,230,.65);border-radius:18px;background:linear-gradient(180deg,#bdf7ff,#63d8ed 55%,#f7e4a8);overflow:hidden;isolation:isolate;box-shadow:inset 0 1px rgba(255,255,255,.68),0 24px 55px rgba(18,117,139,.2);transition:background-image .5s ease,box-shadow .5s ease;}
+    .ocean-scene.is-ready{background-image:url('/ocean-cartoon-bg-v2.jpg');background-position:center;background-size:cover;background-repeat:no-repeat;}
+    .ocean-scene::before{content:"";position:absolute;inset:0;z-index:1;background:linear-gradient(180deg,rgba(255,255,255,.12),rgba(91,211,229,.02) 55%,rgba(255,232,169,.08)),radial-gradient(circle at 50% -12%,rgba(255,255,255,.38),transparent 52%);pointer-events:none;}
     .ocean-copy{position:absolute;top:18px;left:20px;z-index:3;pointer-events:none;}
     .ocean-copy h3{display:inline-flex;margin:0;padding:7px 11px;border:1px solid rgba(235,252,255,.42);border-radius:999px;background:rgba(20,73,90,.42);color:#f3fdff;font-size:13px;letter-spacing:.5px;box-shadow:0 6px 22px rgba(0,31,45,.14);backdrop-filter:blur(7px);}
     #oceanCanvas{position:absolute;inset:0;display:block;width:100%;height:100%;touch-action:pan-y;}
@@ -133,7 +134,7 @@
 <link rel="stylesheet" href="site-nav.css">
 <script src="site-i18n.js" defer></script>
 <script src="site-nav.js" defer></script>
-<script src="about-ocean.js" defer></script>
+<script src="about-ocean-loader.js" defer></script>
 </head>
 <body>
   <nav id="topNav" class="nav-open" aria-label="本站栏目">
