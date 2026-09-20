@@ -34,25 +34,26 @@ assert.match(ocean,/visibilitychange/,'ocean animation must pause in a backgroun
 assert.match(ocean,/prefers-reduced-motion:\s*reduce/,'ocean animation must support reduced motion');
 assert.match(ocean,/Math\.min\(devicePixelRatio\s*\|\|\s*1,\s*2\)/,'canvas pixel density must be capped for mobile performance');
 assert.match(ocean,/pointerenter|pointerdown/,'nearby animals must react to mouse and touch pointers');
-assert.match(ocean,/type:\s*['"](?:fish|turtle|crab)/,'scene must contain multiple animal types');
-assert.match(ocean,/ocean-fish\.webp/,'ocean scene must render a 3D fish asset');
-assert.match(ocean,/ocean-turtle\.webp/,'ocean scene must render a 3D turtle asset');
-assert.match(ocean,/ocean-crab\.webp/,'ocean scene must render a 3D crab asset');
-assert.match(ocean,/drawSeabed/,'ocean scene must include a seabed');
-assert.match(ocean,/drawSeaweed/,'ocean scene must include seaweed');
+assert.match(ocean,/['"](?:fish|turtle|crab)['"]/,'scene must contain multiple animal types');
+assert.match(html,/ocean-cartoon-bg\.jpg/,'ocean scene must use the original painted cartoon background');
+assert.match(ocean,/drawFish/,'fish must be rendered as articulated cartoon characters');
+assert.match(ocean,/drawTurtle/,'turtles must be rendered as articulated cartoon characters');
+assert.match(ocean,/drawCrab/,'crabs must be rendered as articulated cartoon characters');
+assert.match(ocean,/drawWaterLight/,'ocean scene must include animated underwater light');
+assert.match(ocean,/drawForegroundWeeds/,'ocean scene must include animated foreground seaweed');
 assert.match(ocean,/ripples/,'ocean scene must track click ripples');
 assert.match(ocean,/addEventListener\(['"]click['"]/,'clicking the ocean scene must create a ripple');
 assert.match(ocean,/maxRadius:Math\.hypot/,'click ripples must calculate enough radius to cover the entire canvas');
-assert.match(ocean,/ctx\.arc\(ripple\.x,ripple\.y,radius/,'click ripples must expand as circles on the screen plane');
-assert.match(ocean,/drawTurtleFlippers|drawAnimatedTurtle/,'turtles must animate their flippers independently');
-assert.match(ocean,/drawCrabLegs|drawAnimatedCrab/,'crabs must animate their articulated legs independently');
-assert.match(ocean,/seaweedClusters/,'the seabed must use a denser set of tall seaweed clusters');
-for(const asset of ['ocean-fish.webp','ocean-turtle.webp','ocean-crab.webp']){
-  assert.equal(fs.existsSync('public/'+asset),true,asset+' must exist');
-}
+assert.match(ocean,/ctx\.arc\(ripple\.x,ripple\.y,ringProgress\*ripple\.maxRadius/,'click ripples must expand as circles on the screen plane');
+assert.match(ocean,/const front=Math\.sin\(swim\)/,'turtles must animate their flippers independently');
+assert.match(ocean,/for\(let leg=0;leg<4;leg\+\+\)/,'crabs must animate all articulated legs independently');
+assert.match(ocean,/tailWave=Math\.sin\(swim\)/,'fish must animate their tails independently');
+const background='public/ocean-cartoon-bg.jpg';
+assert.equal(fs.existsSync(background),true,'painted ocean background must exist');
+assert.ok(fs.statSync(background).size>100000,'painted ocean background must not be an empty placeholder');
 
 assert.match(navCss,/\.skin-face\{[^}]*border:0[^}]*background:transparent/,'skin selector must sit transparently on the navigation');
 assert.match(navCss,/\.language-face\{[^}]*border:0[^}]*background:transparent/,'language selector must sit transparently on the navigation');
 assert.match(navCss,/\.skin-face::after,\.language-face::after\{content:"⌄"/,'transparent selectors must retain a dropdown cue');
 
-console.log('PASS: support layout, transparent selectors and 3D interactive ocean scene');
+console.log('PASS: support layout and hand-drawn interactive ocean scene');

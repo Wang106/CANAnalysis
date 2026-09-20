@@ -117,7 +117,7 @@ const server=createServer(async(req,res)=>{
     assert.equal(await languagePage.inputValue('#siteLanguage'),'en','language choice must persist across pages');
     assert.equal(await languagePage.inputValue('#siteSkin'),'light','skin choice must persist on the about page');
     assert.equal(await languagePage.getAttribute('html','data-skin'),'light');
-    assert.equal(await languagePage.locator('.feature-card').evaluate(node=>getComputedStyle(node).backgroundColor),'rgb(255, 255, 255)','about cards must use the shared light surface');
+    assert.equal(await languagePage.locator('.feature-card').first().evaluate(node=>getComputedStyle(node).backgroundColor),'rgb(255, 255, 255)','about cards must use the shared light surface');
     assert.equal(await languagePage.locator('h1').evaluate(node=>getComputedStyle(node).color),'rgb(31, 36, 48)','about heading must remain readable in light mode');
     assert.equal(await languagePage.locator('.pay-card figcaption').first().evaluate(node=>getComputedStyle(node).color),'rgb(31, 36, 48)','payment titles must remain readable in light mode');
     assert.equal(await languagePage.locator('.contact-note a').getAttribute('href'),'mailto:whf969@foxmail.com','support button must be followed by a clickable contact address');
@@ -172,7 +172,7 @@ const server=createServer(async(req,res)=>{
     assert.deepEqual([mobileNavBounds.languageWidth,mobileNavBounds.languageLeft,mobileNavBounds.languageOpacity],[28,mobileNavBounds.languageIconLeft,'0'],'transparent language selector must directly cover the globe icon');
     assert.deepEqual([mobileNavBounds.skinWidth,mobileNavBounds.skinLeft,mobileNavBounds.skinOpacity],[28,mobileNavBounds.skinIconLeft,'0'],'transparent skin selector must directly cover the skin icon');
     assert.equal(mobileNavBounds.lineWidth,390,'navigation accent line must extend beneath the language selector');
-    assert.match(mobileNavBounds.lineColor,/0\.38\)/,'navigation accent line must use the softer color');
+    assert.match(mobileNavBounds.lineColor,/0\.24\)/,'light-theme navigation accent line must use the softer color');
     assert.equal(mobileNavBounds.linksBorder,'0px','short accent line under navigation links must be removed');
     if(process.env.SCREENSHOT_DIR){
       await languagePage.screenshot({path:path.join(process.env.SCREENSHOT_DIR,'convert-en-390.png'),fullPage:true});

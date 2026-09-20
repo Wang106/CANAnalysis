@@ -102,13 +102,13 @@
     .pay-card{display:flex;margin:0;padding:0;border:0;flex-direction:column;align-items:center;background:none;text-align:center;}
     .pay-card figcaption{margin:0 0 10px;color:#f0f3f8;font-size:14px;font-weight:700;line-height:1;}
     .qr-image{display:block;width:135px;height:135px;max-width:100%;margin:0;object-fit:contain;background:transparent;}
-    .ocean-scene{position:relative;min-height:310px;margin:14px 0 58px;border:1px solid color-mix(in srgb,var(--blue) 28%,var(--line));border-radius:18px;background:linear-gradient(180deg,color-mix(in srgb,var(--blue) 14%,var(--panel2)),color-mix(in srgb,#052f46 72%,var(--bg)));overflow:hidden;isolation:isolate;box-shadow:inset 0 1px rgba(255,255,255,.05);}
-    .ocean-scene::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 12% 16%,rgba(255,255,255,.16) 0 2px,transparent 3px),radial-gradient(circle at 78% 28%,rgba(255,255,255,.1) 0 3px,transparent 4px),linear-gradient(180deg,rgba(255,255,255,.04),transparent 30%);background-size:90px 92px,136px 144px,100% 100%;pointer-events:none;}
-    .ocean-copy{position:absolute;top:18px;left:20px;z-index:2;pointer-events:none;}
-    .ocean-copy h3{margin:0;color:#e8f7ff;font-size:15px;letter-spacing:.4px;}
+    .ocean-scene{position:relative;min-height:420px;margin:14px 0 58px;border:1px solid rgba(148,221,234,.42);border-radius:18px;background:#2f8ba5 url('/ocean-cartoon-bg.jpg') center/cover no-repeat;overflow:hidden;isolation:isolate;box-shadow:inset 0 1px rgba(255,255,255,.25),0 24px 55px rgba(0,25,36,.24);}
+    .ocean-scene::before{content:"";position:absolute;inset:0;z-index:1;background:linear-gradient(180deg,rgba(12,79,112,.08),rgba(8,56,72,.03) 55%,rgba(13,35,37,.15)),radial-gradient(circle at 50% -12%,rgba(241,255,225,.2),transparent 48%);pointer-events:none;}
+    .ocean-copy{position:absolute;top:18px;left:20px;z-index:3;pointer-events:none;}
+    .ocean-copy h3{display:inline-flex;margin:0;padding:7px 11px;border:1px solid rgba(235,252,255,.42);border-radius:999px;background:rgba(20,73,90,.42);color:#f3fdff;font-size:13px;letter-spacing:.5px;box-shadow:0 6px 22px rgba(0,31,45,.14);backdrop-filter:blur(7px);}
     #oceanCanvas{position:absolute;inset:0;display:block;width:100%;height:100%;touch-action:pan-y;}
-    html[data-skin="light"] .ocean-scene{background:linear-gradient(180deg,#dff4ff,#83c9e6);border-color:#9dcfe3;}
-    html[data-skin="light"] .ocean-copy h3{color:#12384a;}
+    html[data-skin="light"] .ocean-scene{border-color:#77b7c3;}
+    html[data-skin="light"] .ocean-copy h3{color:#f3fdff;}
     footer{padding:24px 0 calc(30px + env(safe-area-inset-bottom));border-top:1px solid var(--line);color:#6f7786;font-size:11px;}
     .footer-inner{display:flex;justify-content:space-between;gap:18px;}
     @media (max-width:760px){
@@ -120,7 +120,7 @@
       .features,.support{padding:50px 0;}
       .feature-grid,.pay-grid{grid-template-columns:1fr;}
       .feature-card{min-height:0;}
-      .ocean-scene{min-height:245px;margin-bottom:42px;border-radius:14px;}
+      .ocean-scene{min-height:300px;margin-bottom:42px;border-radius:14px;background-position:center;}
       .ocean-copy{top:14px;left:15px;}
 
       .footer-inner{display:block;line-height:1.8;}
