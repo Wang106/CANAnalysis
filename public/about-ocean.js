@@ -1,4 +1,4 @@
-/* Lightweight 3D-rendered ocean scene for the About page. */
+/* Original hand-drawn ocean animation for the About page. */
 (() => {
   'use strict';
 
@@ -10,310 +10,245 @@
   const motionQuery=matchMedia('(prefers-reduced-motion: reduce)');
   const pointer={x:0,y:0,active:false};
   const ripples=[];
-  const seaweedClusters=[.025,.065,.11,.165,.225,.31,.69,.755,.815,.875,.93,.975];
-  const animalPlan=[
-    {type:'fish'},{type:'fish'},{type:'fish'},{type:'fish'},
-    {type:'fish'},{type:'fish'},{type:'fish'},{type:'fish'},
-    {type:'turtle'},{type:'turtle'},{type:'crab'},{type:'crab'}
-  ];
-  const assetSources={fish:'/ocean-fish.webp',turtle:'/ocean-turtle.webp',crab:'/ocean-crab.webp'};
-  const assets={};
   const creatures=[];
+  const bubbles=[];
+  const foregroundWeeds=[.015,.035,.06,.09,.13,.17,.81,.845,.88,.92,.955,.985];
+  const palettes=[
+    {body:'#f1cf63',belly:'#fff0a4',fin:'#e57750',line:'#513d3c'},
+    {body:'#7fc4c1',belly:'#cbe9d7',fin:'#e4a95b',line:'#324d51'},
+    {body:'#d88c9a',belly:'#f3c8bf',fin:'#7a86bd',line:'#513b53'},
+    {body:'#8cad62',belly:'#d7dc94',fin:'#d77949',line:'#394837'}
+  ];
   let width=1,height=1,dpr=1,frame=0,lastTime=0,visible=true,tabVisible=!document.hidden,destroyed=false;
 
-  const assetReady=Object.entries(assetSources).map(([type,source])=>new Promise(resolve=>{
-    const image=new Image();
-    image.decoding='async';
-    image.onload=()=>{assets[type]=image;resolve();};
-    image.onerror=resolve;
-    image.src=source;
-  }));
-  Promise.all(assetReady).then(()=>draw(performance.now(),0));
-
   const random=(min,max)=>min+Math.random()*(max-min);
-  const createCreatures=()=>{
-    creatures.length=0;
-    animalPlan.forEach((plan,index)=>{
-      const isCrab=plan.type==='crab';
-      const direction=index%3===0?-1:1;
+  const TAU=Math.PI*2;
+
+  function roundedStroke(ctx,color,widthValue){
+    ctx.strokeStyle=color;ctx.lineWidth=widthValue;ctx.lineCap='round';ctx.lineJoin='round';
+  }
+
+  function seedScene(){
+    creatures.length=0;bubbles.length=0;
+    const plans=[
+      ['turtle',.74,1],['turtle',.48,-1],['crab',.88,-1],['crab',.22,1],
+      ['fish',.24,1],['fish',.3,1],['fish',.36,1],['fish',.64,-1],
+      ['fish',.7,-1],['fish',.76,-1],['fish',.54,1],['fish',.42,-1]
+    ];
+    plans.forEach(([type,depth,direction],index)=>{
+      const isCrab=type==='crab';
       creatures.push({
-        ...plan,
-        x:random(45,Math.max(46,width-45)),
-        y:isCrab?height-random(30,48):random(74,Math.max(75,height-58)),
-        vx:direction*random(9,17),
-        vy:random(-2,2),
-        direction,
-        speed:random(10,19),
-        size:plan.type==='fish'?random(.76,1.08):plan.type==='turtle'?random(.8,1.05):random(.72,.94),
-        phase:random(0,Math.PI*2),
-        depth:random(.72,1.05)
+        type,depth,direction,
+        x:random(40,Math.max(41,width-40)),
+        y:isCrab?height-random(27,43):random(72,Math.max(73,height-72)),
+        vx:direction*random(type==='fish'?20:11,type==='fish'?34:19),vy:random(-1.5,1.5),
+        size:type==='fish'?random(.68,1.02):type==='turtle'?random(.76,1):random(.72,.95),
+        phase:index*.83+random(0,.8),palette:palettes[index%palettes.length]
       });
     });
-  };
+    for(let index=0;index<24;index++)bubbles.push({
+      x:random(0,width),y:random(10,height),radius:random(1.2,3.8),speed:random(6,17),phase:random(0,TAU)
+    });
+  }
 
   const resize=()=>{
     const rect=canvas.getBoundingClientRect();
-    const nextWidth=Math.max(1,Math.round(rect.width));
-    const nextHeight=Math.max(1,Math.round(rect.height));
     const oldWidth=width,oldHeight=height;
-    width=nextWidth;height=nextHeight;
+    width=Math.max(1,Math.round(rect.width));height=Math.max(1,Math.round(rect.height));
     dpr=Math.min(devicePixelRatio||1,2);
-    canvas.width=Math.round(width*dpr);
-    canvas.height=Math.round(height*dpr);
+    canvas.width=Math.round(width*dpr);canvas.height=Math.round(height*dpr);
     context.setTransform(dpr,0,0,dpr,0,0);
-    if(!creatures.length)createCreatures();
+    if(!creatures.length)seedScene();
     else creatures.forEach(creature=>{
-      creature.x=Math.min(width-18,Math.max(18,creature.x*(width/oldWidth)));
-      creature.y=Math.min(height-22,Math.max(60,creature.y*(height/oldHeight)));
-      if(creature.type==='crab')creature.y=height-random(30,46);
+      creature.x=Math.max(20,Math.min(width-20,creature.x*(width/oldWidth)));
+      creature.y=Math.max(55,Math.min(height-40,creature.y*(height/oldHeight)));
+      if(creature.type==='crab')creature.y=height-random(27,43);
     });
     draw(performance.now(),0);
   };
 
-  const sceneColors=()=>document.documentElement.dataset.skin==='light'
-    ? {sand:'#a98b5f',sandGlow:'#d5bd8e',rock:'#536a72',rockLight:'#82969b',weed:'#176f5b',weedLight:'#27977a',bubble:'rgba(255,255,255,.7)',ripple:'rgba(255,255,255,.82)'}
-    : {sand:'#423e35',sandGlow:'#756a4c',rock:'#2e3c46',rockLight:'#50636b',weed:'#16705c',weedLight:'#2fa07b',bubble:'rgba(189,229,246,.3)',ripple:'rgba(153,225,255,.78)'};
-
-  function drawSeaweed(ctx,time,colors){
-    ctx.save();ctx.lineCap='round';
-    seaweedClusters.forEach((ratio,index)=>{
-      const baseX=width*ratio;
-      const stalks=3+(index%3);
-      for(let stalk=0;stalk<stalks;stalk++){
-        const x=baseX+(stalk-(stalks-1)/2)*7;
-        const tall=52+((index*17+stalk*13)%72);
-        const sway=Math.sin(time*.00105+index*.7+stalk)*12;
-        ctx.beginPath();ctx.moveTo(x,height-14);
-        ctx.bezierCurveTo(x-11,height-tall*.62,x+sway,height-tall*.58,x+sway*.78,height-tall);
-        ctx.strokeStyle=stalk%2?colors.weedLight:colors.weed;
-        ctx.lineWidth=Math.max(2.2,4.5-stalk*.38);ctx.globalAlpha=.78;ctx.stroke();
-        for(const leafAt of [.42,.68]){
-          const leafY=height-14-tall*leafAt;
-          const leafX=x+sway*leafAt*.62;
-          const side=(stalk+Math.round(leafAt*10))%2?-1:1;
-          ctx.beginPath();ctx.moveTo(leafX,leafY);
-          ctx.quadraticCurveTo(leafX+side*13,leafY-8,leafX+side*18,leafY-2);
-          ctx.strokeStyle=stalk%2?colors.weed:colors.weedLight;ctx.lineWidth=2.4;ctx.stroke();
-        }
-      }
-    });
-    ctx.restore();
-  }
-
-  function drawRocks(ctx,colors){
-    const rocks=[[.12,25,28,15],[.2,16,18,10],[.72,18,22,12],[.88,27,34,17],[.95,14,18,10]];
-    ctx.save();
-    rocks.forEach(([ratio,y,rx,ry],index)=>{
-      const gradient=ctx.createRadialGradient(width*ratio-rx*.35,height-y-ry*.4,2,width*ratio,height-y,rx);
-      gradient.addColorStop(0,colors.rockLight);gradient.addColorStop(1,colors.rock);
-      ctx.fillStyle=gradient;ctx.beginPath();ctx.ellipse(width*ratio,height-y,rx,ry,-.12+(index%3)*.11,0,Math.PI*2);ctx.fill();
-    });
-    ctx.restore();
-  }
-
-  function drawSeabed(ctx,time,colors){
-    const sand=ctx.createLinearGradient(0,height-54,0,height);
-    sand.addColorStop(0,colors.sandGlow);sand.addColorStop(1,colors.sand);
-    ctx.beginPath();ctx.moveTo(0,height-30);
-    for(let x=0;x<=width+28;x+=28)ctx.lineTo(x,height-29+Math.sin(x*.028+time*.00025)*4);
-    ctx.lineTo(width,height);ctx.lineTo(0,height);ctx.closePath();ctx.fillStyle=sand;ctx.globalAlpha=.72;ctx.fill();ctx.globalAlpha=1;
-    drawRocks(ctx,colors);
-    drawSeaweed(ctx,time,colors);
-  }
-
-  const drawBubbles=(ctx,time,colors)=>{
-    ctx.strokeStyle=colors.bubble;ctx.lineWidth=1;
-    for(let index=0;index<11;index++){
-      const x=(index*83+31)%Math.max(width,1);
-      const y=(height-((time*.014+index*47)%(height+40)))+20;
-      ctx.beginPath();ctx.arc(x,y,1.5+(index%3),0,Math.PI*2);ctx.stroke();
+  function drawWaterLight(ctx,time){
+    ctx.save();ctx.globalCompositeOperation='screen';ctx.globalAlpha=.1;
+    for(let index=0;index<4;index++){
+      const x=width*(.18+index*.23)+Math.sin(time*.0003+index)*35;
+      const gradient=ctx.createLinearGradient(x,0,x+70,height);
+      gradient.addColorStop(0,'rgba(214,250,255,.9)');gradient.addColorStop(1,'rgba(91,187,213,0)');
+      ctx.fillStyle=gradient;ctx.beginPath();ctx.moveTo(x-18,0);ctx.lineTo(x+25,0);ctx.lineTo(x+115,height);ctx.lineTo(x+50,height);ctx.closePath();ctx.fill();
     }
-  };
+    ctx.restore();
+  }
 
-  const drawFallback=(ctx,creature)=>{
-    const scale=creature.type==='turtle'?1.2:(creature.type==='crab'?0.85:1);
-    ctx.fillStyle='rgba(125,210,225,.42)';ctx.beginPath();ctx.ellipse(0,0,30*scale,14*scale,0,0,Math.PI*2);ctx.fill();
-  };
-
-  function drawTurtleFlippers(ctx,creature,time,drawWidth,drawHeight){
-    const glide=Math.sin(time*.0021+creature.phase*.7);
-    const gradient=ctx.createLinearGradient(0,-drawHeight*.5,0,drawHeight*.7);
-    gradient.addColorStop(0,'#7e8f55');gradient.addColorStop(.48,'#536b43');gradient.addColorStop(1,'#273f32');
-    const flippers=[
-      {x:-.2,y:-.18,angle:-1.72,amplitude:.42,length:.5,phase:0},
-      {x:.18,y:-.16,angle:-.42,amplitude:.42,length:.56,phase:Math.PI},
-      {x:-.28,y:.2,angle:2.25,amplitude:.24,length:.38,phase:Math.PI},
-      {x:.2,y:.2,angle:.74,amplitude:.24,length:.4,phase:0}
-    ];
-    ctx.fillStyle=gradient;ctx.strokeStyle='rgba(198,208,137,.72)';ctx.lineWidth=1;
-    flippers.forEach(flipper=>{
-      const flap=Math.sin(time*.0052+creature.phase+flipper.phase)*flipper.amplitude+glide*.08;
-      const length=drawWidth*flipper.length;
-      const thickness=drawHeight*(flipper.length>.45?.24:.19);
-      ctx.save();ctx.translate(drawWidth*flipper.x,drawHeight*flipper.y);ctx.rotate(flipper.angle+flap);
-      ctx.beginPath();ctx.moveTo(0,-thickness*.35);
-      ctx.bezierCurveTo(length*.28,-thickness,length*.82,-thickness*.48,length,0);
-      ctx.bezierCurveTo(length*.7,thickness*.42,length*.22,thickness*.52,0,thickness*.28);
-      ctx.closePath();ctx.fill();ctx.stroke();
-      ctx.strokeStyle='rgba(214,220,157,.44)';ctx.lineWidth=.7;
-      ctx.beginPath();ctx.moveTo(length*.06,0);ctx.quadraticCurveTo(length*.45,-thickness*.08,length*.9,0);ctx.stroke();
-      for(const along of [.32,.55,.74]){
-        ctx.beginPath();ctx.moveTo(length*along,-thickness*.04);ctx.lineTo(length*(along+.09),-thickness*.34);ctx.stroke();
-        ctx.beginPath();ctx.moveTo(length*along,thickness*.03);ctx.lineTo(length*(along+.08),thickness*.25);ctx.stroke();
-      }
-      ctx.restore();
+  function drawBubbles(ctx,time){
+    ctx.save();roundedStroke(ctx,'rgba(225,250,255,.62)',1.15);
+    bubbles.forEach((bubble,index)=>{
+      const drift=Math.sin(time*.0014+bubble.phase)*7;
+      const y=(bubble.y-time*.001*bubble.speed+height*3)%height;
+      ctx.globalAlpha=.28+(index%4)*.1;
+      ctx.beginPath();ctx.arc(bubble.x+drift,y,bubble.radius,0,TAU);ctx.stroke();
+      if(bubble.radius>2.6){ctx.beginPath();ctx.arc(bubble.x+drift-bubble.radius*.3,y-bubble.radius*.35,.55,0,TAU);ctx.fillStyle='#fff';ctx.fill();}
     });
+    ctx.restore();
   }
 
-  function drawAnimatedTurtle(ctx,creature,time,image,drawWidth,drawHeight){
-    drawTurtleFlippers(ctx,creature,time,drawWidth,drawHeight);
-    if(!(image?.complete&&image.naturalWidth)){drawFallback(ctx,creature);return;}
-    const sx=image.naturalWidth*.12,sy=0,sw=image.naturalWidth*.88,sh=image.naturalHeight*.68;
-    ctx.drawImage(image,sx,sy,sw,sh,-drawWidth*.42,-drawHeight*.48,drawWidth*.94,drawHeight*.7);
+  function drawFish(ctx,creature,time){
+    const swim=time*.0065+creature.phase;
+    const tailWave=Math.sin(swim)*.5;
+    const finWave=Math.sin(swim*1.15+.8)*.35;
+    const palette=creature.palette;
+    ctx.save();
+    const squash=1+Math.sin(swim*.5)*.028;
+    ctx.scale(squash,1/squash);
+    roundedStroke(ctx,palette.line,2.1);
+    ctx.save();ctx.translate(-28,1);ctx.rotate(tailWave);
+    ctx.fillStyle=palette.fin;ctx.beginPath();ctx.moveTo(2,0);ctx.quadraticCurveTo(-15,-16,-24,-13);ctx.quadraticCurveTo(-18,0,-24,13);ctx.quadraticCurveTo(-12,16,2,2);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();
+    ctx.fillStyle=palette.body;ctx.beginPath();ctx.moveTo(-26,0);ctx.bezierCurveTo(-14,-18,14,-20,31,-4);ctx.quadraticCurveTo(38,2,29,8);ctx.bezierCurveTo(11,20,-15,17,-26,0);ctx.closePath();ctx.fill();ctx.stroke();
+    ctx.fillStyle=palette.belly;ctx.globalAlpha=.65;ctx.beginPath();ctx.ellipse(8,6,19,8,-.08,0,TAU);ctx.fill();ctx.globalAlpha=1;
+    ctx.save();ctx.translate(0,7);ctx.rotate(.3+finWave);ctx.fillStyle=palette.fin;ctx.beginPath();ctx.moveTo(0,0);ctx.quadraticCurveTo(-2,13,-14,18);ctx.quadraticCurveTo(4,18,10,5);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();
+    ctx.fillStyle='#fff8dc';ctx.beginPath();ctx.arc(21,-5,4.4,0,TAU);ctx.fill();ctx.stroke();
+    ctx.fillStyle='#20242d';ctx.beginPath();ctx.arc(22.2,-4.8,1.7,0,TAU);ctx.fill();
+    ctx.beginPath();ctx.arc(31,3,4.5,-.7,.7);ctx.stroke();
+    ctx.restore();
   }
 
-  function drawCrabLegs(ctx,creature,time,drawWidth,drawHeight){
-    const walk=time*.007+creature.phase;
-    const legGradient=ctx.createLinearGradient(-drawWidth*.7,0,drawWidth*.7,0);
-    legGradient.addColorStop(0,'#9f3427');legGradient.addColorStop(.5,'#ed7845');legGradient.addColorStop(1,'#9f3427');
-    ctx.strokeStyle=legGradient;ctx.lineWidth=Math.max(2.5,drawWidth*.043);ctx.lineCap='round';ctx.lineJoin='round';
+  function drawTurtle(ctx,creature,time){
+    const swim=time*.0042+creature.phase;
+    const palette={line:'#344837',skin:'#789d69',skinLight:'#b7c88a',shell:'#9b653e',shellLight:'#d29a5a'};
+    const front=Math.sin(swim)*.62,rear=Math.sin(swim+Math.PI)*.34;
+    const drawFlipper=(x,y,angle,length,phase)=>{
+      ctx.save();ctx.translate(x,y);ctx.rotate(angle+phase);ctx.fillStyle=palette.skin;
+      ctx.beginPath();ctx.moveTo(0,-4);ctx.bezierCurveTo(length*.25,-10,length*.82,-8,length,0);ctx.bezierCurveTo(length*.72,7,length*.18,8,0,4);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();
+    };
+    roundedStroke(ctx,palette.line,2.3);
+    drawFlipper(-15,-11,-2.2,31,-front*.55);drawFlipper(8,-12,-.65,34,front);
+    drawFlipper(-17,9,2.42,23,rear);drawFlipper(9,11,.7,24,-rear);
+    ctx.fillStyle=palette.shell;ctx.beginPath();ctx.ellipse(-3,0,29,20,-.05,0,TAU);ctx.fill();ctx.stroke();
+    ctx.fillStyle=palette.shellLight;ctx.beginPath();ctx.ellipse(-4,-2,22,14,-.05,0,TAU);ctx.fill();
+    roundedStroke(ctx,'rgba(76,54,43,.72)',1.3);
+    for(let ring=0;ring<6;ring++){const a=ring/6*TAU;ctx.beginPath();ctx.moveTo(-4,-2);ctx.lineTo(-4+Math.cos(a)*21,-2+Math.sin(a)*13);ctx.stroke();}
+    ctx.beginPath();ctx.ellipse(-4,-2,10,7,0,0,TAU);ctx.stroke();
+    roundedStroke(ctx,palette.line,2.3);
+    ctx.fillStyle=palette.skin;ctx.beginPath();ctx.ellipse(28,-2,14,10,.05,0,TAU);ctx.fill();ctx.stroke();
+    ctx.fillStyle=palette.skinLight;ctx.beginPath();ctx.ellipse(31,2,8,4,.08,0,TAU);ctx.fill();
+    ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(33,-6,3.4,0,TAU);ctx.fill();ctx.stroke();ctx.fillStyle='#17221b';ctx.beginPath();ctx.arc(34,-5.6,1.4,0,TAU);ctx.fill();
+    ctx.beginPath();ctx.arc(39,1,5,-.25,.8);ctx.stroke();
+  }
+
+  function drawCrab(ctx,creature,time){
+    const walk=time*.008+creature.phase;
+    const line='#63352d',body='#d76c4a',light='#f29a67';
+    roundedStroke(ctx,line,2.2);
     for(const side of [-1,1]){
       for(let leg=0;leg<4;leg++){
-        const step=Math.sin(walk+leg*1.18+(side<0?Math.PI:0));
-        const hipX=side*drawWidth*.24,hipY=drawHeight*(-.08+leg*.13);
-        const elbowX=side*drawWidth*(.4+leg*.025),elbowY=hipY+drawHeight*(-.03+step*.08);
-        const kneeX=side*drawWidth*(.55+leg*.035),kneeY=hipY+drawHeight*(.08+step*.1);
-        const footX=side*drawWidth*(.7+leg*.045),footY=hipY+drawHeight*(.25-step*.1);
-        ctx.beginPath();ctx.moveTo(hipX,hipY);ctx.lineTo(elbowX,elbowY);ctx.lineTo(kneeX,kneeY);ctx.lineTo(footX,footY);ctx.stroke();
-        ctx.fillStyle='#ef8554';ctx.beginPath();ctx.arc(kneeX,kneeY,ctx.lineWidth*.58,0,Math.PI*2);ctx.fill();
+        const phase=Math.sin(walk+leg*1.15+(side<0?Math.PI:0));
+        const hipX=side*(13+leg*2),hipY=5+leg*2;
+        const kneeX=side*(25+leg*3),kneeY=10+phase*4;
+        const footX=side*(35+leg*4),footY=18-phase*3;
+        ctx.beginPath();ctx.moveTo(hipX,hipY);ctx.lineTo(kneeX,kneeY);ctx.lineTo(footX,footY);ctx.stroke();
       }
-      const clawWave=Math.sin(walk*.7+(side<0?Math.PI:0))*.18;
-      ctx.save();ctx.translate(side*drawWidth*.29,-drawHeight*.18);ctx.rotate(side*(.64+clawWave));
-      ctx.strokeStyle='#e76b3c';ctx.lineWidth=Math.max(3,drawWidth*.055);ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(side*drawWidth*.24,-drawHeight*.18);ctx.stroke();
-      ctx.fillStyle='#d94b2e';ctx.beginPath();ctx.ellipse(side*drawWidth*.3,-drawHeight*.22,drawWidth*.13,drawHeight*.14,side*.4,0,Math.PI*2);ctx.fill();ctx.restore();
+      const claw=Math.sin(walk*.58+(side<0?1.6:0))*.2;
+      ctx.save();ctx.translate(side*13,-5);ctx.rotate(side*(.78+claw));ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(side*18,-14);ctx.stroke();
+      ctx.fillStyle=body;ctx.beginPath();ctx.ellipse(side*23,-17,9,7,side*.35,0,TAU);ctx.fill();ctx.stroke();
+      ctx.beginPath();ctx.moveTo(side*22,-18);ctx.quadraticCurveTo(side*31,-27,side*30,-16);ctx.stroke();ctx.restore();
     }
+    ctx.fillStyle=body;ctx.beginPath();ctx.moveTo(-25,7);ctx.quadraticCurveTo(-23,-17,0,-20);ctx.quadraticCurveTo(23,-17,25,7);ctx.quadraticCurveTo(15,18,0,16);ctx.quadraticCurveTo(-15,18,-25,7);ctx.closePath();ctx.fill();ctx.stroke();
+    ctx.fillStyle=light;ctx.beginPath();ctx.ellipse(0,-4,17,9,0,0,Math.PI);ctx.fill();
+    for(const x of [-9,9]){ctx.beginPath();ctx.moveTo(x,-15);ctx.lineTo(x,-24);ctx.stroke();ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(x,-26,4,0,TAU);ctx.fill();ctx.stroke();ctx.fillStyle='#231e1d';ctx.beginPath();ctx.arc(x+(x<0?-1:1),-26,1.5,0,TAU);ctx.fill();}
+    ctx.beginPath();ctx.arc(0,2,8,.15,Math.PI-.15);ctx.stroke();
   }
 
-  function drawAnimatedCrab(ctx,creature,time,image,drawWidth,drawHeight){
-    drawCrabLegs(ctx,creature,time,drawWidth,drawHeight);
-    if(!(image?.complete&&image.naturalWidth)){drawFallback(ctx,creature);return;}
-    const sx=image.naturalWidth*.18,sy=0,sw=image.naturalWidth*.64,sh=image.naturalHeight*.57;
-    ctx.drawImage(image,sx,sy,sw,sh,-drawWidth*.38,-drawHeight*.42,drawWidth*.76,drawHeight*.57);
-  }
-
-  const drawCreature=(ctx,creature,time)=>{
-    const image=assets[creature.type];
+  function drawCreature(ctx,creature,time){
     const flip=creature.vx<0?-1:1;
-    const base=creature.type==='fish'?78:creature.type==='turtle'?108:88;
-    const drawWidth=base*creature.size*creature.depth;
-    const ratio=image?.naturalWidth&&image?.naturalHeight?image.naturalHeight/image.naturalWidth:.68;
-    const drawHeight=drawWidth*ratio;
-    ctx.save();ctx.translate(creature.x,creature.y);ctx.scale(flip,1);
-    ctx.rotate(Math.sin(time*.0015+creature.phase)*.035+creature.vy*.004);
-    ctx.globalAlpha=.72+creature.depth*.2;
-    ctx.shadowColor='rgba(3,18,27,.35)';ctx.shadowBlur=9;ctx.shadowOffsetY=4;
-    if(creature.type==='turtle')drawAnimatedTurtle(ctx,creature,time,image,drawWidth,drawHeight);
-    else if(creature.type==='crab')drawAnimatedCrab(ctx,creature,time,image,drawWidth,drawHeight);
-    else if(image?.complete&&image.naturalWidth)ctx.drawImage(image,-drawWidth/2,-drawHeight/2,drawWidth,drawHeight);
-    else drawFallback(ctx,creature);
+    const base=creature.type==='fish'?1:creature.type==='turtle'?1.28:1.05;
+    const scale=base*creature.size*(.72+creature.depth*.34);
+    const bob=Math.sin(time*.0018+creature.phase)*4;
+    ctx.save();ctx.translate(creature.x,creature.y+bob);ctx.scale(flip*scale,scale);
+    ctx.rotate(Math.sin(time*.0014+creature.phase)*.035+creature.vy*.006);
+    ctx.globalAlpha=.65+creature.depth*.33;ctx.shadowColor='rgba(12,42,50,.23)';ctx.shadowBlur=5;ctx.shadowOffsetY=3;
+    if(creature.type==='fish')drawFish(ctx,creature,time);else if(creature.type==='turtle')drawTurtle(ctx,creature,time);else drawCrab(ctx,creature,time);
     ctx.restore();
-  };
+  }
 
-  const drawRipples=(ctx,time,colors)=>{
+  function drawForegroundWeeds(ctx,time){
+    ctx.save();ctx.lineCap='round';
+    foregroundWeeds.forEach((ratio,index)=>{
+      const stalks=2+(index%3),baseX=width*ratio;
+      for(let stalk=0;stalk<stalks;stalk++){
+        const heightValue=55+(index*17+stalk*23)%75;
+        const sway=Math.sin(time*.0011+index*.73+stalk)*14;
+        ctx.beginPath();ctx.moveTo(baseX+stalk*7,height+6);ctx.bezierCurveTo(baseX-8+stalk*7,height-heightValue*.45,baseX+sway,height-heightValue*.7,baseX+sway*.8+stalk*6,height-heightValue);
+        ctx.strokeStyle=stalk%2?'rgba(57,108,74,.84)':'rgba(38,85,67,.88)';ctx.lineWidth=4.8-stalk*.7;ctx.stroke();
+      }
+    });
+    ctx.restore();
+  }
+
+  function drawRipples(ctx,time){
     for(let index=ripples.length-1;index>=0;index--){
-      const ripple=ripples[index];
-      const age=Math.max(0,(time-ripple.born)/1000);
+      const ripple=ripples[index],age=(time-ripple.born)/1000;
       if(age>1.8){ripples.splice(index,1);continue;}
-      const progress=Math.min(1,age/1.8);
-      const eased=1-Math.pow(1-progress,3);
-      ctx.save();ctx.strokeStyle=colors.ripple;ctx.lineWidth=Math.max(.7,2.6-progress*1.7);ctx.globalAlpha=(1-progress)*.84;
+      const progress=Math.max(0,Math.min(1,age/1.8)),eased=1-Math.pow(1-progress,3);
+      ctx.save();ctx.strokeStyle='rgba(231,252,255,.82)';ctx.globalAlpha=(1-progress)*.75;
       for(let ring=0;ring<3;ring++){
-        const ringProgress=Math.max(0,eased-ring*.075);
-        const radius=ringProgress*ripple.maxRadius;
-        if(radius<=2)continue;
-        ctx.beginPath();ctx.arc(ripple.x,ripple.y,radius,0,Math.PI*2);ctx.stroke();
+        const ringProgress=Math.max(0,eased-ring*.075);if(!ringProgress)continue;
+        ctx.lineWidth=2-ring*.35;ctx.beginPath();ctx.arc(ripple.x,ripple.y,ringProgress*ripple.maxRadius,0,TAU);ctx.stroke();
       }
       ctx.restore();
     }
-  };
+  }
 
-  const updateCreature=(creature,elapsed,time)=>{
+  function updateCreature(creature,elapsed,time){
     const isCrab=creature.type==='crab';
     const dx=pointer.x-creature.x,dy=pointer.y-creature.y,distance=Math.hypot(dx,dy);
-    if(pointer.active&&distance<180&&distance>8){
-      const pull=(1-distance/180)*(isCrab?15:30);
-      creature.vx+=(dx/distance)*pull*elapsed;creature.vy+=(dy/distance)*pull*elapsed;
+    if(pointer.active&&distance<190&&distance>8){
+      const curiosity=(1-distance/190)*(isCrab?12:28);
+      creature.vx+=(dx/distance)*curiosity*elapsed;creature.vy+=(dy/distance)*curiosity*elapsed;
     }else{
-      const cruise=creature.direction*creature.speed;
-      creature.vx+=(cruise-creature.vx)*elapsed*.55;
-      creature.vy+=Math.sin(time*.0014+creature.phase)*elapsed*2;
+      const cruise=creature.direction*(creature.type==='fish'?28:creature.type==='turtle'?16:12);
+      creature.vx+=(cruise-creature.vx)*elapsed*.7;creature.vy+=Math.sin(time*.0012+creature.phase)*elapsed*1.6;
     }
-    const maxSpeed=pointer.active?40:24;
-    const speed=Math.hypot(creature.vx,creature.vy);
+    const maxSpeed=pointer.active?44:36,speed=Math.hypot(creature.vx,creature.vy);
     if(speed>maxSpeed){creature.vx=creature.vx/speed*maxSpeed;creature.vy=creature.vy/speed*maxSpeed;}
     creature.x+=creature.vx*elapsed;creature.y+=creature.vy*elapsed;
-    if(creature.x>width+55)creature.x=-55;
-    if(creature.x<-55)creature.x=width+55;
-    if(isCrab){creature.y+=(height-37-creature.y)*elapsed*1.8;creature.y=Math.min(height-22,Math.max(height-58,creature.y));}
-    else{
-      if(creature.y<58){creature.y=58;creature.vy=Math.abs(creature.vy);}
-      if(creature.y>height-52){creature.y=height-52;creature.vy=-Math.abs(creature.vy);}
-    }
-  };
+    if(creature.x>width+70)creature.x=-70;if(creature.x<-70)creature.x=width+70;
+    if(isCrab){creature.y+=(height-30-creature.y)*elapsed*2;creature.y=Math.max(height-48,Math.min(height-21,creature.y));}
+    else{if(creature.y<60){creature.y=60;creature.vy=Math.abs(creature.vy);}if(creature.y>height-55){creature.y=height-55;creature.vy=-Math.abs(creature.vy);}}
+  }
 
   function draw(time,elapsed){
-    context.clearRect(0,0,width,height);
-    const colors=sceneColors();
-    drawBubbles(context,time,colors);
-    drawSeabed(context,time,colors);
-    creatures.forEach(creature=>{if(elapsed)updateCreature(creature,elapsed,time);drawCreature(context,creature,time);});
-    drawRipples(context,time,colors);
+    context.clearRect(0,0,width,height);drawWaterLight(context,time);drawBubbles(context,time);
+    creatures.slice().sort((a,b)=>a.depth-b.depth).forEach(creature=>{if(elapsed)updateCreature(creature,elapsed,time);drawCreature(context,creature,time);});
+    drawForegroundWeeds(context,time);drawRipples(context,time);
   }
 
   const shouldAnimate=()=>visible&&tabVisible&&!motionQuery.matches&&!destroyed;
   const animate=time=>{
     if(!shouldAnimate()){frame=0;lastTime=0;draw(time,0);return;}
-    const elapsed=lastTime?Math.min((time-lastTime)/1000,.034):0;
-    lastTime=time;draw(time,elapsed);frame=requestAnimationFrame(animate);
+    const elapsed=lastTime?Math.min((time-lastTime)/1000,.034):0;lastTime=time;draw(time,elapsed);frame=requestAnimationFrame(animate);
   };
   const syncAnimation=()=>{
     if(shouldAnimate()&&!frame)frame=requestAnimationFrame(animate);
     else if(!shouldAnimate()&&frame){cancelAnimationFrame(frame);frame=0;lastTime=0;draw(performance.now(),0);}
   };
 
-  const setPointer=(event,active=true)=>{
-    const rect=canvas.getBoundingClientRect();
-    pointer.x=event.clientX-rect.left;pointer.y=event.clientY-rect.top;pointer.active=active;
-  };
+  const setPointer=(event,active=true)=>{const rect=canvas.getBoundingClientRect();pointer.x=event.clientX-rect.left;pointer.y=event.clientY-rect.top;pointer.active=active;};
   canvas.addEventListener('pointerenter',event=>{if(event.pointerType!=='touch')setPointer(event);});
   canvas.addEventListener('pointermove',event=>{if(event.pointerType!=='touch'||event.buttons)setPointer(event);});
   canvas.addEventListener('pointerleave',()=>{pointer.active=false;});
-  canvas.addEventListener('pointerdown',event=>setPointer(event));
-  canvas.addEventListener('pointerup',()=>{pointer.active=false;});
-  canvas.addEventListener('pointercancel',()=>{pointer.active=false;});
+  canvas.addEventListener('pointerdown',event=>setPointer(event));canvas.addEventListener('pointerup',()=>{pointer.active=false;});canvas.addEventListener('pointercancel',()=>{pointer.active=false;});
   canvas.addEventListener('click',event=>{
-    const rect=canvas.getBoundingClientRect();
-    const x=event.clientX-rect.left,y=event.clientY-rect.top;
+    const rect=canvas.getBoundingClientRect(),x=event.clientX-rect.left,y=event.clientY-rect.top;
     ripples.push({x,y,born:performance.now(),maxRadius:Math.hypot(Math.max(x,width-x),Math.max(y,height-y))});
     if(motionQuery.matches)draw(performance.now(),0);else syncAnimation();
   });
 
-  const observer=new IntersectionObserver(entries=>{visible=entries[0]?.isIntersecting!==false;syncAnimation();},{rootMargin:'80px'});
-  observer.observe(canvas);
+  const observer=new IntersectionObserver(entries=>{visible=entries[0]?.isIntersecting!==false;syncAnimation();},{rootMargin:'80px'});observer.observe(canvas);
   document.addEventListener('visibilitychange',()=>{tabVisible=!document.hidden;syncAnimation();});
-  document.addEventListener('siteskinchange',()=>draw(performance.now(),0));
-  const motionChanged=()=>syncAnimation();
-  if(motionQuery.addEventListener)motionQuery.addEventListener('change',motionChanged);else motionQuery.addListener(motionChanged);
+  const motionChanged=()=>syncAnimation();if(motionQuery.addEventListener)motionQuery.addEventListener('change',motionChanged);else motionQuery.addListener(motionChanged);
   const resizeObserver=new ResizeObserver(resize);resizeObserver.observe(canvas);resize();syncAnimation();
 
   window.__aboutOcean={
-    get creatureCount(){return creatures.length;},
-    get rippleCount(){return ripples.length;},
-    get seaweedClusterCount(){return seaweedClusters.length;},
-    get latestRippleRadius(){return ripples.at(-1)?.maxRadius||0;},
-    get reducedMotion(){return motionQuery.matches;},
-    get pointerActive(){return pointer.active;},
-    get running(){return Boolean(frame);},
+    get creatureCount(){return creatures.length;},get rippleCount(){return ripples.length;},get seaweedClusterCount(){return foregroundWeeds.length;},
+    get latestRippleRadius(){return ripples.at(-1)?.maxRadius||0;},get reducedMotion(){return motionQuery.matches;},get pointerActive(){return pointer.active;},get running(){return Boolean(frame);},get style(){return 'hand-drawn-cartoon';},
     destroy(){destroyed=true;syncAnimation();observer.disconnect();resizeObserver.disconnect();}
   };
 })();
