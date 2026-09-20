@@ -130,7 +130,9 @@
   }
   function setSkin(next,{persist=true}={}) {
     skin=['dark','light'].includes(next)?next:'default';if(persist)localStorage.setItem(SKIN_KEY,skin);
+    document.documentElement.classList.add('skin-switching');
     document.documentElement.dataset.skin=skin;updateSwitcher();document.dispatchEvent(new CustomEvent('siteskinchange',{detail:{skin}}));
+    requestAnimationFrame(()=>requestAnimationFrame(()=>document.documentElement.classList.remove('skin-switching')));
   }
   function setLanguage(next,{persist=true}={}) {
     language=next==='en'?'en':'zh';if(persist)localStorage.setItem(STORAGE_KEY,language);
