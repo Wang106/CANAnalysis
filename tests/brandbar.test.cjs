@@ -1,7 +1,7 @@
 const fs=require('node:fs');
 const assert=require('node:assert/strict');
 
-const sharedPages=['index.html','online.html','convert.html','aboutus.html'];
+const sharedPages=['index.html','online.html','convert.html','aboutus.html','privacy.html','terms.html','community-guidelines.html','admin.html'];
 for(const page of sharedPages){
   const html=fs.readFileSync('public/'+page,'utf8');
   assert.match(html,/<header class="can-brandbar">\s*<div class="shell can-brandbar-inner">\s*<a class="can-brand" href="\/" aria-label="返回 CANAnalysis 首页">\s*<img src="\/icon\.png" width="34" height="34" alt="">\s*<span>CANAnalysis<small>CAN DATA WORKSPACE<\/small><\/span>\s*<\/a>\s*<\/div>\s*<\/header>/s,page+' must use the shared About-style CANAnalysis brand row');

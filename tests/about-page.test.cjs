@@ -8,6 +8,7 @@ const oceanLoader=fs.readFileSync('public/about-ocean-loader.js','utf8');
 const i18n=fs.readFileSync('public/site-i18n.js','utf8');
 
 assert.match(html,/href="mailto:whf969@foxmail\.com"/,'about page must expose a clickable contact email');
+assert.match(html,/<h1 id="hero-title">让 CAN 报文更容易看懂<\/h1>/,'about title must remain on one line');
 assert.match(html,/如在使用过程中遇到问题，或有功能建议与其他需求/,'about page must explain when to use the contact email');
 assert.match(i18n,/If you encounter a problem or have a feature request/,'contact guidance must support English');
 
