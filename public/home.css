@@ -21,11 +21,11 @@ h1 em{color:var(--accent);font-style:normal}
 .page-card h2{max-width:calc(100% - 92px);margin:0;font-size:20px}
 .card-visual{position:relative;display:flex;align-items:center;justify-content:center;min-height:142px;margin:20px 0 17px;border:1px solid color-mix(in srgb,var(--accent) 20%,var(--line));border-radius:10px;background:linear-gradient(180deg,color-mix(in srgb,var(--panel2) 68%,transparent),color-mix(in srgb,var(--bg) 58%,transparent));overflow:hidden}
 .card-visual::after{content:"";position:absolute;inset:auto 8% 0;height:1px;background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--accent) 52%,transparent),transparent)}
-.hardware-visual{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) 22px;align-items:center;gap:5px;padding:9px 11px}
+.hardware-visual{display:grid;grid-template-columns:repeat(3,minmax(72px,104px)) 32px;align-items:center;justify-content:center;gap:2px;padding:9px 18px}
 .hardware-device{display:grid;min-width:0;grid-template-rows:82px auto;align-items:end;text-align:center}
 .hardware-device img{display:block;width:100%;height:82px;object-fit:contain;filter:drop-shadow(0 10px 11px rgba(0,0,0,.3))}
 .hardware-device span{margin-top:4px;color:var(--txt2);font:9px ui-monospace,monospace;letter-spacing:.7px}
-.hardware-more{align-self:center;color:var(--accent);font-size:25px;letter-spacing:2px;transform:translateY(-4px)}
+.hardware-more{align-self:center;justify-self:center;color:var(--accent);font-size:25px;letter-spacing:2px;transform:translateY(-4px)}
 .curve-visual{padding:10px 14px 22px}
 .curve-visual svg{width:100%;height:100px;overflow:visible}
 .curve-visual span{position:absolute;left:16px;bottom:7px;color:var(--txt2);font:8px ui-monospace,monospace;letter-spacing:1px}

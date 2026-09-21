@@ -20,11 +20,13 @@ const code=fs.readFileSync('public/site-nav.js','utf8');
 const fixed=fixture(code);fixed.advance(5000);assert(fixed.open());assert(fixed.fixed());assert(!fixed.links.inert);
 fixed.fire(fixed.nav,'pointerleave',{pointerType:'mouse'});fixed.fire(fixed.root,'pointerdown',{target:{},pointerType:'touch'});fixed.fire(fixed.nav,'keydown',{key:'Escape'});assert(fixed.open());assert(fixed.fixed());
 
-// CAN 页：初始同样固定；只有生成曲线调用 collapse 后才进入可收回模式。
-const charts=fixture(code,'charts');charts.advance(5000);assert(charts.open());assert(charts.fixed());
-charts.fire(charts.nav,'pointerleave',{pointerType:'mouse'});assert(charts.open());
-assert.equal(typeof charts.api?.collapse,'function');charts.api.collapse();assert(!charts.open());assert(!charts.fixed());assert(charts.links.inert);assert(charts.nav.classList.has('nav-sweep'));
-charts.fire(charts.nav,'pointerenter',{pointerType:'mouse'});assert(charts.open());assert(!charts.links.inert);charts.fire(charts.nav,'pointerleave',{pointerType:'mouse'});assert(!charts.open());
-charts.fire(charts.nav,'click');assert(charts.open());charts.fire(charts.root,'pointerdown',{target:{},pointerType:'touch'});assert(!charts.open());
-charts.fire(charts.nav,'click');charts.doc.activeElement=charts.link;charts.fire(charts.nav,'focusout',{relatedTarget:{}});assert(!charts.open());assert.equal(charts.doc.activeElement,charts.trigger);
-console.log('PASS: fixed navigation on ordinary pages and chart-triggered collapse on CAN page');
+// 离线 CAN 页：不显示常驻横条，鼠标靠近顶部即展开，离开后收回。
+const hover=fixture(code,'hover');hover.advance(5000);assert(!hover.open());assert(!hover.fixed());assert(hover.links.inert);
+hover.fire(hover.nav,'pointerenter',{pointerType:'mouse'});assert(hover.open());assert(!hover.links.inert);hover.fire(hover.nav,'pointerleave',{pointerType:'mouse'});assert(!hover.open());
+hover.fire(hover.nav,'click');assert(hover.open());hover.fire(hover.root,'pointerdown',{target:{},pointerType:'touch'});assert(!hover.open());
+hover.fire(hover.nav,'click');hover.doc.activeElement=hover.link;hover.fire(hover.nav,'focusout',{relatedTarget:{}});assert(!hover.open());assert.equal(hover.doc.activeElement,hover.trigger);
+
+const offline=fs.readFileSync('public/offline.html','utf8');
+assert.match(offline,/id="topNav" data-collapse="hover"/,'offline page must use the invisible hover navigation mode');
+assert.match(offline,/canalyzer-visible-limit[\s\S]*?--canalyzer-visible-count[\s\S]*?Math\.min\(charts\.length,10\)/,'CANalyzer view must show at most ten chart rows before vertical scrolling');
+console.log('PASS: fixed navigation on ordinary pages and hover-only navigation with a ten-chart CANalyzer viewport');

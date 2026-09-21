@@ -229,6 +229,7 @@
 
   #chartArea{padding:0;flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;}   /* 顶部无内边距：与标题行间隙恒定（8px），不随滚动变化 */
   .chart-card{background:var(--panel);border:1px solid var(--line);border-top:none;border-radius:0;margin-bottom:0;overflow:hidden;display:flex;flex-direction:row;flex:1 1 130px;min-height:130px;}
+  #app:not(.ui-classic) #chartArea.canalyzer-visible-limit .chart-card{flex:0 0 calc(100% / var(--canalyzer-visible-count,10));min-height:0;}
   .chart-card:first-child{border-top:1px solid var(--line);border-radius:var(--radius) var(--radius) 0 0;}
   .chart-card:last-child{border-radius:0;}
   /* CANalyzer风格：曲线显示区域左上角改直角；信号列表左上角改圆弧 */
@@ -342,14 +343,14 @@
     #app.mobile-charts #sigBar.collapsed .sig-bar-head{padding-top:3px;padding-bottom:3px;}
   }
 </style>
-<link rel="stylesheet" href="/site-nav.css">
+<link rel="stylesheet" href="/site-nav.css?v=hover-nav-20260921">
 <script src="/site-i18n.js" defer></script>
-<script src="/site-nav.js" defer></script>
+<script src="/site-nav.js?v=hover-nav-20260921" defer></script>
 </head>
 <body>
 <div id="app" class="ui-classic">
-  <nav id="topNav" class="nav-open" data-collapse="charts" aria-label="本站栏目">
-    <button type="button" class="nav-peek" aria-expanded="true" aria-controls="navLinks"><span>栏目导航</span><span aria-hidden="true">⌄</span></button>
+  <nav id="topNav" data-collapse="hover" aria-label="本站栏目">
+    <button type="button" class="nav-peek" aria-label="显示栏目导航" aria-expanded="false" aria-controls="navLinks"><span>栏目导航</span><span aria-hidden="true">⌄</span></button>
     <div class="top-nav-inner" id="navLinks">
       <a class="nav-item" href="/">首页</a>
       <a class="nav-item" href="/online">在线连接</a>
@@ -1446,7 +1447,7 @@ function disposeCharts(){
   if(cvo){ cvo.classList.remove('show'); const l=cvo.querySelector('#chLine'); if(l) l.setAttribute('display','none'); }
   if(xAxisChart){try{xAxisChart.dispose();}catch(e){} xAxisChart=null;}
   charts.forEach(c=>{try{c.dispose();}catch(e){}});
-  charts=[]; yTargetChart=null; $('chartArea').innerHTML=''; showEmptyGuide();
+  charts=[]; yTargetChart=null; $('chartArea').classList.remove('canalyzer-visible-limit'); $('chartArea').style.removeProperty('--canalyzer-visible-count'); $('chartArea').innerHTML=''; showEmptyGuide();
   $('app').classList.remove('mobile-charts');
   const sb=$('scBody'); if(sb) sb.innerHTML='';   /* 清空独立信号名称列 */
   const sh=document.querySelector('.side-head'); if(sh) sh.remove();   /* 移除侧栏表头 */
@@ -1690,6 +1691,14 @@ function applyMobileChartMode(){
   bar.style.flex='';
   bar.style.transition='';
 }
+function applyCanalyzerVisibleLimit(){
+  const area=$('chartArea');
+  const enabled=uiStyle==='canalyzer'&&charts.length>0;
+  area.classList.toggle('canalyzer-visible-limit',enabled);
+  if(enabled) area.style.setProperty('--canalyzer-visible-count',Math.min(charts.length,10));
+  else area.style.removeProperty('--canalyzer-visible-count');
+  area.scrollTop=0;
+}
 function renderCharts(){
   disposeCharts();
   const sigs=selectedSignals();
@@ -1795,6 +1804,7 @@ function renderCharts(){
       fitAllY();
       autoFitSideWidth();   /* 名称列宽度按当前信号中最长名称自动调整 */
       setupYTargetControls();
+      applyCanalyzerVisibleLimit();
       applyMobileChartMode();
       const si=$('searchInput'); if(si){ si.value=''; renderSignalList(); }   /* 生成完成后清空信号名称输入框 */
       setTimeout(resizeAllCharts,100);
