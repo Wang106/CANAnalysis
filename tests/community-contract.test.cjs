@@ -1,0 +1,21 @@
+const fs=require('node:fs');const assert=require('node:assert/strict');
+const worker=fs.readFileSync('src/worker.js','utf8');
+const migration=fs.readFileSync('migrations/0001_community_foundation.sql','utf8');
+const community=fs.readFileSync('public/community.html','utf8');
+const about=fs.readFileSync('public/aboutus.html','utf8');
+const privacy=fs.readFileSync('public/privacy.html','utf8');
+const config=fs.readFileSync('wrangler.jsonc','utf8');
+
+for(const table of ['users','sessions','email_tokens','files','comments','comment_files','reports','appeals','moderation_actions','outbox','audit_logs','consent_records','export_jobs'])assert.match(migration,new RegExp(`CREATE TABLE ${table}\\b`),`missing ${table} table`);
+assert.match(migration,/author_user_id TEXT REFERENCES users\(id\) ON DELETE SET NULL/,'comments must survive account deletion without retaining the account link');
+assert.match(worker,/COMMUNITY_ENABLED !== 'true'/,'community APIs must fail closed until production configuration is complete');
+assert.match(worker,/Cf-Access-Jwt-Assertion|adminRoutes/,'admin API must be protected by Cloudflare Access JWT validation');
+assert.match(config,/cananalysis-preview/,'preview resources must be isolated');
+assert.match(config,/dead_letter_queue/,'mail delivery must have a dead letter queue');
+assert.match(community,/crossBorderConsent/,'registration must request separate cross-border consent');
+assert.match(community,/登录并验证邮箱/,'comments must require a verified account');
+for(const control of ['profileForm','passwordForm','exportButton','deleteAccountButton','resendForm','forgotForm'])assert.match(community,new RegExp(`id="${control}"`),`missing account control ${control}`);
+assert.match(about,/href="\/community"/,'About page must expose the community area');
+assert.match(privacy,/Cloudflare Workers、D1、R2、Queues、Turnstile 和 Access/,'privacy policy must disclose Cloudflare processing');
+for(const page of ['public/privacy.html','public/terms.html','public/community-guidelines.html','public/admin.html'])assert.equal(fs.existsSync(page),true,`${page} must exist`);
+console.log('PASS: community schema, account gating, admin protection, environment isolation and legal disclosures');
