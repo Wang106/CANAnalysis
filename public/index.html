@@ -45,7 +45,7 @@
   <main class="shell">
     <section class="hero" aria-labelledby="home-title">
       <span class="eyebrow">CAN DATA TOOLBOX</span>
-      <h1 id="home-title">选择适合你的<br><em>CAN 数据工具</em></h1>
+      <h1 id="home-title">选择适合你的 <em>CAN 数据工具</em></h1>
       <p>从设备实时连接到离线日志分析，选择与你当前任务最匹配的入口。</p>
     </section>
 
@@ -54,8 +54,10 @@
         <span class="card-state available">可使用</span>
         <h2>在线连接</h2>
         <div class="card-visual hardware-visual">
-          <img src="/can-hardware.webp" width="800" height="328" alt="PCAN、Vector 与周立功 CAN 接口设备">
-          <div class="hardware-labels" aria-hidden="true"><span>PCAN</span><span>Vector</span><span>周立功</span></div>
+          <div class="hardware-device"><img src="/device-pcan.png" width="600" height="400" alt="PCAN USB CAN 接口设备示意图"><span>PCAN</span></div>
+          <div class="hardware-device"><img src="/device-vector.png" width="600" height="400" alt="Vector CAN 接口设备示意图"><span>Vector</span></div>
+          <div class="hardware-device"><img src="/device-zlg.png" width="600" height="400" alt="周立功 CAN 接口设备示意图"><span>周立功</span></div>
+          <span class="hardware-more" aria-label="以及更多设备">…</span>
         </div>
         <p>连接 PCAN、周立功或 Vector 设备，配置通道和波特率，安全地实时接收 CAN 报文。</p>
         <span class="card-action">进入在线连接 <b aria-hidden="true">→</b></span>
@@ -72,7 +74,10 @@
       <a class="page-card convert-card" href="/convert">
         <span class="card-state available">可使用</span>
         <h2>格式转换</h2>
-        <div class="card-visual format-visual" aria-hidden="true"><span>BLF</span><b>→</b><span>ASC</span><b>→</b><span>CSV</span></div>
+        <div class="card-visual format-visual" aria-label="ASC、LOG、TRC、BLF、TXT、MF4、MDF 与 CSV 格式转换示意">
+          <svg viewBox="0 0 480 142" preserveAspectRatio="none" aria-hidden="true"><defs><marker id="formatArrow" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto-start-reverse"><path d="M0 0 7 3.5 0 7Z"/></marker></defs><path d="M58 35H422M58 107H422M58 35V107M422 35V107M178 35V107M302 35V107"/></svg>
+          <div class="format-nodes"><span>ASC</span><span>LOG</span><span>TRC</span><span>BLF</span><span>TXT</span><span>MF4</span><span>MDF</span><span class="format-output">CSV</span></div>
+        </div>
         <p>在 ASC、LOG、TRC、BLF、TXT、MF4、MDF 之间转换，并导出 DBC 信号 CSV。</p>
         <span class="card-action">进入格式转换 <b aria-hidden="true">→</b></span>
       </a>
@@ -80,7 +85,7 @@
       <article class="page-card pending" aria-disabled="true" title="开发中">
         <span class="card-state">开发中</span>
         <h2>27930报文分析</h2>
-        <div class="card-visual protocol-visual" aria-hidden="true"><span>CRM</span><i></i><span>BRM</span><i></i><span>BCP</span><i></i><span>BCL</span></div>
+        <div class="card-visual protocol-visual" aria-label="握手、辨识、参数配置、充电、结束阶段"><span>握手</span><i></i><span>辨识</span><i></i><span>参数配置</span><i></i><span>充电</span><i></i><span>结束</span></div>
         <p>面向充电通信场景的 GB/T 27930 报文识别、流程整理与异常辅助分析。</p>
         <span class="card-action">暂未开放</span>
       </article>

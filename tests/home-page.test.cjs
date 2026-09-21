@@ -9,9 +9,14 @@ assert.match(home,/<title>首页 · CANAnalysis<\/title>/);
 assert.match(home,/class="[^\"]*page-grid/);
 assert.equal((home.match(/class="[^"]*page-card/g)||[]).length,7,'home must show every non-home navigation destination');
 assert.equal((home.match(/class="card-visual/g)||[]).length,7,'every home card must include a centered visual area');
-assert.match(home,/class="card-visual hardware-visual"[\s\S]*?<img src="\/can-hardware\.webp"[\s\S]*?PCAN[\s\S]*?Vector[\s\S]*?周立功/,'online card must show the three supported hardware families');
+assert.match(home,/<h1 id="home-title">选择适合你的 <em>CAN 数据工具<\/em><\/h1>/,'home title must remain on one line');
+assert.match(home,/class="card-visual hardware-visual"[\s\S]*?device-pcan\.png[\s\S]*?PCAN[\s\S]*?device-vector\.png[\s\S]*?Vector[\s\S]*?device-zlg\.png[\s\S]*?周立功[\s\S]*?class="hardware-more"[^>]*>…/,'online card must place each matching device image above its name and show a trailing ellipsis');
 assert.match(home,/class="card-visual curve-visual"[\s\S]*?<svg/,'offline card must use an analysis-curve visual');
-assert.equal(fs.existsSync('public/can-hardware.webp'),true,'optimized CAN hardware image must exist');
+for(const asset of ['device-pcan.png','device-vector.png','device-zlg.png']){assert.equal(fs.existsSync('public/'+asset),true,asset+' must exist');assert.ok(fs.statSync('public/'+asset).size>50000,asset+' must be a real product cutout');}
+for(const format of ['ASC','LOG','TRC','BLF','TXT','MF4','MDF','CSV'])assert.match(home,new RegExp(`<span(?: class="format-output")?>${format}<`),`format card must include ${format} in a circular node`);
+assert.match(home,/id="formatArrow"[\s\S]*?<path d="M58 35H422M58 107H422/,'format nodes must be connected by a shared conversion harness');
+assert.match(fs.readFileSync('public/home.css','utf8'),/marker-start:url\(#formatArrow\);marker-end:url\(#formatArrow\)/,'format harness must show arrows in both directions');
+assert.match(home,/class="card-visual protocol-visual"[\s\S]*?>握手<[\s\S]*?>辨识<[\s\S]*?>参数配置<[\s\S]*?>充电<[\s\S]*?>结束</,'27930 stages must follow the requested left-to-right order');
 
 for(const card of home.match(/<(?:a|article) class="page-card[\s\S]*?<\/(?:a|article)>/g)||[]){
   assert.ok(card.indexOf('<h2>')<card.indexOf('class="card-visual'),'card title must precede the centered visual');
