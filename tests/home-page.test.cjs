@@ -30,7 +30,7 @@ for(const title of ['27930报文分析','J1939分析','友情链接']){
   const pattern=new RegExp(`<article[^>]+(?:pending|disabled)[^>]*[\\s\\S]*?${title}`);
   assert.match(home,pattern,`${title} must be a disabled gray home card`);
 }
-assert.match(offline,/data-collapse="charts"/,'offline analysis must preserve chart-triggered navigation collapse');
+assert.match(offline,/data-collapse="hover"/,'offline analysis must use top-edge hover navigation without a persistent bar');
 assert.match(offline,/<span class="nav-item active" aria-current="page">离线报文解析<\/span>/);
 assert.doesNotMatch(home,/id="btnDbc"|id="btnAsc"/,'home must not contain the offline file controls');
 

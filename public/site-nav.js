@@ -7,6 +7,7 @@
   const links = nav.querySelector('.top-nav-inner');
   let closing = false;
   const collapseOnCharts = nav.dataset.collapse === 'charts';
+  const hoverOnly = nav.dataset.collapse === 'hover';
   let collapseEnabled = false;
 
   function open() {
@@ -62,6 +63,13 @@
   document.addEventListener('click', dismissOutside);
 
   function initialize() {
+    if (hoverOnly) {
+      collapseEnabled = true;
+      nav.classList.remove('nav-fixed', 'nav-open', 'nav-sweep');
+      trigger.setAttribute('aria-expanded', 'false');
+      links.inert = true;
+      return;
+    }
     collapseEnabled = false;
     nav.classList.add('nav-fixed');
     open();
