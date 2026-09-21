@@ -138,9 +138,12 @@
     }
   </style>
 <link rel="stylesheet" href="site-nav.css">
+<link rel="stylesheet" href="about-community.css">
 <script src="site-i18n.js" defer></script>
 <script src="site-nav.js" defer></script>
 <script src="about-ocean-loader.js" defer></script>
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+<script src="community.js" defer></script>
 </head>
 <body>
   <nav id="topNav" class="nav-open" aria-label="本站栏目">
@@ -216,10 +219,47 @@
       </div>
     </section>
 
-    <section class="community-invite" aria-labelledby="community-title">
-      <div><p class="section-kicker">Community</p><h2 id="community-title">评论与站务留言</h2><p>登录并验证邮箱后，可以发表评论、上传符合规则的附件、举报不友善内容，也可以在隐私中心导出或删除自己的资料。</p></div>
-      <a class="community-link" href="/community">进入评论区</a>
+    <section class="community-section" id="community" aria-labelledby="community-title">
+      <div class="community-heading">
+        <div><p class="section-kicker">Community</p><h2 id="community-title">评论与站务留言</h2><p>在这里分享使用体验、功能建议或站务问题。评论需要登录并验证邮箱后发布。</p></div>
+        <button type="button" class="community-login" id="openAuthButton">登录 / 注册</button>
+      </div>
+      <div class="community-board">
+        <section class="comment-composer" aria-labelledby="comment-form-title">
+          <div class="comment-composer-head"><h3 id="comment-form-title">留下评论</h3><span id="sessionSummary">登录后即可参与讨论</span></div>
+          <form id="commentForm" class="community-stack">
+            <label>内容<textarea name="body" maxlength="2000" placeholder="分享建议、使用体验或需要协助的问题" required></textarea></label>
+            <label>附件（最多 3 个，每个不超过 10MB）<input name="files" type="file" multiple accept="image/jpeg,image/png,image/webp,application/pdf,text/plain,text/csv"></label>
+            <div id="fileStatus" class="file-list"></div>
+            <button class="community-primary">发布评论</button>
+          </form>
+          <p id="commentStatus" class="community-status" role="status"></p>
+        </section>
+        <section class="comment-stream" aria-labelledby="comment-list-title">
+          <div class="comment-stream-head"><h3 id="comment-list-title">最新评论</h3><span>友善交流，尊重彼此</span></div>
+          <div id="comments" class="comments" aria-live="polite"></div>
+          <button type="button" id="moreButton" class="community-more hidden">加载更多</button>
+        </section>
+      </div>
+      <nav class="policy-links" aria-label="社区政策"><a href="/privacy">隐私政策</a><a href="/terms">用户协议</a><a href="/community-guidelines">社区规则</a></nav>
     </section>
+
+    <dialog class="auth-dialog" id="authDialog" aria-labelledby="authDialogTitle">
+      <div class="auth-dialog-panel">
+        <button type="button" class="auth-dialog-close" id="closeAuthButton" aria-label="关闭登录窗口">×</button>
+        <section id="authCard">
+          <p class="section-kicker">CANAnalysis Account</p><h2 id="authDialogTitle">登录评论区</h2>
+          <div class="auth-tabs"><button type="button" data-tab="login" class="active">登录</button><button type="button" data-tab="register">注册</button></div>
+          <form id="loginForm" class="community-stack"><label>邮箱<input name="email" type="email" autocomplete="email" required></label><label>密码<input name="password" type="password" autocomplete="current-password" minlength="12" required></label><div id="loginTurnstile"></div><button class="community-primary">登录</button></form>
+          <form id="registerForm" class="community-stack hidden"><label>邮箱<input name="email" type="email" autocomplete="email" required></label><label>昵称<input name="displayName" minlength="2" maxlength="32" required></label><label>密码<input name="password" type="password" autocomplete="new-password" minlength="12" required></label><label class="community-checkbox"><input name="crossBorderConsent" type="checkbox" required><span>我已阅读<a href="/privacy" target="_blank">隐私政策</a>，并单独同意将账号、评论与附件交由 Cloudflare 在境外处理。</span></label><div id="registerTurnstile"></div><button class="community-primary">注册并验证邮箱</button></form>
+          <details><summary>没有收到验证邮件</summary><form id="resendForm" class="community-stack compact"><label>注册邮箱<input name="email" type="email" autocomplete="email" required></label><div id="resendTurnstile"></div><button>重新发送验证邮件</button></form></details>
+          <details><summary>忘记密码</summary><form id="forgotForm" class="community-stack compact"><label>账号邮箱<input name="email" type="email" autocomplete="email" required></label><div id="forgotTurnstile"></div><button>发送重置邮件</button></form></details>
+          <form id="resetForm" class="community-stack hidden"><h3>设置新密码</h3><input name="token" type="hidden"><label>新密码<input name="password" type="password" autocomplete="new-password" minlength="12" required></label><button class="community-primary">保存新密码</button></form>
+          <p id="authStatus" class="community-status" role="status"></p>
+        </section>
+        <section class="hidden" id="accountCard"><p class="section-kicker">Account</p><h2>账号设置</h2><div class="account"><span>当前账号</span><strong id="accountName"></strong><form id="profileForm" class="community-stack"><label>昵称<input name="displayName" minlength="2" maxlength="32" required></label><label>个性签名<textarea name="bio" maxlength="280"></textarea></label><label>头像（JPG、PNG 或 WebP，不超过 2MB）<input name="avatar" type="file" accept="image/jpeg,image/png,image/webp"></label><button>保存个人资料</button></form><form id="passwordForm" class="community-stack compact"><label>当前密码<input name="currentPassword" type="password" autocomplete="current-password" required></label><label>新密码<input name="newPassword" type="password" autocomplete="new-password" minlength="12" required></label><button>修改密码</button></form><div class="account-actions"><button type="button" id="exportButton">下载我的数据</button><button type="button" id="logoutButton">退出登录</button><button type="button" id="deleteAccountButton" class="danger">注销账号并删除个人资料</button></div><p id="accountStatus" class="community-status" role="status"></p></div></section>
+      </div>
+    </dialog>
 
     <section class="support" id="support" aria-labelledby="support-title">
       <div class="support-head">

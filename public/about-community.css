@@ -1,0 +1,42 @@
+.community-section{padding:68px 0;border-top:1px solid var(--line)}
+.community-heading{display:flex;align-items:end;justify-content:space-between;gap:28px;margin-bottom:24px}
+.community-heading p:not(.section-kicker){max-width:690px;margin:10px 0 0;color:var(--muted);font-size:13px;line-height:1.75}
+.community-login,.community-section button,.auth-dialog button{min-height:42px;padding:0 16px;border:1px solid var(--line);border-radius:9px;background:var(--panel2);color:var(--text);font:700 13px/1 inherit;cursor:pointer}
+.community-login,.community-primary{border-color:rgba(74,158,255,.65)!important;background:var(--blue)!important;color:#071523!important}
+.community-login:hover,.community-login:focus-visible,.community-section button:hover,.community-section button:focus-visible,.auth-dialog button:hover,.auth-dialog button:focus-visible{border-color:var(--green);outline:none}
+.community-board{overflow:hidden;border:1px solid var(--line);border-radius:16px;background:rgba(23,26,33,.8);box-shadow:0 18px 48px rgba(0,0,0,.16)}
+.comment-composer{padding:24px;border-bottom:1px solid var(--line);background:linear-gradient(135deg,rgba(74,158,255,.06),rgba(61,220,132,.025))}
+.comment-composer-head,.comment-stream-head{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:16px}
+.comment-composer h3,.comment-stream h3,.auth-dialog h3{margin:0;color:#f0f3f8;font-size:17px}
+.comment-composer-head span,.comment-stream-head span{color:var(--muted);font-size:11px}
+.community-stack{display:grid;gap:11px}
+.community-stack.compact{margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+.community-section label,.auth-dialog label{display:grid;gap:6px;color:var(--muted);font-size:12px}
+.community-section input,.community-section textarea,.auth-dialog input,.auth-dialog textarea{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:8px;background:#11141a;color:var(--text);font:inherit;outline:none}
+.community-section input:focus,.community-section textarea:focus,.auth-dialog input:focus,.auth-dialog textarea:focus{border-color:var(--blue)}
+.community-section textarea,.auth-dialog textarea{min-height:88px;resize:vertical}
+.community-section button:disabled{cursor:not-allowed;opacity:.48}
+.comment-stream{padding:24px}
+.comments{display:grid;gap:12px;min-height:94px}
+.comments:empty::before{content:"还没有评论，期待第一条友善的留言。";display:grid;place-items:center;min-height:94px;border:1px dashed var(--line);border-radius:11px;color:var(--muted);font-size:12px}
+.comment{padding:16px;border:1px solid var(--line);border-radius:11px;background:rgba(29,33,43,.68)}
+.comment-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
+.comment-head strong{color:#fff}.comment-head time{color:var(--muted);font-size:11px}
+.comment-body{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7}
+.attachments{display:flex;flex-wrap:wrap;gap:8px;margin-top:11px}.attachments a{padding:5px 8px;border:1px solid var(--line);border-radius:6px;color:var(--blue);font-size:11px}
+.comment-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:8px}.comment-actions button{min-height:30px;padding:0 9px;color:var(--muted);font-size:11px}
+.community-status{min-height:20px;margin:10px 0 0;color:var(--muted);font-size:12px;line-height:1.5}.community-status.error{color:#ff929d}.community-status.success{color:var(--green)}
+.file-list{color:var(--muted);font-size:11px}.community-more{margin-top:14px}.policy-links{display:flex;flex-wrap:wrap;gap:14px;margin-top:14px;color:var(--muted);font-size:11px}.policy-links a:hover{color:var(--blue)}
+.auth-dialog{width:min(520px,calc(100% - 24px));max-height:min(780px,calc(100dvh - 32px));padding:0;border:1px solid var(--line);border-radius:17px;background:rgba(18,21,27,.98);color:var(--text);box-shadow:0 28px 90px rgba(0,0,0,.58)}
+.auth-dialog::backdrop{background:rgba(4,7,11,.72);backdrop-filter:blur(5px)}
+.auth-dialog-panel{position:relative;padding:28px;overflow:auto}
+.auth-dialog h2{margin:0 0 18px;font-size:28px}
+.auth-dialog-close{position:absolute;top:14px;right:14px;width:38px;min-height:38px!important;padding:0!important;border-radius:50%!important;font-size:22px!important;font-weight:400!important}
+.auth-tabs{display:flex;gap:7px;margin-bottom:16px}.auth-tabs button{flex:1}.auth-tabs button.active{border-color:var(--blue);color:#fff}
+.auth-dialog details{margin-top:10px;color:var(--muted);font-size:12px}.auth-dialog summary{cursor:pointer;color:var(--blue)}
+.community-checkbox{display:flex!important;align-items:flex-start;gap:8px;line-height:1.5}.community-checkbox input{width:auto;margin-top:3px}
+.account{display:grid;gap:10px}.account strong{color:#fff}.account-actions{display:flex;flex-wrap:wrap;gap:8px}.danger{border-color:#86444b!important;color:#ffb4ba!important}
+.hidden{display:none!important}
+body.has-modal{overflow:hidden}
+@media(max-width:760px){.community-section{padding:50px 0}.community-heading{align-items:start;flex-direction:column;gap:16px}.community-login{width:100%}.comment-composer,.comment-stream{padding:18px}.comment-composer-head,.comment-stream-head{align-items:start;flex-direction:column;gap:4px}.auth-dialog-panel{padding:24px 18px}.account-actions{display:grid}.account-actions button{width:100%}}
+@media(prefers-reduced-motion:no-preference){.auth-dialog[open]{animation:community-dialog-in .18s ease-out both}.auth-dialog[open]::backdrop{animation:community-backdrop-in .18s ease-out both}@keyframes community-dialog-in{from{opacity:0;transform:translateY(10px) scale(.98)}}@keyframes community-backdrop-in{from{opacity:0}}}

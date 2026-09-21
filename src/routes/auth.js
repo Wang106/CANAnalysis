@@ -28,7 +28,7 @@ export async function authRoutes(request, env, path) {
       env.DB.prepare(`INSERT INTO consent_records(id,user_id,policy_version,cross_border,ip_hash,created_at) VALUES(?,?,?,?,?,?)`)
         .bind(uuid(), userId, body.policyVersion, 1, ipHash, createdAt)
     ]);
-    const link = `${env.APP_ORIGIN}/community.html?verify=${encodeURIComponent(token)}`;
+    const link = `${env.APP_ORIGIN}/aboutus?verify=${encodeURIComponent(token)}#community`;
     await enqueueMail(env, 'verify_email', email, {subject: '验证 CANAnalysis 账号邮箱', text: `请在30分钟内打开以下链接完成邮箱验证：\n${link}`, html: `<p>请在30分钟内完成邮箱验证：</p><p><a href="${link}">验证邮箱</a></p>`});
     await audit(env, request, 'user.registered', {userId});
     return json({ok: true}, 202);
@@ -72,7 +72,7 @@ export async function authRoutes(request, env, path) {
       const token = randomToken(), hash = await sha256(token), now = nowIso();
       await env.DB.prepare(`INSERT INTO email_tokens(token_hash,user_id,purpose,created_at,expires_at) VALUES(?,?,?,?,?)`)
         .bind(hash, user.id, 'reset_password', now, new Date(Date.now() + 20 * 60000).toISOString()).run();
-      const link = `${env.APP_ORIGIN}/community.html?reset=${encodeURIComponent(token)}`;
+      const link = `${env.APP_ORIGIN}/aboutus?reset=${encodeURIComponent(token)}#community`;
       await enqueueMail(env, 'reset_password', user.email, {subject: '重置 CANAnalysis 账号密码', text: `请在20分钟内打开以下链接重置密码：\n${link}`, html: `<p>请在20分钟内重置密码：</p><p><a href="${link}">重置密码</a></p>`});
     }
     return json({ok: true}, 202);
@@ -88,7 +88,7 @@ export async function authRoutes(request, env, path) {
       const token = randomToken(), hash = await sha256(token), now = nowIso();
       await env.DB.prepare(`INSERT INTO email_tokens(token_hash,user_id,purpose,created_at,expires_at) VALUES(?,?,?,?,?)`)
         .bind(hash, user.id, 'verify_email', now, new Date(Date.now() + 30 * 60000).toISOString()).run();
-      const link = `${env.APP_ORIGIN}/community.html?verify=${encodeURIComponent(token)}`;
+      const link = `${env.APP_ORIGIN}/aboutus?verify=${encodeURIComponent(token)}#community`;
       await enqueueMail(env, 'verify_email', user.email, {subject: '验证 CANAnalysis 账号邮箱', text: `请在30分钟内打开以下链接完成邮箱验证：\n${link}`, html: `<p>请在30分钟内完成邮箱验证：</p><p><a href="${link}">验证邮箱</a></p>`});
     }
     return json({ok: true}, 202);
