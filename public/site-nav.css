@@ -1,10 +1,11 @@
 .skin-switching,.skin-switching *{transition:none!important;}
 #topNav{position:sticky;top:0;height:20px;flex:0 0 20px;z-index:140;background:var(--panel2);border-bottom:1px solid var(--line);outline:none;overflow:visible;}
   .can-brandbar{position:relative;z-index:10;border-bottom:1px solid rgba(42,47,58,.85);background:rgba(15,17,21,.82);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);}
-  .can-brandbar-inner{height:62px;display:flex;align-items:center;gap:16px;}
-  .can-brand{display:flex;align-items:center;gap:10px;color:var(--txt);font-size:16px;font-weight:700;letter-spacing:.3px;text-decoration:none;}
-  .can-brand img{width:34px;height:34px;border-radius:50%;background:#fff;box-shadow:0 0 0 1px var(--line);}
-  .can-brand small{display:block;margin-top:1px;color:var(--txt2);font-size:10px;font-weight:500;letter-spacing:.8px;}
+  .can-brandbar-inner{width:min(1120px,calc(100% - 40px));height:62px;margin:0 auto;padding:0;display:flex;align-items:center;gap:16px;}
+  .can-brand{display:flex;align-items:center;gap:10px;color:var(--txt);font-family:"Noto Sans CJK SC","Microsoft YaHei","PingFang SC",system-ui,sans-serif;font-size:16px;font-weight:700;line-height:1;text-decoration:none;}
+  .can-brand>span{display:block;font-size:16px;font-weight:700;line-height:18px;letter-spacing:.3px;}
+  .can-brand img{display:block;width:34px;height:34px;flex:0 0 34px;border-radius:50%;background:#fff;box-shadow:0 0 0 1px var(--line);}
+  .can-brand small{display:block;margin-top:1px;color:var(--txt2);font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:10px;font-weight:500;line-height:12px;letter-spacing:.8px;}
   #topNav.nav-fixed{height:44px;flex-basis:44px;}
   #topNav::before,#topNav::after{content:"";position:absolute;top:0;bottom:0;width:32%;z-index:0;pointer-events:none;opacity:0;will-change:transform,opacity;background:linear-gradient(90deg,transparent 0%,rgba(74,158,255,.2) 28%,var(--accent) 50%,rgba(74,158,255,.2) 72%,transparent 100%);}
   #topNav::before{left:0;}
@@ -45,7 +46,7 @@
   .skin-control:focus-within,.language-control:focus-within{outline:2px solid var(--accent);outline-offset:0;border-radius:6px;}
   .language-toggle:hover,.language-toggle:focus-visible{color:var(--accent);outline:none;}
   @media (max-width:760px){
-    .can-brandbar-inner{height:56px;}
+    .can-brandbar-inner{width:calc(100% - 24px);height:56px;}
     .can-brand small{display:none;}
     .top-nav-inner{width:calc(100% - 74px);justify-content:flex-start;padding-left:8px;padding-right:8px;}
     .nav-item{padding:0 11px;font-size:12px;}

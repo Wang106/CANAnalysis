@@ -12,6 +12,8 @@ assert.doesNotMatch(offline,/class="can-brandbar"/,'offline analysis keeps its c
 
 const css=fs.readFileSync('public/site-nav.css','utf8');
 assert.match(css,/\.can-brandbar\{[^}]*border-bottom:[^}]*background:[^}]*backdrop-filter:/s,'shared brand row must retain the About-page glass treatment');
+assert.match(css,/\.can-brandbar-inner\{[^}]*width:min\(1120px,calc\(100% - 40px\)\)[^}]*height:62px[^}]*margin:0 auto[^}]*padding:0/s,'shared brand row must own the exact Home width, height and alignment instead of inheriting page shells');
+assert.match(css,/\.can-brand>span\{[^}]*font-size:16px[^}]*line-height:18px[^}]*letter-spacing:\.3px/s,'shared brand title typography must be explicit and identical on every page');
 assert.match(css,/\.can-brand img\{[^}]*width:34px[^}]*height:34px/s,'shared brand icon must keep the About-page size');
 
 console.log('PASS: all non-offline pages share the About-style brand row');
