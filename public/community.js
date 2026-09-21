@@ -4,6 +4,21 @@
   const policyVersion = '2026-09-20';
   let session = null;
   let cursor = null;
+  const authDialog = $('#authDialog');
+
+  function openAuth(tab = 'login') {
+    if (!session && tab) showTab(tab);
+    if (!authDialog.open) authDialog.showModal();
+    document.body.classList.add('has-modal');
+  }
+  function closeAuth() {
+    authDialog.close();
+    document.body.classList.remove('has-modal');
+  }
+  $('#openAuthButton').onclick = () => openAuth();
+  $('#closeAuthButton').onclick = closeAuth;
+  authDialog.addEventListener('close', () => document.body.classList.remove('has-modal'));
+  authDialog.addEventListener('click', event => { if (event.target === authDialog) closeAuth(); });
 
   async function api(path, options = {}) {
     const response = await fetch(path, {
@@ -42,6 +57,8 @@
     $('#authCard').classList.toggle('hidden', Boolean(session));
     $('#accountCard').classList.toggle('hidden', !session);
     $('#commentForm').querySelector('button').disabled = !session;
+    $('#openAuthButton').textContent = session ? '账号设置' : '登录 / 注册';
+    $('#sessionSummary').textContent = session ? `${session.displayName}，欢迎回来` : '登录后即可参与讨论';
     if (session) {
       $('#accountName').textContent = `${session.displayName} · ${session.email}`;
       $('#profileForm').elements.displayName.value = session.displayName;
@@ -51,7 +68,7 @@
 
   $('#loginForm').onsubmit = async event => {
     event.preventDefault(); const form = event.currentTarget; const data = Object.fromEntries(new FormData(form)); data.turnstileToken = turnstileToken(form);
-    try { await api('/api/auth/login', {method: 'POST', body: JSON.stringify(data)}); form.reset(); status($('#authStatus'), '登录成功', 'success'); await refreshSession(); await loadComments(true); }
+    try { await api('/api/auth/login', {method: 'POST', body: JSON.stringify(data)}); form.reset(); status($('#authStatus'), '登录成功', 'success'); await refreshSession(); await loadComments(true); closeAuth(); }
     catch (error) { status($('#authStatus'), error.message, 'error'); } finally { resetTurnstile(); }
   };
   $('#registerForm').onsubmit = async event => {
@@ -72,10 +89,10 @@
   };
   $('#resetForm').onsubmit = async event => {
     event.preventDefault(); const form = event.currentTarget;
-    try { await api('/api/auth/reset-password', {method: 'POST', body: JSON.stringify(Object.fromEntries(new FormData(form)))}); history.replaceState(null, '', '/community'); form.reset(); showTab('login'); status($('#authStatus'), '密码已重置，请使用新密码登录。', 'success'); }
+    try { await api('/api/auth/reset-password', {method: 'POST', body: JSON.stringify(Object.fromEntries(new FormData(form)))}); history.replaceState(null, '', '/aboutus#community'); form.reset(); showTab('login'); status($('#authStatus'), '密码已重置，请使用新密码登录。', 'success'); }
     catch (error) { status($('#authStatus'), error.message, 'error'); }
   };
-  $('#logoutButton').onclick = async () => { await api('/api/auth/logout', {method: 'POST', body: '{}'}); await refreshSession(); await loadComments(true); };
+  $('#logoutButton').onclick = async () => { await api('/api/auth/logout', {method: 'POST', body: '{}'}); await refreshSession(); await loadComments(true); closeAuth(); };
   $('#exportButton').onclick = async () => {
     try { const data = await api('/api/me/export'); const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'}); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = 'cananalysis-my-data.json'; link.click(); setTimeout(() => URL.revokeObjectURL(link.href), 1000); }
     catch (error) { status($('#accountStatus'), error.message, 'error'); }
@@ -104,7 +121,7 @@
     status($('#fileStatus'), ids.length ? `已上传 ${ids.length} 个附件` : ''); return ids;
   }
   $('#commentForm').onsubmit = async event => {
-    event.preventDefault(); if (!session) { status($('#commentStatus'), '请先登录并验证邮箱', 'error'); return; } const form = event.currentTarget;
+    event.preventDefault(); if (!session) { status($('#commentStatus'), '请先登录并验证邮箱', 'error'); openAuth(); return; } const form = event.currentTarget;
     try { const fileIds = await uploadCommentFiles(form.elements.files.files); await api('/api/comments', {method: 'POST', body: JSON.stringify({body: form.elements.body.value, fileIds})}); form.reset(); status($('#fileStatus'), ''); status($('#commentStatus'), '评论已发布', 'success'); await loadComments(true); }
     catch (error) { status($('#commentStatus'), error.message, 'error'); }
   };
@@ -128,15 +145,15 @@
     catch (error) { status($('#commentStatus'), error.message, 'error'); }
   }
   async function reportComment(id) {
-    if (!session) { alert('请先登录'); return; } const details = prompt('请说明举报原因（骚扰、仇恨、隐私泄露、垃圾信息、违法或其他）'); if (!details) return;
+    if (!session) { openAuth(); return; } const details = prompt('请说明举报原因（骚扰、仇恨、隐私泄露、垃圾信息、违法或其他）'); if (!details) return;
     try { await api(`/api/comments/${encodeURIComponent(id)}/reports`, {method: 'POST', body: JSON.stringify({reason: 'other', details})}); alert('举报已提交'); }
     catch (error) { alert(error.message); }
   }
   $('#moreButton').onclick = () => loadComments();
   async function consumeLinks() {
     const params = new URLSearchParams(location.search);
-    if (params.has('verify')) { await api('/api/auth/verify-email', {method: 'POST', body: JSON.stringify({token: params.get('verify')})}); history.replaceState(null, '', '/community'); status($('#authStatus'), '邮箱验证成功，请登录。', 'success'); }
-    if (params.has('reset')) { $('#loginForm').classList.add('hidden'); $('#registerForm').classList.add('hidden'); $('#resetForm').classList.remove('hidden'); $('#resetForm').elements.token.value = params.get('reset'); }
+    if (params.has('verify')) { await api('/api/auth/verify-email', {method: 'POST', body: JSON.stringify({token: params.get('verify')})}); history.replaceState(null, '', '/aboutus#community'); status($('#authStatus'), '邮箱验证成功，请登录。', 'success'); openAuth('login'); }
+    if (params.has('reset')) { $('#loginForm').classList.add('hidden'); $('#registerForm').classList.add('hidden'); $('#resetForm').classList.remove('hidden'); $('#resetForm').elements.token.value = params.get('reset'); openAuth(null); }
   }
-  initializeSecurity().then(consumeLinks).then(refreshSession).then(() => loadComments(true)).catch(error => status($('#authStatus'), error.message, 'error'));
+  initializeSecurity().then(consumeLinks).then(refreshSession).then(() => loadComments(true)).catch(error => { status($('#authStatus'), error.message, 'error'); status($('#commentStatus'), error.message, 'error'); $('#commentForm').querySelector('button').disabled = true; });
 })();
