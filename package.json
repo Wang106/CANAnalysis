@@ -1,0 +1,9 @@
+{
+  "name": "cananalysis",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:community": "node --test tests/community-security.test.mjs && node tests/community-contract.test.cjs",
+    "check:worker": "node --check src/worker.js"
+  }
+}

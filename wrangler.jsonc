@@ -1,8 +1,75 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "can-analysis",
+  "name": "cananalysis",
+  "account_id": "85113939fbc7f9b76efd759379703c32",
+  "main": "src/worker.js",
   "compatibility_date": "2026-08-07",
+  "compatibility_flags": ["nodejs_compat"],
   "assets": {
-    "directory": "./public"
+    "directory": "./public",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"]
+  },
+  "vars": {
+    "APP_ORIGIN": "https://can.whf969.com",
+    "POLICY_VERSION": "2026-09-20",
+    "COMMUNITY_ENABLED": "false",
+    "REQUIRE_TURNSTILE": "true",
+    "ADMIN_EMAIL": "whf969@foxmail.com",
+    "ACCESS_TEAM_DOMAIN": "dry-river-bc91.cloudflareaccess.com",
+    "ACCESS_AUD": "c682d7fab196249923d6f298876e943a79f9260cf624ec378167de857c69f906",
+    "TURNSTILE_SITE_KEY": "0x4AAAAAAE-RtAxCubW8gm4I"
+  },
+  "d1_databases": [{
+    "binding": "DB",
+    "database_name": "cananalysis-production",
+    "database_id": "3b2cc596-1a1a-4f9c-8d1c-7cafd067755c",
+    "migrations_dir": "migrations"
+  }],
+  "r2_buckets": [{
+    "binding": "FILES",
+    "bucket_name": "cananalysis-production-files"
+  }],
+  "queues": {
+    "producers": [{"binding": "MAIL_QUEUE", "queue": "cananalysis-production-mail"}],
+    "consumers": [{
+      "queue": "cananalysis-production-mail",
+      "dead_letter_queue": "cananalysis-production-mail-dlq",
+      "max_retries": 5
+    }]
+  },
+  "triggers": {"crons": ["17 3 * * *"]},
+  "env": {
+    "preview": {
+      "name": "cananalysis-preview",
+      "vars": {
+        "APP_ORIGIN": "https://cananalysis-preview.whf969.workers.dev",
+        "POLICY_VERSION": "2026-09-20",
+        "COMMUNITY_ENABLED": "false",
+        "REQUIRE_TURNSTILE": "true",
+        "ADMIN_EMAIL": "whf969@foxmail.com",
+        "ACCESS_TEAM_DOMAIN": "dry-river-bc91.cloudflareaccess.com",
+        "ACCESS_AUD": "c682d7fab196249923d6f298876e943a79f9260cf624ec378167de857c69f906",
+        "TURNSTILE_SITE_KEY": "0x4AAAAAAE-RtQJN47yEA9ao"
+      },
+      "d1_databases": [{
+        "binding": "DB",
+        "database_name": "cananalysis-preview",
+        "database_id": "5212f398-3c83-48f1-820e-d7db48275992",
+        "migrations_dir": "migrations"
+      }],
+      "r2_buckets": [{
+        "binding": "FILES",
+        "bucket_name": "cananalysis-preview-files"
+      }],
+      "queues": {
+        "producers": [{"binding": "MAIL_QUEUE", "queue": "cananalysis-preview-mail"}],
+        "consumers": [{
+          "queue": "cananalysis-preview-mail",
+          "dead_letter_queue": "cananalysis-preview-mail-dlq",
+          "max_retries": 3
+        }]
+      }
+    }
   }
 }

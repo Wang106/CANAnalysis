@@ -95,6 +95,10 @@
     .privacy-icon{display:grid;place-items:center;width:42px;height:42px;border-radius:10px;background:rgba(61,220,132,.13);color:var(--green);font-size:20px;}
     .privacy-strip strong{display:block;margin-bottom:4px;color:#e7f8ee;font-size:14px;}
     .privacy-strip span{color:var(--muted);font-size:12px;line-height:1.6;}
+    .community-invite{display:grid;grid-template-columns:1fr auto;align-items:center;gap:28px;padding:34px 0 68px;border-top:1px solid var(--line);}
+    .community-invite p{max-width:680px;margin:10px 0 0;color:var(--muted);font-size:13px;line-height:1.75;}
+    .community-link{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 20px;border:1px solid rgba(74,158,255,.45);border-radius:9px;background:rgba(74,158,255,.1);color:#dcecff;font-size:13px;font-weight:700;}
+    .community-link:hover,.community-link:focus-visible{border-color:var(--green);color:#e9fff2;outline:none;}
     .support{padding:68px 0 34px;border-top:1px solid var(--line);}
     .support-head{display:block;}
     .support-note{max-width:680px;margin:12px 0 0;color:var(--muted);font-size:12px;line-height:1.7;text-align:left;}
@@ -120,6 +124,8 @@
       .signal-card{min-height:220px;}
       .features,.support{padding:50px 0;}
       .feature-grid,.pay-grid{grid-template-columns:1fr;}
+      .community-invite{grid-template-columns:1fr;gap:18px;}
+      .community-link{justify-self:start;}
       .feature-card{min-height:0;}
       .ocean-scene{min-height:300px;margin-bottom:42px;border-radius:14px;background-position:center;}
       .ocean-copy{top:14px;left:15px;}
@@ -208,6 +214,11 @@
         <span class="privacy-icon" aria-hidden="true">⌁</span>
         <div><strong>文件留在你的设备中</strong><span>DBC 与 ASC 的读取、解析和绘图均在当前浏览器本地完成，本站不会主动上传你的 CAN 数据文件。</span></div>
       </div>
+    </section>
+
+    <section class="community-invite" aria-labelledby="community-title">
+      <div><p class="section-kicker">Community</p><h2 id="community-title">评论与站务留言</h2><p>登录并验证邮箱后，可以发表评论、上传符合规则的附件、举报不友善内容，也可以在隐私中心导出或删除自己的资料。</p></div>
+      <a class="community-link" href="/community">进入评论区</a>
     </section>
 
     <section class="support" id="support" aria-labelledby="support-title">
