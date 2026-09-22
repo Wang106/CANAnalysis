@@ -2,8 +2,7 @@
   const visual=document.querySelector('.format-visual');
   if(!visual)return;
   const bubbles=[...visual.querySelectorAll('.format-nodes span')];
-  const connector=visual.querySelector('.format-connector');
-  if(bubbles.length<2||!connector)return;
+  if(!bubbles.length)return;
 
   const reduced=matchMedia('(prefers-reduced-motion: reduce)');
   const starts=[[.03,.08],[.27,.58],[.22,.1],[.61,.57],[.48,.04],[.06,.6],[.75,.13],[.88,.6]];
@@ -43,12 +42,33 @@
 
   function render(){
     for(const body of bodies)body.element.style.transform=`translate3d(${body.x.toFixed(2)}px,${body.y.toFixed(2)}px,0)`;
-    const a=bodies[0],b=bodies[6];
-    if(!a||!b)return;
-    const x1=a.x+a.size/2,y1=a.y+a.size/2,x2=b.x+b.size/2,y2=b.y+b.size/2;
-    connector.style.left=`${x1}px`;connector.style.top=`${y1}px`;
-    connector.style.width=`${Math.hypot(x2-x1,y2-y1)}px`;
-    connector.style.transform=`rotate(${Math.atan2(y2-y1,x2-x1)}rad)`;
+  }
+
+  function kick(event){
+    event.preventDefault();
+    event.stopPropagation();
+    const rect=visual.getBoundingClientRect();
+    const clickX=event.clientX-rect.left;
+    const clickY=event.clientY-rect.top;
+    const radius=Math.min(150,Math.max(100,rect.width*.3));
+    bodies.forEach((body,index)=>{
+      let dx=body.x+body.size/2-clickX;
+      let dy=body.y+body.size/2-clickY;
+      let distance=Math.hypot(dx,dy);
+      if(distance>=radius)return;
+      if(distance<1){
+        const angle=index*2.399+performance.now()/900;
+        dx=Math.cos(angle);dy=Math.sin(angle);distance=1;
+      }
+      const force=2.05*Math.pow(1-distance/radius,2)+.18;
+      body.vx+=dx/distance*force;
+      body.vy+=dy/distance*force;
+      const speed=Math.hypot(body.vx,body.vy);
+      if(speed>2.4){body.vx=body.vx/speed*2.4;body.vy=body.vy/speed*2.4;}
+      body.element.classList.remove('is-kicked');
+      void body.element.offsetWidth;
+      body.element.classList.add('is-kicked');
+    });
   }
 
   function tick(now){
@@ -70,6 +90,7 @@
 
   new ResizeObserver(layout).observe(visual);
   new IntersectionObserver(entries=>{visible=entries[0]?.isIntersecting??true;}).observe(visual);
+  visual.addEventListener('click',kick);
   addEventListener('pagehide',()=>cancelAnimationFrame(frame),{once:true});
   layout();
   frame=requestAnimationFrame(tick);

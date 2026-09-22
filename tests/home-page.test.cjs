@@ -15,18 +15,21 @@ assert.match(home,/class="card-visual hardware-visual"[\s\S]*?device-pcan\.png[\
 assert.match(home,/class="card-visual curve-visual"[\s\S]*?<svg/,'offline card must use an analysis-curve visual');
 for(const asset of ['device-pcan.png','device-vector.png','device-zlg.png']){assert.equal(fs.existsSync('public/'+asset),true,asset+' must exist');assert.ok(fs.statSync('public/'+asset).size>50000,asset+' must be a real product cutout');}
 for(const format of ['ASC','LOG','TRC','BLF','TXT','MF4','MDF','CSV'])assert.match(home,new RegExp(`<span(?: class="format-output")?>${format}<`),`format card must include ${format} in a circular node`);
-assert.match(home,/class="format-connector"[^>]*aria-hidden="true"/,'format card must draw a line through two bubbles');
+assert.doesNotMatch(home,/format-connector/,'format card must not draw a line between bubbles');
 assert.doesNotMatch(home,/class="format-leaves"|leaf-fall/,'format card must not include falling leaves');
 assert.match(home,/<span>CSV<\/span>/,'CSV must use the same bubble markup and color as every other format');
 const homeCss=fs.readFileSync('public/home.css','utf8');
 assert.match(homeCss,/\.format-nodes span\{[^}]*position:absolute/s,'format circles must use individually positioned nodes');
 assert.ok((homeCss.match(/\.format-nodes span:nth-child\(/g)||[]).length>=8,'all format circles must receive deliberately irregular positions');
-assert.match(homeCss,/\.format-connector\{[^}]*transform-origin:0 50%/s,'bubble connector must rotate from its first bubble');
+assert.doesNotMatch(homeCss,/\.format-connector/,'bubble connector styling must be removed');
 assert.doesNotMatch(homeCss,/\.format-output|@keyframes leaf-fall|@keyframes format-float/,'CSV must not have a special color and obsolete leaf/float animations must be removed');
 const bubbleJs=fs.readFileSync('public/home-format-bubbles.js','utf8');
 assert.match(bubbleJs,/function collide\(a,b\)/,'format bubbles must detect and resolve collisions');
 assert.match(bubbleJs,/body\.vx\*=-1/,'format bubbles must bounce off the visual boundary');
-assert.match(bubbleJs,/connector\.style\.width/,'connector must follow the two moving bubbles');
+assert.match(bubbleJs,/visual\.addEventListener\('click',kick\)/,'format visual must intercept clicks instead of navigating');
+assert.match(bubbleJs,/event\.preventDefault\(\)[\s\S]*event\.stopPropagation\(\)/,'clicking anywhere in the format visual must not follow the card link');
+assert.match(bubbleJs,/Math\.pow\(1-distance\/radius,2\)/,'nearby bubbles must receive a distance-decayed push');
+assert.match(bubbleJs,/body\.vx\+=dx\/distance\*force/,'clicked and nearby bubbles must be pushed away from the pointer');
 assert.match(home,/class="card-visual protocol-visual"[\s\S]*?>握手<[\s\S]*?>辨识<[\s\S]*?>参数配置<[\s\S]*?>充电<[\s\S]*?>结束</,'27930 stages must follow the requested left-to-right order');
 assert.match(homeCss,/span:nth-of-type\(1\),\.protocol-visual span:nth-of-type\(2\),\.protocol-visual span:nth-of-type\(5\)\{[^}]*width:56px[^}]*height:56px[^}]*border-radius:50%/s,'handshake, identification and ending stages must be circular');
 assert.match(homeCss,/span:nth-of-type\(4\)\{[^}]*width:76px[^}]*height:42px[^}]*border-radius:999px[^}]*writing-mode:horizontal-tb/s,'charging stage must be a horizontal ellipse');
