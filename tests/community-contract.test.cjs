@@ -3,6 +3,7 @@ const worker=fs.readFileSync('src/worker.js','utf8');
 const migration=fs.readFileSync('migrations/0001_community_foundation.sql','utf8');
 const community=fs.readFileSync('public/community.html','utf8');
 const about=fs.readFileSync('public/aboutus.html','utf8');
+const communityCss=fs.readFileSync('public/about-community.css','utf8');
 const privacy=fs.readFileSync('public/privacy.html','utf8');
 const config=fs.readFileSync('wrangler.jsonc','utf8');
 const authRoutes=fs.readFileSync('src/routes/auth.js','utf8');
@@ -20,6 +21,8 @@ assert.ok(about.indexOf('id="comments"')<about.indexOf('id="commentPrompt"'),'ex
 assert.match(about,/id="commentPrompt"[^>]+aria-expanded="false"[^>]*><span>发表评论<\/span>/,'comment entry must default to one collapsed row');
 assert.match(about,/id="commentExpansion" class="comment-expansion hidden"/,'login and registration controls must stay collapsed until requested');
 assert.doesNotMatch(about,/<dialog|id="authDialog"|id="openAuthButton"/,'authentication must expand inline instead of opening a separate modal');
+assert.match(communityCss,/\.community-board\{[^}]*background:transparent[^}]*box-shadow:none/s,'community board must use the page background instead of a separate dark panel');
+assert.match(communityCss,/\.comment-prompt\{[^}]*background:transparent!important/s,'comment entry must keep the page background');
 assert.doesNotMatch(about,/href="\/community"/,'About page must not link to a separate community page');
 assert.match(community,/location\.replace\('\/aboutus'/,'legacy community URL must redirect to the embedded area');
 assert.match(authRoutes,/\/aboutus\?verify=.*#community/,'verification mail must return to the embedded community area');
