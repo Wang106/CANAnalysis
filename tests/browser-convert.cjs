@@ -50,7 +50,7 @@ const server=createServer(async(req,res)=>{
     await languagePage.goto(base+'/offline');
     await languagePage.locator('#siteLanguage').waitFor();
     assert.equal(await languagePage.locator('#topNav > :last-child #siteLanguage').count(),1,'language selector must be the final navigation control');
-    assert.equal((await languagePage.locator('#navLinks .nav-item').allTextContents()).join('|'),'首页|在线连接|离线报文解析|格式转换|27930报文分析|J1939分析|友情链接|关于本站','navigation must link online connection before offline analysis');
+    assert.equal((await languagePage.locator('#navLinks .nav-item').allTextContents()).join('|'),'首页|在线连接|离线分析|格式转换|27930解析|J1939分析|友情链接|关于本站','navigation must link online connection before offline analysis');
     assert.equal(await languagePage.locator('#navLinks .nav-item').first().getAttribute('href'),'/', 'offline analysis must link back to the home page');
     assert.equal(await languagePage.locator('#navLinks .nav-item').nth(1).getAttribute('href'),'/online','online connection must route to its page');
     assert.equal(await languagePage.locator('meta[name="description"]').count(),1,'CAN page must provide a search description');

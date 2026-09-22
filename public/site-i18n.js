@@ -5,7 +5,7 @@
   const SKIN_KEY = 'cananalysis-skin';
   const exact = new Map(Object.entries({
     '中文':'Chinese','语言切换':'Language','本站栏目':'Site sections','栏目导航':'Site navigation',
-    '首页':'Home','在线连接':'Online Connection','离线报文解析':'Offline Message Analysis','CAN报文解析':'CAN Message Analysis','格式转换':'Format Conversion','27930报文分析':'GB/T 27930 Analysis','J1939分析':'J1939 Analysis','友情链接':'Links','关于本站':'About',
+    '首页':'Home','在线连接':'Online Connection','离线分析':'Offline Analysis','离线报文解析':'Offline Message Analysis','CAN报文解析':'CAN Message Analysis','格式转换':'Format Conversion','27930解析':'GB/T 27930 Parsing','27930报文分析':'GB/T 27930 Analysis','J1939分析':'J1939 Analysis','友情链接':'Links','关于本站':'About',
     '首页 · CANAnalysis':'Home · CANAnalysis','离线报文解析 · CANAnalysis':'Offline Message Analysis · CANAnalysis','CAN报文解析 · CANAnalysis':'CAN Message Analysis · CANAnalysis','在线连接 · CANAnalysis':'Online Connection · CANAnalysis','格式转换 · CANAnalysis':'Format Conversion · CANAnalysis','关于本站 · CANAnalysis':'About · CANAnalysis',
     '未加载':'Not loaded','加载DBC文件':'Load DBC File','加载ASC文件':'Load ASC File','加载 DBC 文件':'Load DBC File','加载 ASC 文件':'Load ASC File','三步开始分析':'Three Steps to Start','① 加载 DBC 文件 → ② 加载 ASC 日志 → ③ 选择信号并生成曲线':'① Load a DBC file → ② Load an ASC log → ③ Select signals and generate charts','支持把文件直接拖入窗口 · 文件仅在当前浏览器本地处理':'Drop files directly into the window · Files are processed only in this browser','ASC 数据源':'ASC data source','信号选择':'Signal Selection','搜索信号名 / 报文名…':'Search signal / message name…',
     '共':'Total','个，已选':'selected','个，':'items,','=有数据':'=has data','滚轮在':'Wheel over','底部横轴':'bottom X-axis','纵轴':'Y-axis','=缩放横轴 · 滚轮在':'=zoom X · wheel over','=缩放纵轴 · 滚轮在曲线区=上下滚动':'=zoom Y · wheel over charts=scroll vertically',
