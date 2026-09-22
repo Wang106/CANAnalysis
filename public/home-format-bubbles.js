@@ -6,7 +6,8 @@
 
   const reduced=matchMedia('(prefers-reduced-motion: reduce)');
   const starts=[[.03,.08],[.27,.58],[.22,.1],[.61,.57],[.48,.04],[.06,.6],[.75,.13],[.88,.6]];
-  const velocities=[[.23,.16],[-.2,-.15],[.17,-.22],[-.24,.17],[.19,.14],[.21,-.18],[-.18,.2],[-.22,-.16]];
+  const velocities=[[.075,.052],[-.066,-.05],[.056,-.072],[-.078,.055],[.062,.046],[.07,-.06],[-.06,.066],[-.072,-.052]];
+  const idleSpeed=.045;
   let bodies=[];
   let frame=0;
   let previous=0;
@@ -18,7 +19,7 @@
     bodies=bubbles.map((element,index)=>{
       const size=element.offsetWidth;
       const old=bodies[index];
-      return {element,size,x:old?Math.min(old.x,width-size):starts[index][0]*(width-size),y:old?Math.min(old.y,height-size):starts[index][1]*(height-size),vx:velocities[index][0],vy:velocities[index][1]};
+      return {element,size,x:old?Math.min(old.x,width-size):starts[index][0]*(width-size),y:old?Math.min(old.y,height-size):starts[index][1]*(height-size),vx:old?.vx??velocities[index][0],vy:old?.vy??velocities[index][1]};
     });
     visual.classList.add('is-physics');
     render();
@@ -81,6 +82,10 @@
         body.x+=body.vx*step;body.y+=body.vy*step;
         if(body.x<=0||body.x+body.size>=width){body.x=Math.max(0,Math.min(width-body.size,body.x));body.vx*=-1;}
         if(body.y<=0||body.y+body.size>=height){body.y=Math.max(0,Math.min(height-body.size,body.y));body.vy*=-1;}
+        const drag=Math.pow(.996,step);
+        body.vx*=drag;body.vy*=drag;
+        const speed=Math.hypot(body.vx,body.vy);
+        if(speed>0&&speed<idleSpeed){body.vx=body.vx/speed*idleSpeed;body.vy=body.vy/speed*idleSpeed;}
       }
       for(let i=0;i<bodies.length;i++)for(let j=i+1;j<bodies.length;j++)collide(bodies[i],bodies[j]);
       render();
