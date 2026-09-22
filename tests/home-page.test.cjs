@@ -10,7 +10,7 @@ assert.match(home,/class="[^\"]*page-grid/);
 assert.equal((home.match(/class="[^"]*page-card/g)||[]).length,7,'home must show every non-home navigation destination');
 assert.equal((home.match(/class="card-visual/g)||[]).length,7,'every home card must include a centered visual area');
 assert.match(home,/<h1 id="home-title">选择适合你的 <em>CAN 数据工具<\/em><\/h1>/,'home title must remain on one line');
-assert.match(home,/<a class="page-card online-card"[\s\S]*?<span class="card-state">开发中<\/span>[\s\S]*?<h2>在线连接<\/h2>/,'online connection card must be marked as in development');
+assert.match(home,/<a class="page-card online-card"[\s\S]*?<span class="card-state">开发中…<\/span>[\s\S]*?<h2>在线连接<\/h2>/,'online connection card must be marked as in development with an ellipsis');
 assert.match(home,/class="card-visual hardware-visual"[\s\S]*?device-pcan\.png[\s\S]*?PCAN[\s\S]*?device-vector\.png[\s\S]*?Vector[\s\S]*?device-zlg\.png[\s\S]*?周立功[\s\S]*?class="hardware-more"[^>]*>…/,'online card must place each matching device image above its name and show a trailing ellipsis');
 assert.match(home,/class="card-visual curve-visual"[\s\S]*?<svg/,'offline card must use an analysis-curve visual');
 for(const asset of ['device-pcan.png','device-vector.png','device-zlg.png']){assert.equal(fs.existsSync('public/'+asset),true,asset+' must exist');assert.ok(fs.statSync('public/'+asset).size>50000,asset+' must be a real product cutout');}
@@ -19,8 +19,14 @@ assert.doesNotMatch(home,/id="formatArrow"|class="card-visual format-visual"[^>]
 const homeCss=fs.readFileSync('public/home.css','utf8');
 assert.match(homeCss,/\.format-nodes span\{[^}]*position:absolute/s,'format circles must use individually positioned nodes');
 assert.ok((homeCss.match(/\.format-nodes span:nth-child\(/g)||[]).length>=8,'all format circles must receive deliberately irregular positions');
+assert.match(homeCss,/\.format-nodes span\{[^}]*animation:format-float/s,'format circles must use the slow drifting animation');
+assert.match(homeCss,/\.format-nodes span:nth-child\(8\)[^}]*--float-time:18s[^}]*--float-delay:-13s/s,'format circles must drift on varied slow paths');
+assert.match(homeCss,/@keyframes format-float/,'format circle drift keyframes must exist');
+assert.match(home,/class="format-leaves"[^>]*aria-hidden="true"[^>]*><i><\/i><i><\/i><i><\/i><i><\/i>/,'format card must include decorative falling leaves');
+assert.match(homeCss,/@keyframes leaf-fall/,'format leaves must occasionally fall through the card');
 assert.match(home,/class="card-visual protocol-visual"[\s\S]*?>握手<[\s\S]*?>辨识<[\s\S]*?>参数配置<[\s\S]*?>充电<[\s\S]*?>结束</,'27930 stages must follow the requested left-to-right order');
-assert.match(homeCss,/\.protocol-visual span\{[^}]*writing-mode:vertical-rl[^}]*text-orientation:upright/s,'27930 stage labels must read vertically from top to bottom');
+assert.match(homeCss,/span:nth-of-type\(1\),\.protocol-visual span:nth-of-type\(2\),\.protocol-visual span:nth-of-type\(5\)\{[^}]*width:56px[^}]*height:56px[^}]*border-radius:50%/s,'handshake, identification and ending stages must be circular');
+assert.match(homeCss,/span:nth-of-type\(4\)\{[^}]*width:76px[^}]*height:42px[^}]*border-radius:999px[^}]*writing-mode:horizontal-tb/s,'charging stage must be a horizontal ellipse');
 
 for(const card of home.match(/<(?:a|article) class="page-card[\s\S]*?<\/(?:a|article)>/g)||[]){
   assert.ok(card.indexOf('<h2>')<card.indexOf('class="card-visual'),'card title must precede the centered visual');

@@ -4,7 +4,7 @@
 .community-section button{min-height:42px;padding:0 16px;border:1px solid var(--line);border-radius:9px;background:var(--panel2);color:var(--text);font:700 13px/1 inherit;cursor:pointer}
 .community-primary{border-color:rgba(74,158,255,.65)!important;background:var(--blue)!important;color:#071523!important}
 .community-section button:hover,.community-section button:focus-visible{border-color:var(--green);outline:none}
-.community-board{overflow:hidden;border:1px solid var(--line);border-radius:16px;background:rgba(23,26,33,.8);box-shadow:0 18px 48px rgba(0,0,0,.16)}
+.community-board{overflow:hidden;border:1px solid var(--line);border-radius:16px;background:transparent;box-shadow:none}
 .comment-composer{padding:0;background:transparent}
 .comment-composer-head,.comment-stream-head{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:16px}
 .comment-composer h3,.comment-stream h3,.auth-panel h3{margin:0;color:#f0f3f8;font-size:17px}
@@ -19,7 +19,7 @@
 .comment-stream{padding:24px}
 .comments{display:grid;gap:12px;min-height:94px}
 .comments:empty::before{content:"还没有评论，期待第一条友善的留言。";display:grid;place-items:center;min-height:94px;border:1px dashed var(--line);border-radius:11px;color:var(--muted);font-size:12px}
-.comment{padding:16px;border:1px solid var(--line);border-radius:11px;background:rgba(29,33,43,.68)}
+.comment{padding:16px;border:1px solid var(--line);border-radius:11px;background:transparent}
 .comment-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
 .comment-head strong{color:#fff}.comment-head time{color:var(--muted);font-size:11px}
 .comment-body{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7}
@@ -28,11 +28,11 @@
 .community-status{min-height:20px;margin:10px 0 0;color:var(--muted);font-size:12px;line-height:1.5}.community-status.error{color:#ff929d}.community-status.success{color:var(--green)}
 .file-list{color:var(--muted);font-size:11px}.community-more{margin-top:14px}.policy-links{display:flex;flex-wrap:wrap;gap:14px;margin-top:14px;color:var(--muted);font-size:11px}.policy-links a:hover{color:var(--blue)}
 .comment-entry{border-top:1px solid var(--line)}
-.comment-prompt{display:flex!important;width:100%;min-height:54px!important;align-items:center;justify-content:space-between;padding:0 20px!important;border:0!important;border-radius:0!important;background:#11141a!important;text-align:left}
+.comment-prompt{display:flex!important;width:100%;min-height:54px!important;align-items:center;justify-content:space-between;padding:0 20px!important;border:0!important;border-radius:0!important;background:transparent!important;text-align:left}
 .comment-prompt span{color:#f1f4f8;font-weight:650}.comment-prompt small{color:var(--muted);font-size:11px;font-weight:500}
 .comment-prompt::after{content:"⌄";margin-left:12px;color:var(--blue);font-size:16px;transition:transform .2s ease}
 .comment-prompt[aria-expanded="true"]::after{transform:rotate(180deg)}
-.comment-expansion{padding:24px;border-top:1px solid var(--line);background:linear-gradient(135deg,rgba(74,158,255,.06),rgba(61,220,132,.025))}
+.comment-expansion{padding:24px;border-top:1px solid var(--line);background:transparent}
 .auth-panel{max-width:560px}.auth-panel>.section-kicker{margin-top:0}.auth-panel>h3{margin-bottom:18px}
 .auth-tabs{display:flex;gap:7px;margin-bottom:16px}.auth-tabs button{flex:1}.auth-tabs button.active{border-color:var(--blue);color:#fff}
 .auth-panel details{margin-top:10px;color:var(--muted);font-size:12px}.auth-panel summary{cursor:pointer;color:var(--blue)}
