@@ -13,10 +13,11 @@
   <link rel="canonical" href="https://can.whf969.com/">
   <title>首页 · CANAnalysis</title>
   <link rel="icon" href="/icon.png" type="image/png">
-  <link rel="stylesheet" href="/home.css?v=home-cards-20260921b">
+  <link rel="stylesheet" href="/home.css?v=bubble-physics-20260922">
   <link rel="stylesheet" href="/site-nav.css?v=brandbar-20260921">
   <script src="/site-i18n.js" defer></script>
   <script src="/site-nav.js" defer></script>
+  <script src="/home-format-bubbles.js?v=20260922" defer></script>
 </head>
 <body>
   <nav id="topNav" class="nav-open" aria-label="本站栏目">
@@ -24,9 +25,9 @@
     <div class="top-nav-inner" id="navLinks">
       <span class="nav-item active" aria-current="page">首页</span>
       <a class="nav-item" href="/online">在线连接</a>
-      <a class="nav-item" href="/offline">离线报文解析</a>
+      <a class="nav-item" href="/offline">离线分析</a>
       <a class="nav-item" href="/convert">格式转换</a>
-      <span class="nav-item pending" aria-disabled="true">27930报文分析</span>
+      <span class="nav-item pending" aria-disabled="true">27930解析</span>
       <span class="nav-item pending" aria-disabled="true">J1939分析</span>
       <span class="nav-item pending" aria-disabled="true">友情链接</span>
       <a class="nav-item" href="/aboutus">关于本站</a>
@@ -65,7 +66,7 @@
 
       <a class="page-card offline-card" href="/offline">
         <span class="card-state available">可使用</span>
-        <h2>离线报文解析</h2>
+        <h2>离线分析</h2>
         <div class="card-visual curve-visual" aria-hidden="true"><svg viewBox="0 0 440 128" preserveAspectRatio="none"><g class="chart-grid"><path d="M0 32H440M0 64H440M0 96H440M88 0V128M176 0V128M264 0V128M352 0V128"/></g><path class="curve-one" d="M0 97H42V82H92V100H132V46H182V68H230V28H286V57H336V38H382V18H440"/><path class="curve-two" d="M0 112C58 112 62 93 110 94S168 116 215 76S290 57 330 73 390 52 440 44"/></svg><span>DBC + ASC · SIGNAL CHART</span></div>
         <p>加载 DBC 与 ASC 日志，选择信号、生成同步曲线，并进行报文统计和异常检查。</p>
         <span class="card-action">进入离线解析 <b aria-hidden="true">→</b></span>
@@ -75,8 +76,8 @@
         <span class="card-state available">可使用</span>
         <h2>格式转换</h2>
         <div class="card-visual format-visual" aria-label="ASC、LOG、TRC、BLF、TXT、MF4、MDF 与 CSV 格式转换示意">
-          <div class="format-nodes"><span>ASC</span><span>LOG</span><span>TRC</span><span>BLF</span><span>TXT</span><span>MF4</span><span>MDF</span><span class="format-output">CSV</span></div>
-          <div class="format-leaves" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+          <i class="format-connector" aria-hidden="true"></i>
+          <div class="format-nodes"><span>ASC</span><span>LOG</span><span>TRC</span><span>BLF</span><span>TXT</span><span>MF4</span><span>MDF</span><span>CSV</span></div>
         </div>
         <p>在 ASC、LOG、TRC、BLF、TXT、MF4、MDF 之间转换，并导出 DBC 信号 CSV。</p>
         <span class="card-action">进入格式转换 <b aria-hidden="true">→</b></span>
@@ -84,7 +85,7 @@
 
       <article class="page-card pending" aria-disabled="true" title="开发中">
         <span class="card-state">开发中</span>
-        <h2>27930报文分析</h2>
+        <h2>27930解析</h2>
         <div class="card-visual protocol-visual" aria-label="握手、辨识、参数配置、充电、结束阶段"><span>握手</span><i></i><span>辨识</span><i></i><span>参数配置</span><i></i><span>充电</span><i></i><span>结束</span></div>
         <p>面向充电通信场景的 GB/T 27930 报文识别、流程整理与异常辅助分析。</p>
         <span class="card-action">暂未开放</span>
