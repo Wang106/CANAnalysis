@@ -30,6 +30,8 @@ assert.match(bubbleJs,/visual\.addEventListener\('click',kick\)/,'format visual 
 assert.match(bubbleJs,/event\.preventDefault\(\)[\s\S]*event\.stopPropagation\(\)/,'clicking anywhere in the format visual must not follow the card link');
 assert.match(bubbleJs,/Math\.pow\(1-distance\/radius,2\)/,'nearby bubbles must receive a distance-decayed push');
 assert.match(bubbleJs,/body\.vx\+=dx\/distance\*force/,'clicked and nearby bubbles must be pushed away from the pointer');
+assert.match(bubbleJs,/const idleSpeed=\.045/,'idle bubble movement must remain slow and graceful');
+assert.match(bubbleJs,/const drag=Math\.pow\(\.996,step\)/,'fast bubbles must gradually slow down after a click');
 assert.match(home,/class="card-visual protocol-visual"[\s\S]*?>握手<[\s\S]*?>辨识<[\s\S]*?>参数配置<[\s\S]*?>充电<[\s\S]*?>结束</,'27930 stages must follow the requested left-to-right order');
 assert.match(homeCss,/span:nth-of-type\(1\),\.protocol-visual span:nth-of-type\(2\),\.protocol-visual span:nth-of-type\(5\)\{[^}]*width:56px[^}]*height:56px[^}]*border-radius:50%/s,'handshake, identification and ending stages must be circular');
 assert.match(homeCss,/span:nth-of-type\(4\)\{[^}]*width:76px[^}]*height:42px[^}]*border-radius:999px[^}]*writing-mode:horizontal-tb/s,'charging stage must be a horizontal ellipse');

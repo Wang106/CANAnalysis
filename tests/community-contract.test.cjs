@@ -23,6 +23,7 @@ assert.match(about,/id="commentExpansion" class="comment-expansion hidden"/,'log
 assert.doesNotMatch(about,/<dialog|id="authDialog"|id="openAuthButton"/,'authentication must expand inline instead of opening a separate modal');
 assert.match(communityCss,/\.community-board\{[^}]*background:transparent[^}]*box-shadow:none/s,'community board must use the page background instead of a separate dark panel');
 assert.match(communityCss,/\.comment-prompt\{[^}]*background:transparent!important/s,'comment entry must keep the page background');
+assert.match(communityCss,/html\[data-skin="light"\] \.auth-tabs button\.active[^}]*color:#111827/s,'active login and registration tabs must keep dark text in the light theme');
 assert.doesNotMatch(about,/href="\/community"/,'About page must not link to a separate community page');
 assert.match(community,/location\.replace\('\/aboutus'/,'legacy community URL must redirect to the embedded area');
 assert.match(authRoutes,/\/aboutus\?verify=.*#community/,'verification mail must return to the embedded community area');
