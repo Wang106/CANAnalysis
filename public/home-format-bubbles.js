@@ -6,8 +6,8 @@
 
   const reduced=matchMedia('(prefers-reduced-motion: reduce)');
   const starts=[[.03,.08],[.27,.58],[.22,.1],[.61,.57],[.48,.04],[.06,.6],[.75,.13],[.88,.6]];
-  const velocities=[[.453,.312],[-.44,-.332],[.337,-.434],[-.45,.318],[.444,.325],[.418,-.358],[-.369,.407],[-.447,-.32]];
-  const idleSpeed=.5;
+  const velocities=[[.399,.275],[-.387,-.292],[.297,-.382],[-.396,.28],[.391,.286],[.368,-.315],[-.325,.358],[-.393,-.282]];
+  const idleSpeed=.44;
   let bodies=[];
   let frame=0;
   let previous=0;
