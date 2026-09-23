@@ -88,6 +88,7 @@
 .workflow-heading{--section-accent:#38bdf8;--section-tint:rgba(56,189,248,.14);border-left:4px solid var(--section-accent);background:linear-gradient(90deg,var(--section-tint),rgba(29,33,43,.34) 76%);box-shadow:inset 0 0 22px rgba(255,255,255,.015)}
 .source-heading{--section-accent:#38bdf8;--section-tint:rgba(56,189,248,.14)}
 .format-heading{--section-accent:#3ddc84;--section-tint:rgba(61,220,132,.13)}
+.format-heading>i{margin-left:auto}
 .csv-heading{--section-accent:#a78bfa;--section-tint:rgba(167,139,250,.15)}
 .accordion-index{display:grid;place-items:center;width:30px;height:30px;flex:0 0 30px;border:1px solid var(--section-accent);border-radius:8px;background:var(--section-tint);color:var(--section-accent);font:700 10px ui-monospace,monospace;box-shadow:0 0 14px var(--section-tint)}
 .accordion-action{flex:none;margin-left:auto;padding:5px 9px;border:1px solid var(--section-accent);border-radius:999px;background:var(--section-tint);color:var(--section-accent);font-size:11px;font-weight:700;letter-spacing:.3px;white-space:nowrap}

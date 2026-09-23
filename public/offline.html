@@ -138,8 +138,9 @@
   /* 全屏显示：曲线全屏时连同顶部状态与控制行一起显示 */
   .fs-btn{display:inline-flex;align-items:center;justify-content:center;padding:3px 6px;font-size:11px;}
   .fs-btn svg{width:14px;height:14px;}
-  #fsExit{position:fixed;top:8px;right:8px;z-index:95;display:none;align-items:center;justify-content:center;}
-  #content.fullscreen{position:fixed;inset:0;z-index:90;background:var(--bg);}
+  body.fs-on{overflow:hidden;}
+  #fsExit{position:fixed;top:8px;right:8px;z-index:155;display:none;align-items:center;justify-content:center;}
+  #content.fullscreen{position:fixed;inset:0;z-index:150;background:var(--bg);}
   #content.fullscreen #fsExit{display:inline-flex;}
   #content.fullscreen #chartArea{flex:1 !important;height:auto !important;}
   #content.fullscreen #chartScrollWrap{flex:1 !important;height:auto !important;}
@@ -261,7 +262,7 @@
   #navNotice.show{visibility:visible;animation:navNoticeShow 1.8s ease both;}
   @keyframes navNoticeShow{0%{opacity:0;transform:translate(0,5px);}12%,72%{opacity:1;transform:translate(0,0);}100%{opacity:0;transform:translate(0,-4px);visibility:hidden;}}
   @media (prefers-reduced-motion:reduce){#navNotice.show{animation:none;opacity:1;visibility:visible;transform:none;}}
-  #loadingOverlay{position:fixed;inset:0;background:rgba(8,10,14,.75);display:none;align-items:center;justify-content:center;z-index:70;flex-direction:column;gap:14px;}
+  #loadingOverlay{position:fixed;inset:0;background:rgba(8,10,14,.75);display:none;align-items:center;justify-content:center;z-index:170;flex-direction:column;gap:14px;}
   #loadingOverlay.show{display:flex;}
   #loadingOverlay .spin{width:42px;height:42px;border:3px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:sp 1s linear infinite;}
   @keyframes sp{to{transform:rotate(360deg)}}
@@ -269,7 +270,7 @@
   #progressBar{width:280px;height:6px;background:var(--line);border-radius:4px;overflow:hidden;}
   #progressBar > div{height:100%;width:0;background:var(--accent);transition:.1s;}
   /* 长任务执行遮罩：blocking=透明拦截输入，show=标灰+动画+计时+取消 */
-  #busyOverlay{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;background:rgba(8,10,14,0);}
+  #busyOverlay{position:fixed;inset:0;z-index:180;display:none;align-items:center;justify-content:center;background:rgba(8,10,14,0);}
   #busyOverlay.blocking{display:flex;}
   #busyOverlay.blocking .box{visibility:hidden;}
   #busyOverlay.show{background:rgba(8,10,14,.68);}
@@ -280,7 +281,7 @@
   #busyOverlay .btimer{font-size:13px;color:var(--accent2);font-variant-numeric:tabular-nums;}
   #busyOverlay button{padding:5px 22px;}
   /* 30秒继续确认框 */
-  #confirmOverlay{position:fixed;inset:0;z-index:101;display:none;align-items:center;justify-content:center;background:rgba(8,10,14,.55);}
+  #confirmOverlay{position:fixed;inset:0;z-index:181;display:none;align-items:center;justify-content:center;background:rgba(8,10,14,.55);}
   #confirmOverlay.show{display:flex;}
   #confirmOverlay .box{background:var(--panel);border:1px solid var(--accent);border-radius:12px;padding:22px 36px;display:flex;flex-direction:column;align-items:center;gap:16px;box-shadow:0 8px 30px rgba(0,0,0,.5);}
   #confirmOverlay .txt{font-size:14px;color:var(--txt);}
@@ -343,14 +344,14 @@
     #app.mobile-charts #sigBar.collapsed .sig-bar-head{padding-top:3px;padding-bottom:3px;}
   }
 </style>
-<link rel="stylesheet" href="/site-nav.css?v=hover-nav-20260921">
+<link rel="stylesheet" href="/site-nav.css?v=fixed-nav-20260923">
 <script src="/site-i18n.js" defer></script>
-<script src="/site-nav.js?v=hover-nav-20260921" defer></script>
+<script src="/site-nav.js?v=fixed-nav-20260923" defer></script>
 </head>
 <body>
 <div id="app" class="ui-classic">
-  <nav id="topNav" data-collapse="hover" aria-label="本站栏目">
-    <button type="button" class="nav-peek" aria-label="显示栏目导航" aria-expanded="false" aria-controls="navLinks"><span>栏目导航</span><span aria-hidden="true">⌄</span></button>
+  <nav id="topNav" class="nav-open nav-fixed" aria-label="本站栏目">
+    <button type="button" class="nav-peek" aria-expanded="true" aria-controls="navLinks"><span>栏目导航</span><span aria-hidden="true">⌄</span></button>
     <div class="top-nav-inner" id="navLinks">
       <a class="nav-item" href="/">首页</a>
       <a class="nav-item" href="/online">在线连接</a>
@@ -1812,6 +1813,7 @@ function renderCharts(){
       setTimeout(resizeAllCharts,500);   /* 最终尺寸校正，确保首次渲染不空白 */
       setTimeout(()=>{ initCrosshairRight(); }, 400);   /* 竖虚线默认显示在所有曲线最右侧 */
       $('chartArea').scrollTop = 0;   /* 曲线区滚动归零 */
+      if(renderCount>0) enterFullscreen('charts');
       finishBusy();
       return;
     }
@@ -3004,7 +3006,6 @@ $('btnFilterEmpty').onclick=()=>{
   renderSignalList();
 };
 $('btnStart').onclick=()=>{
-  window.__siteNav?.collapse();
   renderPickedList();
   const bar=$('sigBar');
   const wasCollapsed=bar.classList.contains('collapsed');

@@ -1,4 +1,4 @@
-/* Shared navigation lifecycle. Ordinary pages stay fixed; CAN may collapse after chart creation. */
+/* Shared navigation lifecycle. Ordinary pages stay fixed from the first rendered frame. */
 (() => {
   'use strict';
   const nav = document.getElementById('topNav');
@@ -75,8 +75,7 @@
     open();
   }
   window.__siteNav = {open, close, collapse};
-  if (document.readyState === 'complete') initialize();
-  else window.addEventListener('load', initialize, {once: true});
+  initialize();
   window.addEventListener('pageshow', event => {
     if (event.persisted && (!collapseOnCharts || !collapseEnabled)) initialize();
   });
