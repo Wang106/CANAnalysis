@@ -2,15 +2,6 @@ import {parseDBC,serializableSignal} from './converters/dbc.mjs';
 import {detectInputFormat,outputName,planBatch} from './converters/batch.mjs';
 
 const $=id=>document.getElementById(id);
-const descriptions={
-  asc:['Vector ASCII','通用文本日志，保留时间、ID、通道与原始数据，适合导入 CAN 报文解析工具。',true],
-  log:['BusMaster LOG','输出 BusMaster 经典 CAN 日志，保存收发方向、标准/扩展 ID、通道与数据。',false],
-  trc:['PCAN Trace 2.1','输出 PCAN TRC 2.1 文本日志，保留 CAN FD 的 BRS / ESI 标志。',true],
-  blf:['Vector Binary Logging','输出二进制 BLF 日志，使用未压缩容器，方便后续分析和交换。',true],
-  txt:['周立功 TXT 表格','输出带中文表头的 UTF-8 经典 CAN 表格，数据列位于最后。',false],
-  mf4:['ASAM MDF 4.10','输出原始 CAN 帧组成的 MDF 4.10 文件，可在 asammdf 中查看和继续处理。',true],
-  mdf:['ASAM MDF 3.30','输出 MDF 3.30 原始 CAN 字段。若需要保存 CAN FD，请选择 MF4。',false]
-};
 let sources=[],dbcData=null,worker=null,urls=[],job=0,running=false;
 const selectedSignals=new Set();
 const size=bytes=>bytes>=1024**2?(bytes/1024**2).toFixed(1)+' MB':(bytes/1024).toFixed(1)+' KB';
@@ -43,7 +34,6 @@ function select(items){
   if(running||!items.length)return;
   sources=items;clearResult();$('statusPanel').hidden=true;
   const total=items.reduce((sum,item)=>sum+item.file.size,0);
-  $('fileName').textContent=items.length===1?items[0].file.name:items.length+' 个文件已选择';
   $('fileMeta').textContent=size(total)+(total>200*1024**2?' · 大文件建议在电脑上转换':items.some(item=>item.handle)?' · 可请求保存到原目录':' · 转换后提供下载');
   renderSources();busy(false);
 }
@@ -64,9 +54,7 @@ $('dropZone').ondrop=event=>{event.preventDefault();$('dropZone').classList.remo
 function targetChanged(key){
   $('targetFormat').value=key;
   for(const card of document.querySelectorAll('.format-card'))card.setAttribute('aria-pressed',String(card.dataset.format===key));
-  const [title,description,fd]=descriptions[key];
-  $('targetExt').textContent='.'+key;$('targetTitle').textContent=title;$('targetDescription').textContent=description;
-  $('targetCapability').textContent=fd?'支持经典 CAN、CAN FD 和远程帧':'支持经典 CAN 和远程帧';clearResult();busy(false);
+  $('targetExt').textContent='.'+key;clearResult();busy(false);
 }
 for(const card of document.querySelectorAll('.format-card'))card.onclick=()=>targetChanged(card.dataset.format);
 for(const id of ['zeroTime','encoding','txtTimeUnit','csvInterval'])$(id).onchange=clearResult;
