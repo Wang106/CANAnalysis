@@ -241,13 +241,18 @@ const server=createServer(async(req,res)=>{
     assert.match(await page.textContent('#csvSummary'),/转换为 CSV 文件/);
     assert.equal(await page.locator('#csvSelected').isHidden(),true,'CSV selected count must stay hidden before a DBC is loaded');
     assert.equal(await page.locator('#sourceAccordion .file-zone + .advanced').count(),1,'text encoding settings must follow the source file picker');
-    assert.equal(await page.locator('.intro p').textContent(),'01 — 源文件 · 02 — 格式转换 · 03 — 信号 CSV');
+    assert.equal(await page.locator('.intro p').count(),0,'the duplicated 01/02/03 intro sentence must be removed');
+    assert.equal(await page.getByText('选择或拖入一个或多个 CAN 日志',{exact:true}).count(),0,'the redundant source prompt must be removed');
     assert.equal(await page.locator('.card-heading > span').count(),0,'workflow summary must not be duplicated in the converter heading');
     assert.equal(await page.locator('.format-strip').count(),0,'top format badges must be removed');
     await page.click('#formatSummary');assert.equal(await page.locator('#formatAccordion').getAttribute('open'),'');
     assert.equal(await page.locator('#formatSummary .when-open').isVisible(),true);
     await page.click('#formatSummary');assert.equal(await page.locator('#formatAccordion').getAttribute('open'),null);
     await page.click('#formatSummary');
+    assert.equal(await page.locator('.format-card small').count(),0,'target-format cards must not include secondary labels');
+    assert.equal(await page.locator('.target-info').textContent(),'.asc','only the selected extension should remain beside the conversion button');
+    assert.deepEqual(await page.locator('.compatibility thead th').allTextContents(),['格式','设备','说明']);
+    assert.deepEqual(await page.locator('.compatibility tbody tr').first().locator('td').allTextContents(),['.asc','Vector','经典 CAN / CAN FD 文本日志']);
     assert.equal(await page.locator('#startFormatConvert').isDisabled(),true);
     assert.equal(await page.locator('#startCsvConvert').isDisabled(),true);
     await page.evaluate(()=>scrollTo(0,700));await page.waitForTimeout(50);assert.ok(Math.abs(await page.locator('#topNav').evaluate(node=>node.getBoundingClientRect().top))<1,'navigation did not remain at viewport top while scrolling');await page.evaluate(()=>scrollTo(0,0));
@@ -288,7 +293,7 @@ const server=createServer(async(req,res)=>{
       {name:'mixed.log',mimeType:'text/plain',buffer:logSample},
       {name:'already.trc',mimeType:'text/plain',buffer:Buffer.from('ignored')}
     ]);
-    assert.match(await page.textContent('#fileName'),/3 个文件/);
+    assert.equal(await page.locator('#fileList .file-item').count(),3);
     await page.click('.format-card[data-format="trc"]');await page.click('#startFormatConvert');
     await page.locator('#result').waitFor({state:'visible'});
     assert.equal(await page.locator('#downloadList a').count(),2);

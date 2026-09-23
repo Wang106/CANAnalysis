@@ -7,11 +7,11 @@
   <meta name="description" content="CAN 日志格式转换与 DBC 信号 CSV 导出：在浏览器本地处理 ASC、BLF、LOG、TRC、TXT、MDF/MF4。">
   <title>格式转换 · CANAnalysis</title>
   <link rel="icon" href="icon.png" type="image/png">
-  <link rel="stylesheet" href="convert.css?v=workflow-arrow-20260922">
+  <link rel="stylesheet" href="convert.css?v=content-cleanup-20260923">
   <link rel="stylesheet" href="site-nav.css?v=brandbar-20260921">
-  <script src="site-i18n.js" defer></script>
+  <script src="site-i18n.js?v=convert-table-20260923" defer></script>
   <script src="site-nav.js" defer></script>
-  <script src="convert.js" type="module"></script>
+  <script src="convert.js?v=content-cleanup-20260923" type="module"></script>
 </head>
 <body>
   <nav id="topNav" class="nav-open" aria-label="本站栏目">
@@ -39,18 +39,16 @@
     <section class="intro">
       <span class="eyebrow">CAN LOG CONVERTER</span>
       <h1>换一种格式，<span>继续分析。</span></h1>
-      <p>01 — 源文件 · 02 — 格式转换 · 03 — 信号 CSV</p>
     </section>
     <section class="converter" aria-labelledby="converter-title">
       <div class="card-heading"><h2 id="converter-title">日志格式转换</h2></div>
       <div class="conversion-flow">
         <span class="workflow-arrow" aria-hidden="true">➜</span>
         <details id="sourceAccordion" class="conversion-accordion source-accordion">
-          <summary id="sourceSummary" class="workflow-heading source-heading"><span class="accordion-index">01</span><span class="accordion-copy"><b>选择源文件</b><small>选择或拖入一个或多个 CAN 日志</small></span><span class="accordion-action"><span class="when-closed">点击展开</span><span class="when-open">点击收起</span></span><i aria-hidden="true">⌄</i></summary>
+          <summary id="sourceSummary" class="workflow-heading source-heading"><span class="accordion-index">01</span><span class="accordion-copy"><b>选择源文件</b></span><span class="accordion-action"><span class="when-closed">点击展开</span><span class="when-open">点击收起</span></span><i aria-hidden="true">⌄</i></summary>
           <div class="accordion-content source-pane">
           <div class="file-zone" id="dropZone">
             <svg width="38" height="42" viewBox="0 0 38 42" fill="none" aria-hidden="true"><path d="M8 2h15l10 10v27H5V2h3Z" stroke="currentColor" stroke-width="1.5"/><path d="M23 2v11h10M19 32V19m-5 5 5-5 5 5" stroke="currentColor" stroke-width="1.5"/></svg>
-            <strong id="fileName">选择或拖入一个或多个 CAN 日志</strong>
             <span id="fileMeta">支持 ASC、LOG、TRC、BLF、TXT、MF4、MDF 等七种日志格式 · 可混合选择不同格式</span>
             <button type="button" id="chooseFile" class="secondary">选择日志文件</button>
             <input type="file" id="sourceFile" multiple hidden>
@@ -67,15 +65,15 @@
           <div class="accordion-content target-pane">
             <label>选择目标转换格式</label><input id="targetFormat" type="hidden" value="asc">
             <div class="format-cards" role="group" aria-label="目标转换格式">
-              <button type="button" class="format-card" data-format="asc" aria-pressed="true"><span>.asc</span><b>Vector ASC</b><small>推荐</small></button>
-              <button type="button" class="format-card" data-format="log" aria-pressed="false"><span>.log</span><b>BusMaster</b><small>经典 CAN</small></button>
-              <button type="button" class="format-card" data-format="trc" aria-pressed="false"><span>.trc</span><b>PCAN Trace</b><small>TRC 2.1</small></button>
-              <button type="button" class="format-card" data-format="blf" aria-pressed="false"><span>.blf</span><b>Vector BLF</b><small>二进制日志</small></button>
-              <button type="button" class="format-card" data-format="txt" aria-pressed="false"><span>.txt</span><b>周立功</b><small>文本表格</small></button>
-              <button type="button" class="format-card" data-format="mf4" aria-pressed="false"><span>.mf4</span><b>ASAM MDF 4</b><small>CAN FD</small></button>
-              <button type="button" class="format-card" data-format="mdf" aria-pressed="false"><span>.mdf</span><b>ASAM MDF 3</b><small>经典 CAN</small></button>
+              <button type="button" class="format-card" data-format="asc" aria-pressed="true"><span>.asc</span><b>Vector ASC</b></button>
+              <button type="button" class="format-card" data-format="log" aria-pressed="false"><span>.log</span><b>BusMaster</b></button>
+              <button type="button" class="format-card" data-format="trc" aria-pressed="false"><span>.trc</span><b>PCAN Trace</b></button>
+              <button type="button" class="format-card" data-format="blf" aria-pressed="false"><span>.blf</span><b>Vector BLF</b></button>
+              <button type="button" class="format-card" data-format="txt" aria-pressed="false"><span>.txt</span><b>周立功</b></button>
+              <button type="button" class="format-card" data-format="mf4" aria-pressed="false"><span>.mf4</span><b>ASAM MDF 4</b></button>
+              <button type="button" class="format-card" data-format="mdf" aria-pressed="false"><span>.mdf</span><b>ASAM MDF 3</b></button>
             </div>
-            <div class="target-layout"><div class="target-info"><span id="targetExt">.asc</span><div><h4 id="targetTitle">Vector ASCII</h4><p id="targetDescription">通用文本日志，保留时间、ID、通道与原始数据，适合导入 CAN 报文解析工具。</p><small id="targetCapability">支持经典 CAN、CAN FD 和远程帧</small></div></div><button id="startFormatConvert" type="button" class="primary" disabled>转换所选文件 <span aria-hidden="true">→</span></button></div>
+            <div class="target-layout"><div class="target-info"><span id="targetExt">.asc</span></div><button id="startFormatConvert" type="button" class="primary" disabled>转换所选文件 <span aria-hidden="true">→</span></button></div>
             <label class="check"><input type="checkbox" id="zeroTime">将首帧时间归零，保留帧间时间差</label>
             <p class="row-note">所有文件统一转换为目标格式；源格式与目标格式一致的文件会自动忽略。</p>
           </div>
@@ -102,15 +100,15 @@
     </section>
     <details id="compatibilityAccordion" class="compatibility compatibility-accordion">
       <summary id="compatibilitySummary" class="section-heading"><span><h2 id="compat-title">格式与兼容范围说明</h2><p>转换的是原始 CAN 数据帧与远程帧。各工具的专有事件、注释和触发信息不在转换范围内。</p></span><span class="compatibility-action"><span class="when-closed">点击展开</span><span class="when-open">点击收起</span><i aria-hidden="true">⌄</i></span></summary>
-      <div class="table-wrap"><table><thead><tr><th>格式</th><th>读取</th><th>输出</th></tr></thead><tbody>
-        <tr><td><b>ASC</b><small>Vector</small></td><td>经典 CAN / CAN FD 文本日志</td><td>ASC，经典 CAN / CAN FD</td></tr>
-        <tr><td><b>LOG</b><small>BusMaster</small></td><td>经典 CAN，ABSOLUTE / SYSTEM 时间模式</td><td>BusMaster 经典 CAN 日志，时间精度 0.1 ms</td></tr>
-        <tr><td><b>TRC</b><small>PEAK / PCAN</small></td><td>1.0、1.1、1.3、2.0、2.1</td><td>TRC 2.1，经典 CAN / CAN FD</td></tr>
-        <tr><td><b>BLF</b><small>Vector</small></td><td>未压缩 / zlib 日志容器，经典 CAN / CAN FD</td><td>未压缩 BLF，经典 CAN / CAN FD</td></tr>
-        <tr><td><b>TXT</b><small>周立功</small></td><td>含表头的 CANTest / ZCAN 表格；支持选择编码与时间单位</td><td>UTF-8 经典 CAN 表格，数据列位于末尾</td></tr>
-        <tr><td><b>MF4</b><small>ASAM MDF 4</small></td><td>4.00–4.11 原始 CAN 帧；未压缩、Deflate、转置 Deflate</td><td>MDF 4.10 原始 CAN 记录，可用 asammdf 打开</td></tr>
-        <tr><td><b>MDF</b><small>ASAM MDF 3</small></td><td>3.x 中带 CAN_DataFrame 字段的原始帧</td><td>MDF 3.30 经典 CAN 原始字段，可用 asammdf 打开</td></tr>
-        <tr><td><b>CSV</b><small>DBC 信号</small></td><td>DBC + 上述任一 CAN 日志，选择需要的信号</td><td>序号、时间与信号宽表，100–1000 ms 固定间隔</td></tr>
+      <div class="table-wrap"><table><thead><tr><th>格式</th><th>设备</th><th>说明</th></tr></thead><tbody>
+        <tr><td><b>.asc</b></td><td>Vector</td><td>经典 CAN / CAN FD 文本日志</td></tr>
+        <tr><td><b>.log</b></td><td>BusMaster</td><td>经典 CAN，ABSOLUTE / SYSTEM 时间模式</td></tr>
+        <tr><td><b>.trc</b></td><td>PEAK / PCAN</td><td>1.0、1.1、1.3、2.0、2.1，经典 CAN / CAN FD</td></tr>
+        <tr><td><b>.blf</b></td><td>Vector</td><td>未压缩 / zlib 日志容器，经典 CAN / CAN FD</td></tr>
+        <tr><td><b>.txt</b></td><td>周立功</td><td>含表头的 CANTest / ZCAN 表格；支持选择编码与时间单位</td></tr>
+        <tr><td><b>.mf4</b></td><td>ASAM MDF 4</td><td>4.00–4.11 原始 CAN 帧；未压缩、Deflate、转置 Deflate</td></tr>
+        <tr><td><b>.mdf</b></td><td>ASAM MDF 3</td><td>3.x 中带 CAN_DataFrame 字段的原始帧</td></tr>
+        <tr><td><b>.csv</b></td><td>DBC 信号</td><td>DBC + 上述任一 CAN 日志，100–1000 ms 固定间隔导出信号宽表</td></tr>
       </tbody></table></div>
       <div class="notes"><p><strong>关于 MDF/MF4：</strong>只有解码信号（例如电压、温度）而没有原始 CAN ID 和 DataBytes 的文件，无法反向还原 CAN 报文。加密文件、MDF 4.20+ 的新布局及 ZSTD/LZ4 压缩暂不支持。</p><p><strong>数据与时间：</strong>保留日志内时间轴；LOG 按 0.1 ms、TRC 按 1 µs 四舍五入，发生精度变化时显示提示。绝对采集日期、附件与触发元数据不迁移。MDF 通道按 python-can 的零起始 BusChannel 与页面的一起始通道互换。</p><p><strong>不支持的记录：</strong>错误帧、无效数据或无法无损保存的 CAN FD 会停止转换并提示；不会直接截断为 8 字节。周立功 TXT 不同软件版本的列结构可能不同，表头不匹配时会显示原因。</p></div>
     </details>
