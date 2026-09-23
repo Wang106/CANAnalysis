@@ -94,8 +94,8 @@ document.getElementById('app').addEventListener('load',async()=>{
     });
   }
 
-  await record('初始提交号与已选信号提示可见',async()=>{
-    assert(/^[0-9a-f]{8}$/i.test(doc.getElementById('hcommit').textContent.trim()),'左上角未显示 8 位提交号');
+  await record('初始信号区域收起且提示内容正确',async()=>{
+    assert(doc.getElementById('sigBar').classList.contains('collapsed'),'初始信号选择区域未收起');
     assert(doc.getElementById('sigPicked').textContent.trim()==='请先加载 DBC 文件','已选信号区域初始提示错误');
   });
 
@@ -106,18 +106,20 @@ document.getElementById('app').addEventListener('load',async()=>{
     assert(!ascInput.hasAttribute('accept'),'ASC 文件仍受系统扩展名过滤');
   });
 
-  await record('左上角本地图标预加载且占位固定',async()=>{
-    const icon=doc.querySelector('.header-left .icon');
+  await record('离线页使用首页品牌图标与文字',async()=>{
+    const icon=doc.querySelector('.header-left .can-brand img');
+    const brand=doc.querySelector('.header-left .can-brand');
     const preload=doc.querySelector('link[rel="preload"][as="image"][href="/icon.png"]');
     assert(icon&&icon.getAttribute('src')==='/icon.png','左上角图标未使用本地资源');
-    assert(icon.getAttribute('width')==='38'&&icon.getAttribute('height')==='38','图标缺少固定宽高属性');
-    assert(icon.loading==='eager'&&icon.getAttribute('decoding')==='sync','图标未启用启动阶段优先加载与同步解码');
+    assert(icon.getAttribute('width')==='34'&&icon.getAttribute('height')==='34','图标未与首页保持 34×34 px');
     assert(preload&&preload.getAttribute('fetchpriority')==='high','本地图标缺少高优先级预加载');
-    assert(icon.getBoundingClientRect().width===38&&icon.getBoundingClientRect().height===38,'图标实际占位不是 38×38 px');
+    assert(icon.getBoundingClientRect().width===34&&icon.getBoundingClientRect().height===34,'图标实际占位不是 34×34 px');
+    assert(brand.textContent.includes('CANAnalysis')&&brand.textContent.includes('CAN DATA WORKSPACE'),'离线页品牌文字未与首页保持一致');
   });
 
   await record('示例文件解析、绘图和分析',async()=>{
     await api.loadDbcText('sample.dbc',sampleDbc,false);
+    assert(doc.getElementById('sigBar').classList.contains('expanded'),'DBC 加载成功后信号选择区域未自动展开');
     await api.loadAscText('sample.asc',sampleAsc,false);
     assert(api.dbc.signals.length===7,'DBC 信号数量错误');
     assert(api.ascFile.sourceOrder.length===1,'示例文件数据源数量错误');
@@ -302,33 +304,6 @@ document.getElementById('app').addEventListener('load',async()=>{
     assert(doc.getElementById('dbcInfo').textContent==='未加载','无效 DBC 仍显示为已加载');
     assert(doc.getElementById('sigList').textContent.includes('请先加载 DBC 文件'),'无效 DBC 后未恢复初始提示');
     assert(doc.getElementById('btnStart').disabled,'无效 DBC 后仍可生成曲线');
-  });
-
-  await record('部署时间选择最新成功的 Workers Build',async()=>{
-    const latest=api.latestSuccessfulDeployment([
-      {name:'Workers Builds: cananalysis',conclusion:'success',completed_at:'2026-09-05T10:00:00Z'},
-      {name:'Workers Builds: cananalysis',conclusion:'failure',completed_at:'2026-09-06T11:00:00Z'},
-      {name:'Other Check',conclusion:'success',completed_at:'2026-09-06T12:00:00Z'},
-      {name:'Workers Builds: cananalysis',conclusion:'success',completed_at:'2026-09-06T11:48:50Z'}
-    ]);
-    assert(latest&&latest.completed_at==='2026-09-06T11:48:50Z','未选择最新成功的 Cloudflare 部署');
-    api.setReleaseTime(new Date(latest.completed_at),'cloudflare');
-    assert(doc.getElementById('hmodtime').dataset.source==='cloudflare','部署时间来源标记错误');
-  });
-
-  await record('左上角三行信息异步更新时尺寸保持稳定',async()=>{
-    const wrap=doc.querySelector('.htitle-wrap');
-    const commit=doc.getElementById('hcommit');
-    const release=doc.getElementById('hmodtime');
-    const headerRight=doc.querySelector('.header-right');
-    const originalCommit=commit.textContent,originalRelease=release.textContent;
-    commit.textContent=''; release.textContent='';
-    const before={wrapW:wrap.offsetWidth,wrapH:wrap.offsetHeight,rightX:headerRight.getBoundingClientRect().x,headerH:doc.getElementById('header').offsetHeight};
-    commit.textContent='12345678'; release.textContent='2026-09-09 19:21:10发布';
-    const after={wrapW:wrap.offsetWidth,wrapH:wrap.offsetHeight,rightX:headerRight.getBoundingClientRect().x,headerH:doc.getElementById('header').offsetHeight};
-    commit.textContent=originalCommit; release.textContent=originalRelease;
-    assert(before.wrapW===132&&before.wrapH===46,'三行文字区域未固定为 132×46 px');
-    assert(JSON.stringify(before)===JSON.stringify(after),'提交码或部署时间更新导致头部布局跳动');
   });
 
   await record('顶部横条启动高亮、当前页与占位提示正确',async()=>{
