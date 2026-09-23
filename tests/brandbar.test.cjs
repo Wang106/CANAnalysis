@@ -8,7 +8,8 @@ for(const page of sharedPages){
 }
 
 const offline=fs.readFileSync('public/offline.html','utf8');
-assert.doesNotMatch(offline,/class="can-brandbar"/,'offline analysis keeps its compact working header');
+assert.match(offline,/<div class="header-left">\s*<a class="can-brand" href="\/" aria-label="返回 CANAnalysis 首页">\s*<img src="\/icon\.png" width="34" height="34" alt="">\s*<span>CANAnalysis<small>CAN DATA WORKSPACE<\/small><\/span>\s*<\/a>\s*<\/div>/s,'offline analysis must use the exact shared CANAnalysis brand inside its working header');
+assert.match(offline,/<div class="header-right">[\s\S]*?id="btnDbc"[\s\S]*?id="btnAsc"/,'offline analysis must retain both file-loading rows beside the shared brand');
 
 const css=fs.readFileSync('public/site-nav.css','utf8');
 assert.match(css,/\.can-brandbar\{[^}]*border-bottom:[^}]*background:[^}]*backdrop-filter:/s,'shared brand row must retain the About-page glass treatment');
@@ -16,4 +17,4 @@ assert.match(css,/\.can-brandbar-inner\{[^}]*width:min\(1120px,calc\(100% - 40px
 assert.match(css,/\.can-brand>span\{[^}]*font-size:16px[^}]*line-height:18px[^}]*letter-spacing:\.3px/s,'shared brand title typography must be explicit and identical on every page');
 assert.match(css,/\.can-brand img\{[^}]*width:34px[^}]*height:34px/s,'shared brand icon must keep the About-page size');
 
-console.log('PASS: all non-offline pages share the About-style brand row');
+console.log('PASS: every page uses the shared CANAnalysis brand while offline retains its file controls');

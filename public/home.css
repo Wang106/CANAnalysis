@@ -46,7 +46,10 @@ h1 em{color:var(--accent);font-style:normal}
 .card-action b{font-size:16px;transition:transform .2s ease}.page-card:is(a):hover .card-action b{transform:translateX(4px)}
 .page-card.pending{filter:saturate(.12);background:#17191f;border-color:#292c34;color:#858c98;cursor:not-allowed}
 .page-card.pending::before{display:none}.page-card.pending .card-state,.page-card.pending p,.page-card.pending .card-action{color:#858c98}.page-card.pending .card-action{font-weight:500}
-footer{text-align:center;padding:4px 20px 30px;color:var(--txt2);font-size:10px}
+footer{display:flex;flex-direction:column;align-items:center;gap:5px;text-align:center;padding:4px 20px 30px;color:var(--txt2);font-size:10px}
+.site-version{min-height:12px;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-variant-numeric:tabular-nums;white-space:nowrap}
+.site-version:empty{display:none}
+.site-version #hcommit:not(:empty)+#hmodtime:not(:empty)::before{content:" ";}
 html[data-skin="dark"] .page-card{background:linear-gradient(145deg,#2b2e3b,#242732)}
 html[data-skin="dark"] .page-card.pending{background:#20222a;border-color:#333642;color:#858c98}
 html[data-skin="light"] body{background:radial-gradient(circle at 50% -15%,rgba(11,99,206,.08),transparent 38%),var(--bg)}

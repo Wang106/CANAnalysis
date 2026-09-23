@@ -52,6 +52,11 @@ assert.match(offline,/id="topNav" class="nav-open nav-fixed"/,'offline analysis 
 assert.doesNotMatch(offline,/data-collapse="hover"/,'offline analysis must not use hover-only navigation');
 assert.match(offline,/<span class="nav-item active" aria-current="page">离线分析<\/span>/);
 assert.doesNotMatch(home,/id="btnDbc"|id="btnAsc"/,'home must not contain the offline file controls');
+assert.match(home,/<footer>[\s\S]*?id="hcommit"[\s\S]*?id="hmodtime"[\s\S]*?<\/footer>/,'home footer must contain the commit and publication time');
+assert.match(home,/site-version\.js/,'home must load the version display logic');
+assert.doesNotMatch(offline,/id="hcommit"|id="hmodtime"/,'offline header must no longer display version information');
+assert.match(offline,/<div id="sigBar" class="collapsed">/,'offline signal selection must start collapsed');
+assert.match(offline,/signalPanel\.classList\.remove\('collapsed','resized'\);\s*signalPanel\.classList\.add\('expanded'\);/,'a valid DBC load must automatically expand signal selection');
 
 for(const page of pages){
   const source=fs.readFileSync('public/'+page,'utf8');

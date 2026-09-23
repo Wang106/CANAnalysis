@@ -110,7 +110,7 @@ const server=createServer(async(req,res)=>{
     assert.equal(await languagePage.inputValue('#siteLanguage'),'en');
     assert.equal((await languagePage.locator('#siteSkin option').allTextContents()).join('|'),'Default Style|Dark Mode|Light Mode');
     assert.equal((await languagePage.textContent('.skin-face')).trim(),'Light Mode','selected skin label must be translated');
-    assert.equal((await languagePage.locator('#navLinks .nav-item').allTextContents()).join('|'),'Home|Online Connection|Offline Message Analysis|Format Conversion|GB/T 27930 Analysis|J1939 Analysis|Links|About','new navigation labels must be translated consistently');
+    assert.equal((await languagePage.locator('#navLinks .nav-item').allTextContents()).join('|'),'Home|Online Connection|Offline Analysis|Format Conversion|GB/T 27930 Parsing|J1939 Analysis|Links|About','new navigation labels must be translated consistently');
     await languagePage.waitForTimeout(80);
     const indexUntranslated=await untranslated();assert.equal(indexUntranslated.length,0,'CAN analysis page must be fully translated to English: '+JSON.stringify(indexUntranslated));
     await languagePage.goto(base+'/aboutus');
