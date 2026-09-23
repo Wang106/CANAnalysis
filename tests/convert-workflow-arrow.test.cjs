@@ -17,5 +17,8 @@ assert.match(html,/class="target-info"><span id="targetExt">\.asc<\/span><\/div>
 assert.doesNotMatch(js,/targetTitle|targetDescription|targetCapability|descriptions=/,'removed target copy must not leave dead DOM updates');
 assert.match(css,/\.action-bar p\{[^}]*flex:1[^}]*min-width:0/,'the local-processing note must use the available width before wrapping');
 assert.match(html,/<th>格式<\/th><th>设备<\/th><th>说明<\/th>[\s\S]*?<td><b>\.asc<\/b><\/td><td>Vector<\/td><td>经典 CAN \/ CAN FD 文本日志<\/td>/,'the compatibility table must use format, device and description columns');
+assert.doesNotMatch(html,/统一转换为 ASC、LOG、TRC、BLF、TXT、MF4 或 MDF|选择信号并按固定时间间隔导出宽表|转换的是原始 CAN 数据帧与远程帧/,'removed helper copy must not remain visible');
+const formatSummary=html.match(/<summary id="formatSummary"[\s\S]*?<\/summary>/)?.[0]||'';
+assert.doesNotMatch(formatSummary,/点击收起|点击展开/,'the format summary must not show expand or collapse labels');
 
 console.log('PASS: format conversion opening arrow guides users from 01 through 02 to 03');

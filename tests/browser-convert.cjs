@@ -68,8 +68,8 @@ const server=createServer(async(req,res)=>{
     assert.equal(await languagePage.locator('.skin-control + .language-toggle').count(),1,'skin selector must sit to the left of the language control');
     assert.equal(await languagePage.locator('.language-toggle').isHidden(),true,'desktop navigation must hide the language globe');
     await languagePage.evaluate(()=>window.__siteNav.collapse());
-    const collapsedNav=await languagePage.evaluate(()=>({height:getComputedStyle(document.getElementById('topNav')).height,font:getComputedStyle(document.querySelector('.nav-peek')).fontSize}));
-    assert.deepEqual(collapsedNav,{height:'20px',font:'11px'},'collapsed navigation must remain discoverable');
+    const fixedOfflineNav=await languagePage.evaluate(()=>({height:getComputedStyle(document.getElementById('topNav')).height,open:document.getElementById('topNav').classList.contains('nav-open'),fixed:document.getElementById('topNav').classList.contains('nav-fixed')}));
+    assert.deepEqual(fixedOfflineNav,{height:'44px',open:true,fixed:true},'offline navigation must remain fixed and open');
     await languagePage.evaluate(()=>window.__siteNav.open());
     const desktopSelectorStyles=await languagePage.evaluate(()=>{
       const navItem=document.querySelector('.nav-item'),skinFace=document.querySelector('.skin-face'),skinSelect=document.getElementById('siteSkin'),languageFace=document.querySelector('.language-face'),languageSelect=document.getElementById('siteLanguage');
@@ -231,8 +231,8 @@ const server=createServer(async(req,res)=>{
     assert.notEqual(sourceHeadingHover.shadow,sourceHeadingRest.shadow,'workflow heading shadow must brighten on hover');
     assert.deepEqual(sourceHeadingHeld,sourceHeadingHover,'workflow heading must remain bright while the pointer stays over it');
     assert.equal(await page.locator('.conversion-flow').evaluate(node=>getComputedStyle(node).rowGap),'8px','workflow sections must have visible spacing');
-    const actionRight=await page.locator('#formatSummary .accordion-action, #csvSummary .accordion-action').evaluateAll(nodes=>nodes.map(node=>Math.round(node.getBoundingClientRect().right)));
-    assert.equal(actionRight[0],actionRight[1],'format and CSV expand actions must align at the right');
+    const actionRight=await page.locator('#sourceSummary .accordion-action, #csvSummary .accordion-action').evaluateAll(nodes=>nodes.map(node=>Math.round(node.getBoundingClientRect().right)));
+    assert.equal(actionRight[0],actionRight[1],'source and CSV expand actions must align at the right');
     await page.click('#sourceSummary');assert.equal(await page.locator('#sourceAccordion').getAttribute('open'),'');
     await page.click('#sourceSummary');assert.equal(await page.locator('#sourceAccordion').getAttribute('open'),null);
     await page.click('#sourceSummary');
@@ -246,7 +246,7 @@ const server=createServer(async(req,res)=>{
     assert.equal(await page.locator('.card-heading > span').count(),0,'workflow summary must not be duplicated in the converter heading');
     assert.equal(await page.locator('.format-strip').count(),0,'top format badges must be removed');
     await page.click('#formatSummary');assert.equal(await page.locator('#formatAccordion').getAttribute('open'),'');
-    assert.equal(await page.locator('#formatSummary .when-open').isVisible(),true);
+    assert.equal(await page.locator('#formatSummary .accordion-action').count(),0,'format summary must not show expand or collapse copy');
     await page.click('#formatSummary');assert.equal(await page.locator('#formatAccordion').getAttribute('open'),null);
     await page.click('#formatSummary');
     assert.equal(await page.locator('.format-card small').count(),0,'target-format cards must not include secondary labels');

@@ -20,13 +20,11 @@ const code=fs.readFileSync('public/site-nav.js','utf8');
 const fixed=fixture(code);fixed.advance(5000);assert(fixed.open());assert(fixed.fixed());assert(!fixed.links.inert);
 fixed.fire(fixed.nav,'pointerleave',{pointerType:'mouse'});fixed.fire(fixed.root,'pointerdown',{target:{},pointerType:'touch'});fixed.fire(fixed.nav,'keydown',{key:'Escape'});assert(fixed.open());assert(fixed.fixed());
 
-// 离线 CAN 页：不显示常驻横条，鼠标靠近顶部即展开，离开后收回。
-const hover=fixture(code,'hover');hover.advance(5000);assert(!hover.open());assert(!hover.fixed());assert(hover.links.inert);
-hover.fire(hover.nav,'pointerenter',{pointerType:'mouse'});assert(hover.open());assert(!hover.links.inert);hover.fire(hover.nav,'pointerleave',{pointerType:'mouse'});assert(!hover.open());
-hover.fire(hover.nav,'click');assert(hover.open());hover.fire(hover.root,'pointerdown',{target:{},pointerType:'touch'});assert(!hover.open());
-hover.fire(hover.nav,'click');hover.doc.activeElement=hover.link;hover.fire(hover.nav,'focusout',{relatedTarget:{}});assert(!hover.open());assert.equal(hover.doc.activeElement,hover.trigger);
-
 const offline=fs.readFileSync('public/offline.html','utf8');
-assert.match(offline,/id="topNav" data-collapse="hover"/,'offline page must use the invisible hover navigation mode');
+assert.match(offline,/id="topNav" class="nav-open nav-fixed"/,'offline page must use the same fixed navigation as other pages');
+assert.doesNotMatch(offline,/data-collapse="hover"/,'offline page must not collapse navigation on pointer exit');
 assert.match(offline,/canalyzer-visible-limit[\s\S]*?--canalyzer-visible-count[\s\S]*?Math\.min\(charts\.length,10\)/,'CANalyzer view must show at most ten chart rows before vertical scrolling');
-console.log('PASS: fixed navigation on ordinary pages and hover-only navigation with a ten-chart CANalyzer viewport');
+assert.match(offline,/if\(renderCount>0\) enterFullscreen\('charts'\)/,'chart generation must automatically maximize the chart workspace');
+assert.match(offline,/#content\.fullscreen\{position:fixed;inset:0;z-index:150/,'maximized charts must fill the browser viewport above the navigation');
+assert.match(offline,/body\.fs-on\{overflow:hidden/,'maximized charts must lock background page scrolling');
+console.log('PASS: fixed navigation and automatic full-viewport charts with a ten-chart CANalyzer limit');

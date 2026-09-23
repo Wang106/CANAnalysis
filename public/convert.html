@@ -7,14 +7,14 @@
   <meta name="description" content="CAN 日志格式转换与 DBC 信号 CSV 导出：在浏览器本地处理 ASC、BLF、LOG、TRC、TXT、MDF/MF4。">
   <title>格式转换 · CANAnalysis</title>
   <link rel="icon" href="icon.png" type="image/png">
-  <link rel="stylesheet" href="convert.css?v=content-cleanup-20260923">
-  <link rel="stylesheet" href="site-nav.css?v=brandbar-20260921">
+  <link rel="stylesheet" href="convert.css?v=content-cleanup-20260923b">
+  <link rel="stylesheet" href="site-nav.css?v=fixed-nav-20260923">
   <script src="site-i18n.js?v=convert-table-20260923" defer></script>
-  <script src="site-nav.js" defer></script>
+  <script src="site-nav.js?v=fixed-nav-20260923" defer></script>
   <script src="convert.js?v=content-cleanup-20260923" type="module"></script>
 </head>
 <body>
-  <nav id="topNav" class="nav-open" aria-label="本站栏目">
+  <nav id="topNav" class="nav-open nav-fixed" aria-label="本站栏目">
     <button type="button" class="nav-peek" aria-expanded="true" aria-controls="navLinks"><span>栏目导航</span><span aria-hidden="true">⌄</span></button>
     <div class="top-nav-inner" id="navLinks">
       <a class="nav-item" href="/">首页</a>
@@ -61,7 +61,7 @@
           </div>
         </details>
         <details id="formatAccordion" class="conversion-accordion">
-          <summary id="formatSummary" class="workflow-heading format-heading"><span class="accordion-index">02</span><span class="accordion-copy"><b>日志格式转换</b><small>统一转换为 ASC、LOG、TRC、BLF、TXT、MF4 或 MDF</small></span><span class="accordion-action"><span class="when-closed">点击展开</span><span class="when-open">点击收起</span></span><i aria-hidden="true">⌄</i></summary>
+          <summary id="formatSummary" class="workflow-heading format-heading"><span class="accordion-index">02</span><span class="accordion-copy"><b>日志格式转换</b></span><i aria-hidden="true">⌄</i></summary>
           <div class="accordion-content target-pane">
             <label>选择目标转换格式</label><input id="targetFormat" type="hidden" value="asc">
             <div class="format-cards" role="group" aria-label="目标转换格式">
@@ -79,7 +79,7 @@
           </div>
         </details>
         <details id="csvAccordion" class="conversion-accordion">
-          <summary id="csvSummary" class="workflow-heading csv-heading"><span class="accordion-index">03</span><span class="accordion-copy"><b>转换为 CSV 文件</b><small>选择信号并按固定时间间隔导出宽表</small></span><strong id="csvSelected" hidden>已选 0 个</strong><span class="accordion-action"><span class="when-closed">点击展开</span><span class="when-open">点击收起</span></span><i aria-hidden="true">⌄</i></summary>
+          <summary id="csvSummary" class="workflow-heading csv-heading"><span class="accordion-index">03</span><span class="accordion-copy"><b>转换为 CSV 文件</b></span><strong id="csvSelected" hidden>已选 0 个</strong><span class="accordion-action"><span class="when-closed">点击展开</span><span class="when-open">点击收起</span></span><i aria-hidden="true">⌄</i></summary>
           <div id="csvOptions" class="accordion-content csv-options" aria-labelledby="csvSummary">
           <div class="csv-stage"><span class="stage-number">1</span><div><label>选择 DBC 文件</label><div class="dbc-picker"><button type="button" id="chooseDbc" class="secondary">选择 DBC 文件</button><span id="dbcName">未选择 DBC</span><input type="file" id="dbcFile" hidden></div></div></div>
           <div class="csv-stage signal-stage"><span class="stage-number">2</span><div class="signal-workspace"><div class="signal-toolbar"><label for="signalSearch">选择信号值</label><input id="signalSearch" type="search" placeholder="搜索信号名 / 报文名…"></div><div class="signal-selector"><div class="signal-column"><div class="signal-column-head">可选信号<button type="button" id="selectAllSignals" class="mini-button">全选当前结果</button><span id="availableCount">0</span></div><div id="signalList" class="signal-list"><p>请先加载 DBC 文件</p></div></div><div class="signal-column"><div class="signal-column-head">已选信号<button type="button" id="clearSignals" class="mini-button">清空</button><span id="pickedCount">0</span></div><div id="selectedSignalList" class="signal-list"><p>勾选左侧信号后显示在此</p></div></div></div></div></div>
@@ -99,7 +99,7 @@
       <div class="preview-wrap"><table><caption id="previewCaption">前 8 帧预览</caption><thead><tr id="previewHead"><th>时间 / s</th><th>通道</th><th>CAN ID</th><th>方向</th><th>类型</th><th>数据 / hex</th></tr></thead><tbody id="preview"></tbody></table></div>
     </section>
     <details id="compatibilityAccordion" class="compatibility compatibility-accordion">
-      <summary id="compatibilitySummary" class="section-heading"><span><h2 id="compat-title">格式与兼容范围说明</h2><p>转换的是原始 CAN 数据帧与远程帧。各工具的专有事件、注释和触发信息不在转换范围内。</p></span><span class="compatibility-action"><span class="when-closed">点击展开</span><span class="when-open">点击收起</span><i aria-hidden="true">⌄</i></span></summary>
+      <summary id="compatibilitySummary" class="section-heading"><span><h2 id="compat-title">格式与兼容范围说明</h2></span><span class="compatibility-action"><span class="when-closed">点击展开</span><span class="when-open">点击收起</span><i aria-hidden="true">⌄</i></span></summary>
       <div class="table-wrap"><table><thead><tr><th>格式</th><th>设备</th><th>说明</th></tr></thead><tbody>
         <tr><td><b>.asc</b></td><td>Vector</td><td>经典 CAN / CAN FD 文本日志</td></tr>
         <tr><td><b>.log</b></td><td>BusMaster</td><td>经典 CAN，ABSOLUTE / SYSTEM 时间模式</td></tr>
