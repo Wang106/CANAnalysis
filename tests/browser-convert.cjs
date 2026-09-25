@@ -84,6 +84,7 @@ const server=createServer(async(req,res)=>{
     assert.equal(desktopSelectorStyles.languageBackground,'rgba(0, 0, 0, 0)','Language label must not add a background panel');
     assert.equal(desktopSelectorStyles.skinArrow,'"⌄"','default skin label must advertise its menu with an arrow');
     assert.equal(desktopSelectorStyles.languageArrow,'"⌄"','Language label must advertise its menu with an arrow');
+    assert.equal(desktopSelectorStyles.skinFaceBounds[3],desktopSelectorStyles.languageFaceBounds[3],'skin and language selectors must have the same visible height');
     assert.deepEqual([desktopSelectorStyles.skinOpacity,desktopSelectorStyles.skinSelectBounds],['0',desktopSelectorStyles.skinFaceBounds],'hidden skin selector must cover its visible label');
     assert.deepEqual([desktopSelectorStyles.languageOpacity,desktopSelectorStyles.languageSelectBounds],['0',desktopSelectorStyles.languageFaceBounds],'hidden language selector must cover its visible label');
     for(const selector of ['#btnDbc','#btnAsc','#help b','.selstat b','#topNav .nav-item:not(.active)'])await assertReadable(languagePage,selector);
@@ -169,8 +170,8 @@ const server=createServer(async(req,res)=>{
       return {linksRight:Math.round(linkBounds.right),switcherLeft:Math.round(switcherBounds.left),languageWidth:Math.round(languageBounds.width),languageLeft:Math.round(languageBounds.left),languageIconLeft:Math.round(languageIconBounds.left),skinWidth:Math.round(skinBounds.width),skinLeft:Math.round(skinBounds.left),skinIconLeft:Math.round(skinIconBounds.left),languageOpacity:getComputedStyle(languageSelect).opacity,skinOpacity:getComputedStyle(skinSelect).opacity,lineWidth:Math.round(parseFloat(line.width)),lineColor:line.backgroundColor,linksBorder:getComputedStyle(links).borderBottomWidth};
     });
     assert.ok(mobileNavBounds.linksRight<=mobileNavBounds.switcherLeft,'mobile navigation links must not sit underneath the language button: '+JSON.stringify(mobileNavBounds));
-    assert.deepEqual([mobileNavBounds.languageWidth,mobileNavBounds.languageLeft,mobileNavBounds.languageOpacity],[28,mobileNavBounds.languageIconLeft,'0'],'transparent language selector must directly cover the globe icon');
-    assert.deepEqual([mobileNavBounds.skinWidth,mobileNavBounds.skinLeft,mobileNavBounds.skinOpacity],[28,mobileNavBounds.skinIconLeft,'0'],'transparent skin selector must directly cover the skin icon');
+    assert.deepEqual([mobileNavBounds.languageWidth,mobileNavBounds.languageLeft,mobileNavBounds.languageOpacity],[32,mobileNavBounds.languageIconLeft,'0'],'transparent language selector must directly cover the globe icon');
+    assert.deepEqual([mobileNavBounds.skinWidth,mobileNavBounds.skinLeft,mobileNavBounds.skinOpacity],[32,mobileNavBounds.skinIconLeft,'0'],'transparent skin selector must directly cover the skin icon');
     assert.equal(mobileNavBounds.lineWidth,390,'navigation accent line must extend beneath the language selector');
     assert.match(mobileNavBounds.lineColor,/0\.24\)/,'light-theme navigation accent line must use the softer color');
     assert.equal(mobileNavBounds.linksBorder,'0px','short accent line under navigation links must be removed');

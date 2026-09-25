@@ -137,13 +137,13 @@
       #navNotice.show{animation:none;opacity:1;visibility:visible;transform:none;}
     }
   </style>
-<link rel="stylesheet" href="site-nav.css?v=fixed-nav-20260923">
-<link rel="stylesheet" href="about-community.css?v=light-auth-tabs-20260922">
+<link rel="stylesheet" href="site-nav.css?v=aligned-controls-20260925">
+<link rel="stylesheet" href="about-community.css?v=comments-paused-20260925">
 <script src="site-i18n.js" defer></script>
 <script src="site-nav.js?v=fixed-nav-20260923" defer></script>
-<script src="about-ocean-loader.js" defer></script>
+<script src="about-ocean-loader.js?v=turtle-motion-20260925" defer></script>
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
-<script src="community.js" defer></script>
+<script src="community.js?v=comments-paused-20260925" defer></script>
 </head>
 <body>
   <nav id="topNav" class="nav-open nav-fixed" aria-label="本站栏目">
@@ -230,7 +230,7 @@
           <button type="button" id="moreButton" class="community-more hidden">加载更多</button>
         </section>
         <div class="comment-entry">
-          <button type="button" id="commentPrompt" class="comment-prompt" aria-expanded="false" aria-controls="commentExpansion"><span>发表评论</span><small id="sessionSummary">点击后登录并参与讨论</small></button>
+          <button type="button" id="commentPrompt" class="comment-prompt comment-prompt-unavailable" aria-expanded="false" aria-controls="commentExpansion" aria-disabled="true" disabled><span>发表评论</span><small id="sessionSummary">暂未开放</small></button>
           <div id="commentExpansion" class="comment-expansion hidden">
             <section id="authCard" class="auth-panel" aria-labelledby="authPanelTitle">
               <p class="section-kicker">CANAnalysis Account</p><h3 id="authPanelTitle">登录评论区</h3>

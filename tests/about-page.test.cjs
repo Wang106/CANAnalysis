@@ -30,7 +30,7 @@ assert.doesNotMatch(html,/移动鼠标，附近的动物会慢慢靠近你/,'oce
 
 assert.match(html,/<section class="ocean-scene"[^>]+aria-labelledby="ocean-title"/,'support area must include an accessible ocean scene');
 assert.match(html,/<canvas id="oceanCanvas"[^>]+aria-hidden="true"/,'ocean animation must be decorative to assistive technology');
-assert.match(html,/<script src="about-ocean-loader\.js" defer><\/script>/,'ocean animation must use the page-ready lazy loader');
+assert.match(html,/<script src="about-ocean-loader\.js\?v=turtle-motion-20260925" defer><\/script>/,'ocean animation must use the versioned page-ready lazy loader');
 assert.match(oceanLoader,/addEventListener\(['"]load['"]/,'ocean assets must load only after the About page has opened');
 assert.match(oceanLoader,/requestIdleCallback/,'ocean loading must avoid competing with the initial page render');
 assert.match(ocean,/IntersectionObserver/,'ocean animation must pause while off screen');
@@ -50,7 +50,8 @@ assert.match(ocean,/maxRadius:Math\.hypot/,'click ripples must calculate enough 
 assert.match(ocean,/ctx\.arc\(ripple\.x,ripple\.y,ringProgress\*ripple\.maxRadius/,'click ripples must expand as circles on the screen plane');
 assert.match(ocean,/easeInOut/,'motion must use eased timing rather than rigid linear steps');
 assert.match(ocean,/breatheX=1\+wave/,'fish motion must include organic body deformation');
-assert.match(ocean,/shear=Math\.sin/,'turtle motion must include a soft swimming shear');
+assert.match(ocean,/drawTurtle/,'turtle must use a dedicated articulated renderer');
+assert.match(ocean,/frontStroke[\s\S]*rearStroke/,'turtle front and rear flippers must use separate stroke phases');
 assert.match(ocean,/Math\.abs\(wave\)/,'crab motion must include a softened walking bounce');
 for(const asset of ['ocean-cartoon-bg-v2.jpg','ocean-fish-v2.png','ocean-turtle-v2.png','ocean-crab-v2.png']){
   const file='public/'+asset;assert.equal(fs.existsSync(file),true,asset+' must exist');assert.ok(fs.statSync(file).size>100000,asset+' must not be an empty placeholder');
@@ -59,5 +60,7 @@ for(const asset of ['ocean-cartoon-bg-v2.jpg','ocean-fish-v2.png','ocean-turtle-
 assert.match(navCss,/\.skin-face\{[^}]*border:0[^}]*background:transparent/,'skin selector must sit transparently on the navigation');
 assert.match(navCss,/\.language-face\{[^}]*border:0[^}]*background:transparent/,'language selector must sit transparently on the navigation');
 assert.match(navCss,/\.skin-face::after,\.language-face::after\{content:"⌄"/,'transparent selectors must retain a dropdown cue');
+assert.match(navCss,/\.skin-control\{[^}]*height:32px/,'skin selector must use the aligned control height');
+assert.match(navCss,/\.language-control\{[^}]*height:32px/,'language selector must use the aligned control height');
 
 console.log('PASS: support layout and hand-drawn interactive ocean scene');

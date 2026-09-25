@@ -7,6 +7,7 @@ const communityCss=fs.readFileSync('public/about-community.css','utf8');
 const privacy=fs.readFileSync('public/privacy.html','utf8');
 const config=fs.readFileSync('wrangler.jsonc','utf8');
 const authRoutes=fs.readFileSync('src/routes/auth.js','utf8');
+const communityJs=fs.readFileSync('public/community.js','utf8');
 
 for(const table of ['users','sessions','email_tokens','files','comments','comment_files','reports','appeals','moderation_actions','outbox','audit_logs','consent_records','export_jobs'])assert.match(migration,new RegExp(`CREATE TABLE ${table}\\b`),`missing ${table} table`);
 assert.match(migration,/author_user_id TEXT REFERENCES users\(id\) ON DELETE SET NULL/,'comments must survive account deletion without retaining the account link');
@@ -18,11 +19,12 @@ assert.match(about,/crossBorderConsent/,'registration must request separate cros
 assert.match(about,/评论需要登录并验证邮箱后发布/,'comments must require a verified account');
 for(const control of ['commentPrompt','commentExpansion','authCard','loginForm','registerForm','profileForm','passwordForm','exportButton','deleteAccountButton','resendForm','forgotForm','commentForm','comments'])assert.match(about,new RegExp(`id="${control}"`),`missing embedded community control ${control}`);
 assert.ok(about.indexOf('id="comments"')<about.indexOf('id="commentPrompt"'),'existing comments must appear before the comment entry row');
-assert.match(about,/id="commentPrompt"[^>]+aria-expanded="false"[^>]*><span>发表评论<\/span>/,'comment entry must default to one collapsed row');
+assert.match(about,/id="commentPrompt"[^>]+aria-expanded="false"[^>]+aria-disabled="true" disabled><span>发表评论<\/span><small id="sessionSummary">暂未开放<\/small>/,'comment entry must be visibly unavailable and disabled');
 assert.match(about,/id="commentExpansion" class="comment-expansion hidden"/,'login and registration controls must stay collapsed until requested');
 assert.doesNotMatch(about,/<dialog|id="authDialog"|id="openAuthButton"/,'authentication must expand inline instead of opening a separate modal');
 assert.match(communityCss,/\.community-board\{[^}]*background:transparent[^}]*box-shadow:none/s,'community board must use the page background instead of a separate dark panel');
 assert.match(communityCss,/\.comment-prompt\{[^}]*background:transparent!important/s,'comment entry must keep the page background');
+assert.match(communityJs,/const commentsOpen = !commentPrompt\.disabled/,'disabled comment entry must also be guarded in JavaScript');
 assert.match(communityCss,/html\[data-skin="light"\] \.auth-tabs button\.active[^}]*color:#111827/s,'active login and registration tabs must keep dark text in the light theme');
 assert.doesNotMatch(about,/href="\/community"/,'About page must not link to a separate community page');
 assert.match(community,/location\.replace\('\/aboutus'/,'legacy community URL must redirect to the embedded area');

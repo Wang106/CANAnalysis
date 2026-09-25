@@ -6,6 +6,7 @@
   let cursor = null;
   const commentPrompt = $('#commentPrompt');
   const commentExpansion = $('#commentExpansion');
+  const commentsOpen = !commentPrompt.disabled;
 
   function showExpandedPanel(panel) {
     $('#authCard').classList.toggle('hidden', panel !== 'auth');
@@ -13,12 +14,14 @@
     $('#accountCard').classList.toggle('hidden', panel !== 'account');
   }
   function expandCommentEntry(panel = session ? 'comment' : 'auth') {
+    if (!commentsOpen) return;
     commentExpansion.classList.remove('hidden');
     commentPrompt.setAttribute('aria-expanded', 'true');
     if (panel === 'auth') showTab('login');
     showExpandedPanel(panel);
   }
   commentPrompt.onclick = () => {
+    if (!commentsOpen) return;
     if (!commentExpansion.classList.contains('hidden')) {
       commentExpansion.classList.add('hidden');
       commentPrompt.setAttribute('aria-expanded', 'false');
@@ -64,7 +67,7 @@
     const data = await api('/api/auth/session');
     session = data.user;
     $('#commentForm').querySelector('button').disabled = !session;
-    $('#sessionSummary').textContent = session ? `${session.displayName}，点击后发表评论` : '点击后登录并参与讨论';
+    $('#sessionSummary').textContent = commentsOpen ? (session ? `${session.displayName}，点击后发表评论` : '点击后登录并参与讨论') : '暂未开放';
     if (!commentExpansion.classList.contains('hidden')) showExpandedPanel(session ? 'comment' : 'auth');
     if (session) {
       $('#accountName').textContent = `${session.displayName} · ${session.email}`;
