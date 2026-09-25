@@ -19,7 +19,7 @@
     }))).then(items=>{
       window.__aboutOceanAssets=Object.fromEntries(items);
       scene.classList.add('is-ready');
-      const script=document.createElement('script');script.src='/about-ocean.js';script.async=true;document.head.appendChild(script);
+      const script=document.createElement('script');script.src='/about-ocean.js?v=turtle-motion-20260925';script.async=true;document.head.appendChild(script);
     });
   };
   const afterPageLoad=()=>('requestIdleCallback' in window?requestIdleCallback(start,{timeout:900}):setTimeout(start,120));

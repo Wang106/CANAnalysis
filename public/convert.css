@@ -69,8 +69,6 @@
 
 /* The two conversion modes are compact horizontal accordions, collapsed by default. */
 .conversion-flow{position:relative;gap:8px;background:#11141a}
-.workflow-arrow{position:absolute;z-index:6;left:0;top:0;display:grid;width:22px;height:22px;place-items:center;border:1px solid currentColor;border-radius:50%;background:#101925;color:#d8efff;font-size:15px;line-height:1;box-shadow:0 0 11px rgba(74,158,255,.75);pointer-events:none;offset-path:path("M 14 33 C 14 58 16 79 34 96 C 42 103 42 108 32 116 C 16 131 14 156 14 181");offset-rotate:auto;animation:workflow-arrow-guide 3.8s cubic-bezier(.45,.05,.35,1) .35s 1 both}
-@keyframes workflow-arrow-guide{0%{offset-distance:0;opacity:0;transform:scale(.72)}8%{opacity:1}43%{opacity:1;transform:scale(1)}57%{opacity:1;transform:scale(.82)}90%{opacity:1}100%{offset-distance:100%;opacity:0;transform:scale(.72)}}
 .conversion-accordion{border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--panel)}
 .conversion-accordion>summary{position:relative;isolation:isolate;display:flex;align-items:center;gap:12px;min-height:66px;padding:12px 26px 12px 22px;overflow:hidden;list-style:none;cursor:pointer;user-select:none;transition:box-shadow 1.2s cubic-bezier(.22,1,.36,1)}
 .conversion-accordion>summary::-webkit-details-marker{display:none}
@@ -87,6 +85,8 @@
 .conversion-accordion>summary:hover::after,.conversion-accordion>summary:focus-visible::after{opacity:1}
 .workflow-heading{--section-accent:#38bdf8;--section-tint:rgba(56,189,248,.14);border-left:4px solid var(--section-accent);background:linear-gradient(90deg,var(--section-tint),rgba(29,33,43,.34) 76%);box-shadow:inset 0 0 22px rgba(255,255,255,.015)}
 .source-heading{--section-accent:#38bdf8;--section-tint:rgba(56,189,248,.14)}
+.source-heading{animation:source-row-guide 1s ease-out .12s 1 both}
+@keyframes source-row-guide{0%,100%{box-shadow:inset 0 0 22px rgba(255,255,255,.015)}18%,72%{background:linear-gradient(90deg,rgba(56,189,248,.3),rgba(29,33,43,.48) 76%);box-shadow:inset 4px 0 #38bdf8,inset 0 0 38px rgba(56,189,248,.24),0 0 18px rgba(56,189,248,.18)}}
 .format-heading{--section-accent:#3ddc84;--section-tint:rgba(61,220,132,.13)}
 .format-heading>i{margin-left:auto}
 .csv-heading{--section-accent:#a78bfa;--section-tint:rgba(167,139,250,.15)}
@@ -119,7 +119,7 @@
   .target-layout{grid-template-columns:1fr}.target-layout>.primary{min-height:46px}
 }
 @media(max-width:430px){.conversion-accordion>summary>strong{display:none}.conversion-accordion>summary>strong+.accordion-action{margin-left:auto}.accordion-action{padding:4px 7px;font-size:10px}.conversion-accordion>summary{gap:9px}}
-@media(prefers-reduced-motion:reduce){.workflow-arrow{display:none}}
+@media(prefers-reduced-motion:reduce){.source-heading{animation:none}}
 
 /* Compatibility information stays compact until the user asks for it. */
 .compatibility-accordion{margin:36px 0 12px;padding:0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}

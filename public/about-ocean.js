@@ -93,6 +93,23 @@
     return {w:92,h:61};
   }
 
+  function drawTurtlePart(ctx,image,polygon,pivot,angle){
+    ctx.save();ctx.translate(pivot[0],pivot[1]);ctx.rotate(angle);ctx.translate(-pivot[0],-pivot[1]);
+    ctx.beginPath();polygon.forEach(([x,y],index)=>index?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();ctx.clip();ctx.drawImage(image,0,0);ctx.restore();
+  }
+
+  function drawTurtle(ctx,image,phase,size){
+    const frontStroke=Math.sin(phase*.58),rearStroke=Math.sin(phase*.58+Math.PI*.72);
+    const sourceWidth=image.naturalWidth,sourceHeight=image.naturalHeight;
+    ctx.save();ctx.translate(-size.w/2,-size.h/2);ctx.scale(size.w/sourceWidth,size.h/sourceHeight);
+    drawTurtlePart(ctx,image,[[350,135],[550,135],[550,330],[400,300],[365,215]],[407,181],frontStroke*-.075);
+    drawTurtlePart(ctx,image,[[72,170],[190,168],[195,225],[132,276],[70,255]],[157,190],rearStroke*.055);
+    ctx.save();ctx.beginPath();[[34,25],[470,18],[550,70],[550,214],[410,230],[330,222],[255,220],[185,214],[102,207],[38,188]].forEach(([x,y],index)=>index?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();ctx.clip();ctx.drawImage(image,0,0);ctx.restore();
+    drawTurtlePart(ctx,image,[[0,151],[151,137],[177,188],[123,247],[0,247]],[139,177],rearStroke*-.07);
+    drawTurtlePart(ctx,image,[[151,145],[371,135],[430,215],[307,349],[163,349]],[323,176],frontStroke*.105);
+    ctx.restore();
+  }
+
   function drawCreature(ctx,creature,time){
     const image=assets[creature.type];if(!(image?.complete&&image.naturalWidth))return;
     const phase=time*.001*creature.speed*.3+creature.phase;
@@ -104,7 +121,7 @@
     if(creature.type==='fish'){
       breatheX=1+wave*.035;breatheY=1-wave*.026;rotation=wave*.055+creature.vy*.008;shear=wave*.025;
     }else if(creature.type==='turtle'){
-      breatheX=1+slow*.02;breatheY=1-slow*.016;rotation=wave*.07+creature.vy*.009;shear=Math.sin(phase*.72)*.035;
+      breatheX=1+slow*.006;breatheY=1-slow*.004;rotation=wave*.025+creature.vy*.006;
     }else{
       breatheX=1-wave*.025;breatheY=1+Math.abs(wave)*.035;rotation=wave*.045;
     }
@@ -112,7 +129,7 @@
     ctx.save();ctx.translate(creature.x,creature.y);ctx.rotate(rotation);ctx.transform(facing*breatheX,shear,0,breatheY,0,0);ctx.scale(scale,scale);
     ctx.globalAlpha=(.58+creature.depth*.4)*fade;
     ctx.shadowColor='rgba(31,125,133,.2)';ctx.shadowBlur=10;ctx.shadowOffsetY=5;
-    ctx.drawImage(image,-size.w/2,-size.h/2,size.w,size.h);
+    if(creature.type==='turtle')drawTurtle(ctx,image,phase,size);else ctx.drawImage(image,-size.w/2,-size.h/2,size.w,size.h);
     ctx.restore();
   }
 
@@ -131,7 +148,7 @@
     const travel=((creature.x/(width+160))+creature.phase)%1;
     const arc=Math.sin(travel*TAU+creature.phase)*12;
     const glide=Math.sin(time*.00065+creature.phase)*7;
-    const desiredY=creature.type==='crab'?creature.baseY+Math.abs(Math.sin(time*.0026+creature.phase))*3:creature.baseY+arc+glide;
+    const desiredY=creature.type==='crab'?creature.baseY+Math.abs(Math.sin(time*.0026+creature.phase))*3:creature.type==='turtle'?creature.baseY+arc*.48+glide*.38:creature.baseY+arc+glide;
     creature.y+=(desiredY-creature.y)*Math.min(1,elapsed*2.3);creature.y+=creature.vy*elapsed;
     if(creature.x>width+100){creature.x=-100;creature.baseY=creature.type==='crab'?height-random(24,38):random(height*.25,height*.7);}
     if(creature.x<-100){creature.x=width+100;creature.baseY=creature.type==='crab'?height-random(24,38):random(height*.25,height*.7);}

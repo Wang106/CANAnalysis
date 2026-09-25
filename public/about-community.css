@@ -32,6 +32,9 @@
 .comment-prompt span{color:#f1f4f8;font-weight:650}.comment-prompt small{color:var(--muted);font-size:11px;font-weight:500}
 .comment-prompt::after{content:"⌄";margin-left:12px;color:var(--blue);font-size:16px;transition:transform .2s ease}
 .comment-prompt[aria-expanded="true"]::after{transform:rotate(180deg)}
+.comment-prompt-unavailable:disabled{cursor:not-allowed;opacity:.52;color:var(--muted)}
+.comment-prompt-unavailable:disabled span{color:var(--muted)}
+.comment-prompt-unavailable:disabled::after{display:none}
 .comment-expansion{padding:24px;border-top:1px solid var(--line);background:transparent}
 .auth-panel{max-width:560px}.auth-panel>.section-kicker{margin-top:0}.auth-panel>h3{margin-bottom:18px}
 .auth-tabs{display:flex;gap:7px;margin-bottom:16px}.auth-tabs button{flex:1}.auth-tabs button.active{border-color:var(--blue);color:#fff}
