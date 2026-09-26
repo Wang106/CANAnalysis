@@ -114,7 +114,7 @@ document.getElementById('app').addEventListener('load',async()=>{
     assert(icon.getAttribute('width')==='34'&&icon.getAttribute('height')==='34','图标未与首页保持 34×34 px');
     assert(preload&&preload.getAttribute('fetchpriority')==='high','本地图标缺少高优先级预加载');
     assert(icon.getBoundingClientRect().width===34&&icon.getBoundingClientRect().height===34,'图标实际占位不是 34×34 px');
-    assert(brand.textContent.includes('CANAnalysis')&&brand.textContent.includes('CAN DATA WORKSPACE'),'离线页品牌文字未与首页保持一致');
+    assert(brand.textContent.includes('CAN报文解析')&&brand.textContent.includes('CAN DATA WORKSPACE'),'离线页中文品牌文字未与首页保持一致');
   });
 
   await record('示例文件解析、绘图和分析',async()=>{

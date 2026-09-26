@@ -29,7 +29,7 @@ const server=createServer(async(req,res)=>{
     page.on('pageerror',error=>errors.push(error.message));
     await page.goto(base+'/offline');
     assert.equal(await page.locator('#sigBar').getAttribute('class'),'collapsed');
-    assert.equal((await page.locator('.header-left .can-brand').innerText()).replace(/\s+/g,' '),'CANAnalysis CAN DATA WORKSPACE');
+    assert.equal((await page.locator('.header-left .can-brand').innerText()).replace(/\s+/g,' '),'CAN报文解析 CAN DATA WORKSPACE');
     assert.equal(await page.locator('.header-left .can-brand img').getAttribute('width'),'34');
     assert.equal(await page.locator('#hcommit').count(),0);
     await page.evaluate(async()=>{

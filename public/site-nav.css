@@ -53,7 +53,7 @@
     .language-switcher{right:4px;width:78px;padding:0 4px;box-sizing:border-box;}
     .language-switcher::after{right:-4px;}
     .language-toggle{display:grid;}
-    .skin-control{width:32px;flex:0 0 32px;}
+    .skin-control{width:32px;flex:0 0 32px;transform:translateX(6px);}
     .skin-face{display:grid;place-items:center;padding:0;border:0;border-radius:6px;color:var(--accent);font-size:0;}
     .skin-face::before{content:"🎨";font-size:13px;}
     .skin-face::after{display:none;}
