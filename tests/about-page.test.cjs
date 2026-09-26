@@ -67,6 +67,7 @@ assert.match(navCss,/\.skin-face,\.language-toggle\{[^}]*width:32px[^}]*height:3
 assert.match(navCss,/\.skin-face::before,\.language-toggle::before\{[^}]*font-size:13px[^}]*line-height:1/,'mobile icon glyphs must share the same metrics');
 assert.match(navCss,/\.skin-face::before\{content:"🎨"/,'mobile skin control must keep the palette icon');
 assert.match(navCss,/\.language-toggle::before\{content:"🌐"/,'mobile language control must keep the globe icon');
+assert.match(navCss,/\.skin-control \.skin-face,[^}]*\.skin-control:focus-within \.skin-face,[^}]*\.language-toggle[^}]*\{[^}]*text-decoration:none!important[^}]*text-decoration-line:none!important/,'mobile switchers must never inherit the desktop underline interaction');
 assert.match(i18n,/'CAN报文解析':'CANAnalysis'/,'Chinese brand must switch back to CANAnalysis in English');
 
 console.log('PASS: support layout and hand-drawn interactive ocean scene');

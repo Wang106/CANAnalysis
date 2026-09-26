@@ -62,7 +62,8 @@
     .language-control{position:absolute;right:3px;top:0;width:32px;height:32px;}
     .language-face{display:none;}
     .language-control select{width:32px;min-width:32px;max-width:32px;height:32px;padding:0;border:0;appearance:none;-webkit-appearance:none;}
-    .skin-control:focus-within .skin-face,.language-switcher:has(.language-control:focus-within) .language-toggle{color:var(--accent);}
+    .skin-control select,.language-control select{-webkit-tap-highlight-color:transparent;}
+    .skin-control .skin-face,.skin-control:hover .skin-face,.skin-control:focus-within .skin-face,.language-toggle,.language-toggle:hover,.language-switcher:has(.language-control:focus-within) .language-toggle{color:var(--accent);text-decoration:none!important;text-decoration-line:none!important;text-underline-offset:0;}
   }
   @media (prefers-reduced-motion:reduce){
     #topNav.nav-sweep::before,#topNav.nav-sweep::after{animation:none;display:none;}
