@@ -62,7 +62,8 @@ assert.match(navCss,/\.language-face\{[^}]*border:0[^}]*background:transparent/,
 assert.match(navCss,/\.skin-face::after,\.language-face::after\{content:"⌄"/,'transparent selectors must retain a dropdown cue');
 assert.match(navCss,/\.skin-control\{[^}]*height:32px/,'skin selector must use the aligned control height');
 assert.match(navCss,/\.language-control\{[^}]*height:32px/,'language selector must use the aligned control height');
-assert.match(navCss,/@media \(max-width:760px\)\{[\s\S]*?\.skin-control\{[^}]*transform:translateX\(6px\)/,'mobile skin control must be optically aligned without moving the language icon');
+assert.match(navCss,/@media \(max-width:760px\)\{[\s\S]*?\.language-switcher\{[^}]*display:grid[^}]*grid-template-columns:32px 32px[^}]*justify-content:space-between/,'mobile switcher must distribute both icons evenly');
+assert.match(navCss,/\.skin-face::before\{content:"🎨"[^}]*line-height:1[^}]*translateY\(1px\)/,'mobile skin icon must correct its visual baseline');
 assert.match(i18n,/'CAN报文解析':'CANAnalysis'/,'Chinese brand must switch back to CANAnalysis in English');
 
 console.log('PASS: support layout and hand-drawn interactive ocean scene');
