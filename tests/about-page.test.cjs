@@ -63,6 +63,8 @@ assert.match(navCss,/\.skin-face::after,\.language-face::after\{content:"⌄"/,'
 assert.match(navCss,/\.skin-control\{[^}]*height:32px/,'skin selector must use the aligned control height');
 assert.match(navCss,/\.language-control\{[^}]*height:32px/,'language selector must use the aligned control height');
 assert.match(navCss,/@media \(max-width:760px\)\{[\s\S]*?\.language-switcher\{[^}]*width:78px[^}]*grid-template-columns:repeat\(2,minmax\(0,1fr\)\)[^}]*gap:0[^}]*padding:0/,'mobile switchers must split the full fixed-width region with no inner or outer gap');
+assert.match(navCss,/\.top-nav-inner\{[^}]*width:calc\(100% - 82px\)[^}]*padding-right:8px[^}]*box-sizing:border-box/,'mobile navigation must stop before the complete 78px switcher region and its 4px outer offset');
+assert.match(navCss,/\.language-switcher::before\{[^}]*left:0[^}]*top:-6px[^}]*bottom:-6px[^}]*width:1px[^}]*background:var\(--line\)/,'mobile switcher region must have a clear left divider');
 assert.match(navCss,/\.skin-face,\.language-toggle\{[^}]*width:100%[^}]*height:32px[^}]*border:1px solid transparent[^}]*border-radius:6px[^}]*background:transparent[^}]*font-size:0[^}]*line-height:1[^}]*box-sizing:border-box/,'mobile skin and language icons must share one full-width control style');
 assert.match(navCss,/\.skin-control\{[^}]*width:100%[^}]*margin-right:-1px[^}]*z-index:1/,'mobile control borders must meet on one shared boundary');
 assert.match(navCss,/\.skin-face\{border-radius:6px 0 0 6px;\}[\s\S]*?\.language-toggle\{border-radius:0 6px 6px 0;/,'mobile switchers must form one edge-to-edge control group');
