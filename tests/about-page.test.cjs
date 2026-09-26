@@ -62,8 +62,11 @@ assert.match(navCss,/\.language-face\{[^}]*border:0[^}]*background:transparent/,
 assert.match(navCss,/\.skin-face::after,\.language-face::after\{content:"⌄"/,'transparent selectors must retain a dropdown cue');
 assert.match(navCss,/\.skin-control\{[^}]*height:32px/,'skin selector must use the aligned control height');
 assert.match(navCss,/\.language-control\{[^}]*height:32px/,'language selector must use the aligned control height');
-assert.match(navCss,/@media \(max-width:760px\)\{[\s\S]*?\.language-switcher\{[^}]*display:grid[^}]*grid-template-columns:32px 32px[^}]*justify-content:space-between/,'mobile switcher must distribute both icons evenly');
-assert.match(navCss,/\.skin-face,\.language-toggle\{[^}]*width:32px[^}]*height:32px[^}]*border:1px solid transparent[^}]*border-radius:6px[^}]*background:transparent[^}]*font-size:0[^}]*line-height:1[^}]*box-sizing:border-box/,'mobile skin and language icons must share one complete control style');
+assert.match(navCss,/@media \(max-width:760px\)\{[\s\S]*?\.language-switcher\{[^}]*width:78px[^}]*grid-template-columns:repeat\(2,minmax\(0,1fr\)\)[^}]*gap:0[^}]*padding:0/,'mobile switchers must split the full fixed-width region with no inner or outer gap');
+assert.match(navCss,/\.skin-face,\.language-toggle\{[^}]*width:100%[^}]*height:32px[^}]*border:1px solid transparent[^}]*border-radius:6px[^}]*background:transparent[^}]*font-size:0[^}]*line-height:1[^}]*box-sizing:border-box/,'mobile skin and language icons must share one full-width control style');
+assert.match(navCss,/\.skin-control\{[^}]*width:100%[^}]*margin-right:-1px[^}]*z-index:1/,'mobile control borders must meet on one shared boundary');
+assert.match(navCss,/\.skin-face\{border-radius:6px 0 0 6px;\}[\s\S]*?\.language-toggle\{border-radius:0 6px 6px 0;/,'mobile switchers must form one edge-to-edge control group');
+assert.match(navCss,/\.language-control\{[^}]*right:0[^}]*width:50%[^}]*height:32px/,'mobile language select must cover the complete right half of the switcher region');
 assert.match(navCss,/\.skin-face::before,\.language-toggle::before\{[^}]*left:50%[^}]*top:50%[^}]*font-size:13px[^}]*line-height:1[^}]*translate\(-50%,-50%\)/,'both mobile icon glyphs must be geometrically centered in their slots');
 assert.match(navCss,/\.skin-face::before\{content:"🎨"/,'mobile skin control must keep the palette icon');
 assert.match(navCss,/\.language-toggle::before\{content:"🌐"/,'mobile language control must keep the globe icon');
