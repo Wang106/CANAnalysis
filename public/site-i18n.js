@@ -115,7 +115,7 @@
     const skinFace=document.createElement('span');skinFace.className='skin-face';skinFace.setAttribute('aria-hidden','true');skinFace.textContent='默认风格';
     const skinSelect=document.createElement('select');skinSelect.id='siteSkin';skinSelect.setAttribute('aria-label','皮肤选择');
     skinSelect.append(new Option('默认风格','default'),new Option('深色模式','dark'),new Option('亮白模式','light'));skinSelect.addEventListener('change',()=>setSkin(skinSelect.value));skinControl.append(skinFace,skinSelect);
-    const toggle=document.createElement('span');toggle.className='language-toggle';toggle.textContent='🌐';toggle.setAttribute('aria-hidden','true');
+    const toggle=document.createElement('span');toggle.className='language-toggle';toggle.setAttribute('aria-hidden','true');
     const control=document.createElement('span');control.className='language-control';
     const face=document.createElement('span');face.className='language-face';face.setAttribute('aria-hidden','true');face.textContent='Language';
     const select=document.createElement('select');select.id='siteLanguage';select.setAttribute('aria-label','Language');

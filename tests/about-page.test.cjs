@@ -63,7 +63,10 @@ assert.match(navCss,/\.skin-face::after,\.language-face::after\{content:"⌄"/,'
 assert.match(navCss,/\.skin-control\{[^}]*height:32px/,'skin selector must use the aligned control height');
 assert.match(navCss,/\.language-control\{[^}]*height:32px/,'language selector must use the aligned control height');
 assert.match(navCss,/@media \(max-width:760px\)\{[\s\S]*?\.language-switcher\{[^}]*display:grid[^}]*grid-template-columns:32px 32px[^}]*justify-content:space-between/,'mobile switcher must distribute both icons evenly');
-assert.match(navCss,/\.skin-face::before\{content:"🎨"[^}]*line-height:1[^}]*translateY\(1px\)/,'mobile skin icon must correct its visual baseline');
+assert.match(navCss,/\.skin-face,\.language-toggle\{[^}]*width:32px[^}]*height:32px[^}]*border:1px solid transparent[^}]*border-radius:6px[^}]*background:transparent[^}]*font-size:0[^}]*line-height:1[^}]*box-sizing:border-box/,'mobile skin and language icons must share one complete control style');
+assert.match(navCss,/\.skin-face::before,\.language-toggle::before\{[^}]*font-size:13px[^}]*line-height:1/,'mobile icon glyphs must share the same metrics');
+assert.match(navCss,/\.skin-face::before\{content:"🎨"/,'mobile skin control must keep the palette icon');
+assert.match(navCss,/\.language-toggle::before\{content:"🌐"/,'mobile language control must keep the globe icon');
 assert.match(i18n,/'CAN报文解析':'CANAnalysis'/,'Chinese brand must switch back to CANAnalysis in English');
 
 console.log('PASS: support layout and hand-drawn interactive ocean scene');
