@@ -59,6 +59,7 @@ const server=createServer(async(req,res)=>{
     assert.match(await languagePage.textContent('#emptyGuide'),/三步开始分析.*加载 DBC.*加载 ASC.*生成曲线/s);
     assert.match(await languagePage.textContent('#emptyGuide'),/文件仅在当前浏览器本地处理/);
     assert.equal(await languagePage.inputValue('#siteLanguage'),'zh','new visitors must default to Chinese');
+    assert.equal((await languagePage.locator('.can-brand>span').innerText()).replace(/\s+/g,' '),'CAN报文解析 CAN DATA WORKSPACE','Chinese pages must show the Chinese brand name');
     assert.equal((await languagePage.textContent('.language-face')).trim(),'Language','Language must be a fixed visual overlay');
     assert.equal((await languagePage.textContent('.skin-face')).trim(),'默认风格','default skin must be shown as a fixed visual label');
     assert.equal((await languagePage.locator('#siteLanguage option').allTextContents()).join('|'),'中文|English','native language selector must contain only two choices');
@@ -109,6 +110,7 @@ const server=createServer(async(req,res)=>{
     await languagePage.selectOption('#siteLanguage','en');
     await languagePage.waitForFunction(()=>document.documentElement.lang==='en');
     assert.equal(await languagePage.inputValue('#siteLanguage'),'en');
+    assert.equal((await languagePage.locator('.can-brand>span').innerText()).replace(/\s+/g,' '),'CANAnalysis CAN DATA WORKSPACE','English pages must keep the CANAnalysis brand name');
     assert.equal((await languagePage.locator('#siteSkin option').allTextContents()).join('|'),'Default Style|Dark Mode|Light Mode');
     assert.equal((await languagePage.textContent('.skin-face')).trim(),'Light Mode','selected skin label must be translated');
     assert.equal((await languagePage.locator('#navLinks .nav-item').allTextContents()).join('|'),'Home|Online Connection|Offline Analysis|Format Conversion|GB/T 27930 Parsing|J1939 Analysis|Links|About','new navigation labels must be translated consistently');
