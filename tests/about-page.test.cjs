@@ -64,7 +64,7 @@ assert.match(navCss,/\.skin-control\{[^}]*height:32px/,'skin selector must use t
 assert.match(navCss,/\.language-control\{[^}]*height:32px/,'language selector must use the aligned control height');
 assert.match(navCss,/@media \(max-width:760px\)\{[\s\S]*?\.language-switcher\{[^}]*display:grid[^}]*grid-template-columns:32px 32px[^}]*justify-content:space-between/,'mobile switcher must distribute both icons evenly');
 assert.match(navCss,/\.skin-face,\.language-toggle\{[^}]*width:32px[^}]*height:32px[^}]*border:1px solid transparent[^}]*border-radius:6px[^}]*background:transparent[^}]*font-size:0[^}]*line-height:1[^}]*box-sizing:border-box/,'mobile skin and language icons must share one complete control style');
-assert.match(navCss,/\.skin-face::before,\.language-toggle::before\{[^}]*font-size:13px[^}]*line-height:1/,'mobile icon glyphs must share the same metrics');
+assert.match(navCss,/\.skin-face::before,\.language-toggle::before\{[^}]*left:50%[^}]*top:50%[^}]*font-size:13px[^}]*line-height:1[^}]*translate\(-50%,-50%\)/,'both mobile icon glyphs must be geometrically centered in their slots');
 assert.match(navCss,/\.skin-face::before\{content:"🎨"/,'mobile skin control must keep the palette icon');
 assert.match(navCss,/\.language-toggle::before\{content:"🌐"/,'mobile language control must keep the globe icon');
 assert.match(navCss,/\.skin-control \.skin-face,[^}]*\.skin-control:focus-within \.skin-face,[^}]*\.language-toggle[^}]*\{[^}]*text-decoration:none!important[^}]*text-decoration-line:none!important/,'mobile switchers must never inherit the desktop underline interaction');
