@@ -12,14 +12,7 @@
     const timeStr=pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());
     releaseEl.textContent=dateStr+' '+timeStr+'发布';
     releaseEl.dataset.source=source||'default';
-    releaseEl.title=source==='cloudflare'?'Cloudflare 生产部署完成时间':'等待获取 Cloudflare 生产部署完成时间';
-  }
-
-  function latestSuccessfulDeployment(checkRuns){
-    if(!Array.isArray(checkRuns)) return null;
-    return checkRuns
-      .filter(c=>c&&typeof c.name==='string'&&c.name.startsWith('Workers Builds:')&&c.conclusion==='success'&&c.completed_at)
-      .sort((a,b)=>Date.parse(b.completed_at)-Date.parse(a.completed_at))[0]||null;
+    releaseEl.title=source==='github'?'GitHub 代码提交时间':'等待获取 GitHub 代码提交时间';
   }
 
   function setCommitDisplay(commit,source){
@@ -32,13 +25,11 @@
 
   setReleaseTime(new Date(2000,0,1,0,0,0),'default');
   (async function(){
-    let commit='';
     try{
       const response=await fetch('/version.json',{cache:'no-store'});
       if(!response.ok) throw new Error('Version manifest request failed');
       const metadata=await response.json();
       setCommitDisplay(metadata&&metadata.commit,'manifest');
-      commit=metadata&&metadata.commit||'';
     }catch(error){}
     try{
       const response=await fetch('https://api.github.com/repos/Wang106/CANAnalysis/commits/main',{
@@ -46,22 +37,13 @@
       });
       if(!response.ok) throw new Error('GitHub commit request failed');
       const data=await response.json();
-      if(data&&data.sha){commit=data.sha;setCommitDisplay(commit,'github');}
-    }catch(error){}
-    try{
-      const response=await fetch('https://api.github.com/repos/Wang106/CANAnalysis/commits/'+encodeURIComponent(commit||'main')+'/check-runs?per_page=100',{
-        cache:'no-store',
-        headers:{Accept:'application/vnd.github+json'}
-      });
-      if(!response.ok) throw new Error('GitHub checks request failed');
-      const data=await response.json();
-      const deployment=latestSuccessfulDeployment(data&&data.check_runs);
-      if(deployment){
-        if(deployment.head_sha)setCommitDisplay(deployment.head_sha,'github');
-        setReleaseTime(new Date(deployment.completed_at),'cloudflare');
+      if(data&&data.sha){
+        setCommitDisplay(data.sha,'github');
+        const committedAt=data.commit&&data.commit.committer&&data.commit.committer.date||data.commit&&data.commit.author&&data.commit.author.date;
+        if(committedAt)setReleaseTime(new Date(committedAt),'github');
       }
     }catch(error){}
   })();
 
-  window.__siteVersion={setReleaseTime,latestSuccessfulDeployment,setCommitDisplay};
+  window.__siteVersion={setReleaseTime,setCommitDisplay};
 })();
