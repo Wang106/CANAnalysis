@@ -54,6 +54,11 @@ assert.match(offline,/<span class="nav-item active" aria-current="page">离线�
 assert.doesNotMatch(home,/id="btnDbc"|id="btnAsc"/,'home must not contain the offline file controls');
 assert.match(home,/<footer>[\s\S]*?id="hcommit"[\s\S]*?id="hmodtime"[\s\S]*?<\/footer>/,'home footer must contain the commit and publication time');
 assert.match(home,/site-version\.js/,'home must load the version display logic');
+const versionJs=fs.readFileSync('public/site-version.js','utf8');
+assert.match(versionJs,/commitEl\.textContent=normalized\.slice\(-8\)/,'home must display the last eight characters of the current GitHub commit SHA');
+assert.match(versionJs,/fetch\('https:\/\/api\.github\.com\/repos\/Wang106\/CANAnalysis\/commits\/main'/,'home must request the current main-branch commit from GitHub');
+assert.match(versionJs,/setReleaseTime\(new Date\(2000,0,1,0,0,0\),'default'\)/,'publication time must start at the requested 2000-01-01 default');
+assert.doesNotMatch(versionJs,/if\(committedAt\) setReleaseTime/,'publication time must not fall back to the code commit date');
 assert.doesNotMatch(offline,/id="hcommit"|id="hmodtime"/,'offline header must no longer display version information');
 assert.match(offline,/<div id="sigBar" class="collapsed">/,'offline signal selection must start collapsed');
 assert.match(offline,/signalPanel\.classList\.remove\('collapsed','resized'\);\s*signalPanel\.classList\.add\('expanded'\);/,'a valid DBC load must automatically expand signal selection');
