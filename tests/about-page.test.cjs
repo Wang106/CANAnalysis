@@ -24,8 +24,8 @@ assert.ok(supportTitle>=0&&supportNote>supportTitle&&supportNote<payGrid,'suppor
 assert.ok(contactNote>=0&&supportButton>contactNote&&supportButton<payGrid,'support button must sit directly below the contact guidance and above the payment area');
 assert.match(html,/<button type="button" id="supportButton" class="secondary-link" aria-controls="supportContent" aria-expanded="false">支持本站<\/button>/,'support shortcut must retain its accessible collapsed state and target the foldable content');
 assert.match(html,/<details class="support" id="support" aria-labelledby="support-title">[\s\S]*?<summary class="support-summary">[\s\S]*?支持这个小工具[\s\S]*?点击展开[\s\S]*?点击收起[\s\S]*?<\/summary>/,'support title must be a native collapsible control that starts closed');
-assert.match(html,/class="support-toggle"[\s\S]*?<i aria-hidden="true">&gt;<\/i>/,'support panel must use a right-pointing greater-than character while collapsed');
-assert.match(html,/\.support-toggle i\{[^}]*display:inline-block[^}]*transition:transform \.2s ease;\}[\s\S]*?\.support\[open\] \.support-toggle i\{transform:rotate\(90deg\);\}/,'support arrow must rotate downward when expanded');
+assert.match(html,/class="support-toggle"[\s\S]*?<i aria-hidden="true">›<\/i>/,'support panel must use the rounded right-pointing chevron while collapsed');
+assert.match(html,/\.support-toggle i\{[^}]*display:inline-block[^}]*font-size:20px[^}]*font-weight:700[^}]*transition:transform \.2s ease;\}[\s\S]*?\.support\[open\] \.support-toggle i\{transform:rotate\(90deg\);\}/,'support chevron must use the polished style and rotate downward when expanded');
 assert.doesNotMatch(html,/<details class="support"[^>]*\sopen(?:\s|>)/,'support panel must be collapsed by default');
 assert.match(html,/<div class="support-content" id="supportContent">[\s\S]*?<div class="pay-grid" id="paymentOptions">[\s\S]*?src="wechat-pay\.jpeg"[\s\S]*?src="alipay-pay\.jpeg"/,'expanded support content must include both payment QR codes');
 assert.match(html,/supportPanel\.addEventListener\(['"]toggle['"][\s\S]*?aria-expanded['"],String\(supportPanel\.open\)/,'support shortcut state must follow manual expand and collapse actions');

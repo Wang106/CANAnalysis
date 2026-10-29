@@ -9,8 +9,7 @@
     if(!d||typeof d.getTime!=='function'||Number.isNaN(d.getTime())) return;
     const pad=n=>String(n).padStart(2,'0');
     const dateStr=d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
-    const timeStr=pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());
-    releaseEl.textContent=dateStr+' '+timeStr+'发布';
+    releaseEl.textContent=dateStr+'发布';
     releaseEl.dataset.source=source||'default';
     releaseEl.title=source==='github'?'GitHub 代码提交时间':'等待获取 GitHub 代码提交时间';
   }

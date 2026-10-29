@@ -81,7 +81,7 @@
 .conversion-accordion>summary b{font-size:13px;color:var(--txt)}
 .conversion-accordion>summary small{overflow:hidden;color:var(--txt2);font-size:11px;text-overflow:ellipsis;white-space:nowrap}
 .conversion-accordion>summary>strong{margin-left:auto;color:var(--green);font-size:11px;white-space:nowrap}
-.conversion-accordion>summary>i{display:inline-block;color:var(--section-accent);font-style:normal;font-size:18px;line-height:1;transition:transform .2s ease}
+.conversion-accordion>summary>i{display:inline-block;color:var(--section-accent);font-family:system-ui,sans-serif;font-style:normal;font-size:22px;font-weight:700;line-height:1;transition:transform .2s ease}
 .conversion-accordion[open]>summary{background:linear-gradient(90deg,var(--section-tint),rgba(29,33,43,.72) 78%)}
 .conversion-accordion[open]>summary>i{transform:rotate(90deg)}
 .conversion-accordion>summary:hover,.conversion-accordion>summary:focus-visible{box-shadow:inset 4px 0 var(--section-accent),inset 0 0 32px var(--section-tint),0 0 16px var(--section-tint);outline:none}
