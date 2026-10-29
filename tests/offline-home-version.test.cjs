@@ -44,7 +44,7 @@ const server=createServer(async(req,res)=>{
     await page.waitForFunction(()=>document.getElementById('hcommit')?.textContent.length===8);
     assert.equal(await page.locator('footer #hcommit').count(),1);
     assert.match(await page.locator('footer #hcommit').textContent(),/^[0-9a-f]{8}$/i);
-    assert.match(await page.locator('footer #hmodtime').textContent(),/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}发布$/);
+    assert.match(await page.locator('footer #hmodtime').textContent(),/^\d{4}-\d{2}-\d{2}发布$/);
     assert.deepEqual(errors,[]);
     console.log('PASS: homepage footer version and offline signal-panel behavior');
   }finally{

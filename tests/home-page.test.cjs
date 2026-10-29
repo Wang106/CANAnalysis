@@ -61,6 +61,8 @@ assert.match(versionJs,/fetch\('https:\/\/api\.github\.com\/repos\/Wang106\/CANA
 assert.match(versionJs,/setReleaseTime\(new Date\(2000,0,1,0,0,0\),'default'\)/,'publication time must start at the requested 2000-01-01 default');
 assert.match(versionJs,/data\.commit&&data\.commit\.committer&&data\.commit\.committer\.date/,'publication time must use the current GitHub commit time');
 assert.match(versionJs,/if\(committedAt\)setReleaseTime\(new Date\(committedAt\),'github'\)/,'publication time must update as soon as the code commit time is available');
+assert.match(versionJs,/releaseEl\.textContent=dateStr\+'发布'/,'publication time must display the commit date without hours, minutes or seconds');
+assert.doesNotMatch(versionJs,/timeStr|getHours|getMinutes|getSeconds/,'publication date must not generate a time-of-day string');
 assert.doesNotMatch(versionJs,/check-runs|latestSuccessfulDeployment|completed_at/,'publication time must no longer depend on deployment completion');
 assert.doesNotMatch(offline,/id="hcommit"|id="hmodtime"/,'offline header must no longer display version information');
 assert.match(offline,/<div id="sigBar" class="collapsed">/,'offline signal selection must start collapsed');
