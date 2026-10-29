@@ -9,8 +9,9 @@ assert.match(home,/<title>首页 · CANAnalysis<\/title>/);
 assert.match(home,/class="[^\"]*page-grid/);
 assert.equal((home.match(/class="[^"]*page-card/g)||[]).length,7,'home must show every non-home navigation destination');
 assert.equal((home.match(/class="card-visual/g)||[]).length,7,'every home card must include a centered visual area');
-assert.match(home,/<h1 id="home-title">选择适合你的 <em>CAN 数据工具<\/em><\/h1>/,'home title must remain on one line');
-assert.match(home,/<a class="page-card online-card"[\s\S]*?<span class="card-state">开发中…<\/span>[\s\S]*?<h2>在线连接<\/h2>/,'online connection card must be marked as in development with an ellipsis');
+assert.doesNotMatch(home,/CAN DATA TOOLBOX|选择适合你的|从设备实时连接到离线日志分析/,'home must remove the introductory toolbox copy');
+assert.match(home,/<article class="page-card online-card pending" aria-disabled="true" title="尚未完成验证">[\s\S]*?<span class="card-state">未验证<\/span>[\s\S]*?<h2>在线连接<\/h2>/,'online connection must be a disabled gray home card');
+assert.doesNotMatch(home,/<a class="page-card online-card"|href="\/online"[^>]*class="page-card/,'online connection home card must not be clickable');
 assert.match(home,/class="card-visual hardware-visual"[\s\S]*?device-pcan\.png[\s\S]*?PCAN[\s\S]*?device-vector\.png[\s\S]*?Vector[\s\S]*?device-zlg\.png[\s\S]*?周立功[\s\S]*?class="hardware-more"[^>]*>…/,'online card must place each matching device image above its name and show a trailing ellipsis');
 assert.match(home,/class="card-visual curve-visual"[\s\S]*?<svg/,'offline card must use an analysis-curve visual');
 for(const asset of ['device-pcan.png','device-vector.png','device-zlg.png']){assert.equal(fs.existsSync('public/'+asset),true,asset+' must exist');assert.ok(fs.statSync('public/'+asset).size>50000,asset+' must be a real product cutout');}
@@ -38,13 +39,13 @@ assert.match(homeCss,/span:nth-of-type\(4\)\{[^}]*width:76px[^}]*height:42px[^}]
 
 for(const card of home.match(/<(?:a|article) class="page-card[\s\S]*?<\/(?:a|article)>/g)||[]){
   assert.ok(card.indexOf('<h2>')<card.indexOf('class="card-visual'),'card title must precede the centered visual');
-  assert.ok(card.indexOf('class="card-visual')<card.indexOf('<p>'),'card description must follow the centered visual');
+  assert.doesNotMatch(card,/<p>/,'home cards must not contain descriptive small copy');
 }
 
-for(const [route,title] of [['/online','在线连接'],['/offline','离线分析'],['/convert','格式转换'],['/aboutus','关于本站']]){
+for(const [route,title] of [['/offline','离线分析'],['/convert','格式转换'],['/aboutus','关于本站']]){
   assert.match(home,new RegExp(`<a[^>]+href="${route}"[^>]*[\\s\\S]*?${title}`),`${title} must be an enabled home card`);
 }
-for(const title of ['27930解析','J1939分析','友情链接']){
+for(const title of ['在线连接','27930解析','J1939分析','友情链接']){
   const pattern=new RegExp(`<article[^>]+(?:pending|disabled)[^>]*[\\s\\S]*?${title}`);
   assert.match(home,pattern,`${title} must be a disabled gray home card`);
 }

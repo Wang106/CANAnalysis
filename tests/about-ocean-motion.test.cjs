@@ -25,15 +25,18 @@ const server=createServer(async(req,res)=>{
     const url='http://127.0.0.1:'+server.address().port+'/aboutus.html';
     await page.goto(url,{waitUntil:'load'});
     await page.waitForFunction(()=>window.__aboutOcean?.lazyLoaded===true);
+    assert.equal(await page.locator('#paymentOptions').isHidden(),true,'payment QR codes must be hidden initially');
     const layout=await page.evaluate(()=>{
       const bounds=selector=>{const rect=document.querySelector(selector).getBoundingClientRect();return {top:rect.top,bottom:rect.bottom};};
-      return {contact:bounds('.contact-note'),button:bounds('#supportButton'),payment:bounds('.pay-grid')};
+      return {contact:bounds('.contact-note'),button:bounds('#supportButton')};
     });
     assert.ok(layout.button.top>=layout.contact.bottom,'support button must sit below the contact guidance');
-    assert.ok(layout.button.bottom<layout.payment.top,'support button must remain above the payment area');
 
     await page.click('#supportButton');
     await page.waitForTimeout(700);
+    assert.equal(await page.locator('#paymentOptions').isVisible(),true,'support button must reveal payment QR codes');
+    const paymentTop=await page.$eval('#paymentOptions',element=>element.getBoundingClientRect().top);
+    assert.ok(layout.button.bottom<paymentTop+scrollY,'support button must remain above the revealed payment area');
     assert.equal(new URL(page.url()).hash,'','support button must reveal payment without adding a URL hash');
     assert.ok(Math.abs(await page.$eval('#support',element=>element.getBoundingClientRect().top))<90,'support button must scroll the payment section into view');
 
@@ -44,11 +47,13 @@ const server=createServer(async(req,res)=>{
       ripples:window.__aboutOcean.rippleCount,
       radius:window.__aboutOcean.latestRippleRadius,
       seaweed:window.__aboutOcean.seaweedClusterCount,
-      style:window.__aboutOcean.style
+      style:window.__aboutOcean.style,
+      bubbles:window.__aboutOcean.bubbleCount
     }));
     assert.ok(state.ripples>0,'clicking the ocean must create a ripple');
     assert.ok(state.radius>=Math.hypot(box.width/2,box.height/2)-2,'ripple must reach every corner of the animation canvas');
     assert.ok(state.seaweed>=12,'ocean scene must contain at least twelve dense seaweed clusters');
+    assert.ok(state.bubbles>=38,'ocean scene must contain more ambient bubbles after removing the turtle');
     assert.equal(state.style,'luminous-watercolor','ocean scene must use the brighter watercolor direction');
     console.log('PASS: support placement, full-canvas ripples and denser animated ocean scene');
   }finally{

@@ -11,32 +11,35 @@
   const pointer={x:0,y:0,active:false};
   const creatures=[];
   const bubbles=[];
+  const surfaceBubbles=[];
   const ripples=[];
   const grassAnchors=[.015,.04,.075,.11,.15,.19,.8,.835,.87,.91,.95,.985];
   const plan=[
-    ['turtle',.88,1,.28],['turtle',.66,-1,.72],['crab',.92,-1,.24],['crab',.78,1,.77],
+    ['crab',.92,-1,.24],['crab',.78,1,.77],
     ['fish',.35,1,.12],['fish',.42,1,.38],['fish',.48,1,.63],['fish',.58,-1,.88],
-    ['fish',.64,-1,.19],['fish',.72,-1,.47],['fish',.52,1,.69],['fish',.3,-1,.84]
+    ['fish',.64,-1,.19],['fish',.72,-1,.47],['fish',.52,1,.69],['fish',.3,-1,.84],
+    ['fish',.46,-1,.29],['fish',.6,1,.56]
   ];
-  let width=1,height=1,dpr=1,frame=0,lastTime=0,visible=true,tabVisible=!document.hidden,destroyed=false;
+  let width=1,height=1,dpr=1,frame=0,lastTime=0,nextBubbleBurst=0,visible=true,tabVisible=!document.hidden,destroyed=false;
   const TAU=Math.PI*2;
   const random=(min,max)=>min+Math.random()*(max-min);
   const easeInOut=value=>.5-.5*Math.cos(Math.PI*value);
 
   function seedScene(){
-    creatures.length=0;bubbles.length=0;
+    creatures.length=0;bubbles.length=0;surfaceBubbles.length=0;
     plan.forEach(([type,depth,direction,xRatio],index)=>{
-      const speed=type==='fish'?random(18,27):type==='turtle'?random(10,15):random(7,11);
+      const speed=type==='fish'?random(18,27):random(7,11);
       const baseY=type==='crab'?height-random(24,38):random(height*.24,height*.7);
       creatures.push({
         type,depth,direction,index,
         x:width*xRatio+random(-24,24),
         baseY,y:baseY,speed,phase:index*.71+random(0,.7),
-        size:type==='fish'?random(.56,.72):type==='turtle'?random(.68,.82):random(.46,.58),
+        size:type==='fish'?random(.56,.72):random(.46,.58),
         vx:direction*speed,vy:0
       });
     });
-    for(let index=0;index<30;index++)bubbles.push({x:random(0,width),y:random(0,height),radius:random(.8,3.3),speed:random(5,15),phase:random(0,TAU)});
+    for(let index=0;index<38;index++)bubbles.push({x:random(0,width),y:random(0,height),radius:random(.8,3.3),speed:random(5,15),phase:random(0,TAU)});
+    nextBubbleBurst=performance.now()+random(1800,4200);
   }
 
   function resize(){
@@ -62,14 +65,31 @@
     ctx.restore();
   }
 
-  function drawBubbles(ctx,time){
+  function launchSurfaceBubbles(time){
+    const originX=random(width*.08,width*.92),count=Math.floor(random(4,9));
+    for(let index=0;index<count;index++)surfaceBubbles.push({
+      x:originX+random(-18,18),y:height+random(4,38),radius:random(1.2,4),speed:random(28,48),phase:random(0,TAU)
+    });
+    nextBubbleBurst=time+random(4500,9500);
+  }
+
+  function drawBubbles(ctx,time,elapsed){
+    if(elapsed&&time>=nextBubbleBurst)launchSurfaceBubbles(time);
     ctx.save();ctx.strokeStyle='rgba(246,255,255,.72)';ctx.lineWidth=1;
     bubbles.forEach((bubble,index)=>{
-      const y=(bubble.y-time*.001*bubble.speed+height*4)%height;
+      const y=((bubble.y-time*.001*bubble.speed)%height+height)%height;
       const x=bubble.x+Math.sin(time*.0011+bubble.phase)*8;
       ctx.globalAlpha=.28+(index%5)*.08;ctx.beginPath();ctx.arc(x,y,bubble.radius,0,TAU);ctx.stroke();
       if(bubble.radius>2.3){ctx.fillStyle='rgba(255,255,255,.72)';ctx.beginPath();ctx.arc(x-bubble.radius*.28,y-bubble.radius*.35,.55,0,TAU);ctx.fill();}
-    });ctx.restore();
+    });
+    for(let index=surfaceBubbles.length-1;index>=0;index--){
+      const bubble=surfaceBubbles[index];
+      if(elapsed){bubble.y-=bubble.speed*elapsed;bubble.x+=Math.sin(time*.0014+bubble.phase)*5*elapsed;}
+      if(bubble.y<-bubble.radius*2){surfaceBubbles.splice(index,1);continue;}
+      ctx.globalAlpha=Math.min(.82,.34+bubble.radius*.11);ctx.beginPath();ctx.arc(bubble.x,bubble.y,bubble.radius,0,TAU);ctx.stroke();
+      if(bubble.radius>2.4){ctx.fillStyle='rgba(255,255,255,.78)';ctx.beginPath();ctx.arc(bubble.x-bubble.radius*.3,bubble.y-bubble.radius*.34,.65,0,TAU);ctx.fill();}
+    }
+    ctx.restore();
   }
 
   function drawGrass(ctx,time){
@@ -88,40 +108,20 @@
   }
 
   function imageSize(type){
-    if(type==='turtle')return {w:150,h:100};
     if(type==='crab')return {w:108,h:72};
     return {w:92,h:61};
-  }
-
-  function drawTurtlePart(ctx,image,polygon,pivot,angle){
-    ctx.save();ctx.translate(pivot[0],pivot[1]);ctx.rotate(angle);ctx.translate(-pivot[0],-pivot[1]);
-    ctx.beginPath();polygon.forEach(([x,y],index)=>index?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();ctx.clip();ctx.drawImage(image,0,0);ctx.restore();
-  }
-
-  function drawTurtle(ctx,image,phase,size){
-    const frontStroke=Math.sin(phase*.58),rearStroke=Math.sin(phase*.58+Math.PI*.72);
-    const sourceWidth=image.naturalWidth,sourceHeight=image.naturalHeight;
-    ctx.save();ctx.translate(-size.w/2,-size.h/2);ctx.scale(size.w/sourceWidth,size.h/sourceHeight);
-    drawTurtlePart(ctx,image,[[350,135],[550,135],[550,330],[400,300],[365,215]],[407,181],frontStroke*-.075);
-    drawTurtlePart(ctx,image,[[72,170],[190,168],[195,225],[132,276],[70,255]],[157,190],rearStroke*.055);
-    ctx.save();ctx.beginPath();[[34,25],[470,18],[550,70],[550,214],[410,230],[330,222],[255,220],[185,214],[102,207],[38,188]].forEach(([x,y],index)=>index?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();ctx.clip();ctx.drawImage(image,0,0);ctx.restore();
-    drawTurtlePart(ctx,image,[[0,151],[151,137],[177,188],[123,247],[0,247]],[139,177],rearStroke*-.07);
-    drawTurtlePart(ctx,image,[[151,145],[371,135],[430,215],[307,349],[163,349]],[323,176],frontStroke*.105);
-    ctx.restore();
   }
 
   function drawCreature(ctx,creature,time){
     const image=assets[creature.type];if(!(image?.complete&&image.naturalWidth))return;
     const phase=time*.001*creature.speed*.3+creature.phase;
-    const wave=Math.sin(phase),slow=Math.sin(phase*.48+creature.phase);
+    const wave=Math.sin(phase);
     const size=imageSize(creature.type);
     const scale=creature.size*(.82+creature.depth*.26);
     const facing=creature.vx<0?-1:1;
     let breatheX=1,breatheY=1,rotation=0,shear=0;
     if(creature.type==='fish'){
       breatheX=1+wave*.035;breatheY=1-wave*.026;rotation=wave*.055+creature.vy*.008;shear=wave*.025;
-    }else if(creature.type==='turtle'){
-      breatheX=1+slow*.006;breatheY=1-slow*.004;rotation=wave*.025+creature.vy*.006;
     }else{
       breatheX=1-wave*.025;breatheY=1+Math.abs(wave)*.035;rotation=wave*.045;
     }
@@ -129,7 +129,7 @@
     ctx.save();ctx.translate(creature.x,creature.y);ctx.rotate(rotation);ctx.transform(facing*breatheX,shear,0,breatheY,0,0);ctx.scale(scale,scale);
     ctx.globalAlpha=(.58+creature.depth*.4)*fade;
     ctx.shadowColor='rgba(31,125,133,.2)';ctx.shadowBlur=10;ctx.shadowOffsetY=5;
-    if(creature.type==='turtle')drawTurtle(ctx,image,phase,size);else ctx.drawImage(image,-size.w/2,-size.h/2,size.w,size.h);
+    ctx.drawImage(image,-size.w/2,-size.h/2,size.w,size.h);
     ctx.restore();
   }
 
@@ -148,7 +148,7 @@
     const travel=((creature.x/(width+160))+creature.phase)%1;
     const arc=Math.sin(travel*TAU+creature.phase)*12;
     const glide=Math.sin(time*.00065+creature.phase)*7;
-    const desiredY=creature.type==='crab'?creature.baseY+Math.abs(Math.sin(time*.0026+creature.phase))*3:creature.type==='turtle'?creature.baseY+arc*.48+glide*.38:creature.baseY+arc+glide;
+    const desiredY=creature.type==='crab'?creature.baseY+Math.abs(Math.sin(time*.0026+creature.phase))*3:creature.baseY+arc+glide;
     creature.y+=(desiredY-creature.y)*Math.min(1,elapsed*2.3);creature.y+=creature.vy*elapsed;
     if(creature.x>width+100){creature.x=-100;creature.baseY=creature.type==='crab'?height-random(24,38):random(height*.25,height*.7);}
     if(creature.x<-100){creature.x=width+100;creature.baseY=creature.type==='crab'?height-random(24,38):random(height*.25,height*.7);}
@@ -168,7 +168,7 @@
   }
 
   function draw(time,elapsed){
-    context.clearRect(0,0,width,height);drawCaustics(context,time);drawBubbles(context,time);
+    context.clearRect(0,0,width,height);drawCaustics(context,time);drawBubbles(context,time,elapsed);
     creatures.slice().sort((a,b)=>a.depth-b.depth).forEach(creature=>{if(elapsed)updateCreature(creature,elapsed,time);drawCreature(context,creature,time);});
     drawGrass(context,time);drawRipples(context,time);
   }
@@ -198,6 +198,7 @@
 
   window.__aboutOcean={
     get creatureCount(){return creatures.length;},get rippleCount(){return ripples.length;},get seaweedClusterCount(){return grassAnchors.length;},
+    get bubbleCount(){return bubbles.length+surfaceBubbles.length;},get surfaceBubbleCount(){return surfaceBubbles.length;},
     get latestRippleRadius(){return ripples.at(-1)?.maxRadius||0;},get reducedMotion(){return motionQuery.matches;},get pointerActive(){return pointer.active;},get running(){return Boolean(frame);},
     get style(){return 'luminous-watercolor';},get lazyLoaded(){return true;},
     destroy(){destroyed=true;syncAnimation();observer.disconnect();resizeObserver.disconnect();}

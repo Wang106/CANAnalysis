@@ -3,6 +3,7 @@ const assert=require('node:assert/strict');
 
 const html=fs.readFileSync('public/online.html','utf8');
 const script=fs.readFileSync('public/online.js','utf8');
+const css=fs.readFileSync('public/online.css','utf8');
 const pages=['public/index.html','public/offline.html','public/aboutus.html','public/convert.html','public/online.html'];
 
 for(const page of pages){
@@ -12,6 +13,10 @@ for(const page of pages){
 }
 
 assert.match(html,/<title>在线连接 · CANAnalysis<\/title>/);
+assert.match(html,/window\.CAN_ONLINE_VALIDATED=false/,'online validation state must be controlled by one boolean variable');
+assert.match(html,/dataset\.onlineValidated=String\(window\.CAN_ONLINE_VALIDATED\)/,'online validation state must be exposed to CSS');
+assert.match(css,/html\[data-online-validated="false"\] body\{--online-validation-text:#858c98\}/,'unverified online page must define a shared gray text color');
+assert.match(css,/html\[data-online-validated="false"\] body :is\([^}]+\)\{color:var\(--online-validation-text\)!important\}/,'unverified online page must gray all page text');
 assert.match(html,/id="deviceModel"/);
 assert.match(html,/id="channel"/);
 assert.match(html,/id="bitrate"/);
