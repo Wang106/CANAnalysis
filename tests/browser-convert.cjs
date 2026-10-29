@@ -216,7 +216,7 @@ const server=createServer(async(req,res)=>{
     assert.equal(await page.locator('#sourceFormat').count(),0,'source format selector must be removed');
     assert.match(await page.textContent('#fileMeta'),/ASC、LOG、TRC、BLF、TXT、MF4、MDF 等七种日志格式/);
     assert.equal(await page.locator('.conversion-accordion').count(),3);
-    assert.equal(await page.locator('#sourceAccordion').getAttribute('open'),null,'source accordion must be collapsed by default');
+    assert.equal(await page.locator('#sourceAccordion').getAttribute('open'),'','source accordion must be expanded by default');
     assert.equal(await page.locator('#formatAccordion').getAttribute('open'),null);
     assert.equal(await page.locator('#csvAccordion').getAttribute('open'),null,'CSV conversion must be collapsed by default');
     assert.equal(await page.locator('#compatibilityAccordion').getAttribute('open'),null,'compatibility details must be collapsed by default');
@@ -242,23 +242,24 @@ const server=createServer(async(req,res)=>{
     assert.equal(await page.locator('.conversion-flow').evaluate(node=>getComputedStyle(node).rowGap),'8px','workflow sections must have visible spacing');
     const actionRight=await page.locator('#sourceSummary .accordion-action, #csvSummary .accordion-action').evaluateAll(nodes=>nodes.map(node=>Math.round(node.getBoundingClientRect().right)));
     assert.equal(actionRight[0],actionRight[1],'source and CSV expand actions must align at the right');
-    await page.click('#sourceSummary');assert.equal(await page.locator('#sourceAccordion').getAttribute('open'),'');
     await page.click('#sourceSummary');assert.equal(await page.locator('#sourceAccordion').getAttribute('open'),null);
-    await page.click('#sourceSummary');
+    await page.click('#sourceSummary');assert.equal(await page.locator('#sourceAccordion').getAttribute('open'),'');
     assert.equal(await page.locator('#formatSummary .when-closed').isVisible(),true);
     assert.equal(await page.locator('#csvSummary .when-closed').isVisible(),true);
     assert.match(await page.textContent('#csvSummary'),/转换为 CSV 文件/);
     assert.equal(await page.locator('#csvSelected').isHidden(),true,'CSV selected count must stay hidden before a DBC is loaded');
     assert.equal(await page.locator('#sourceAccordion .file-zone + .advanced').count(),1,'text encoding settings must follow the source file picker');
-    assert.equal(await page.locator('.intro p').count(),0,'the duplicated 01/02/03 intro sentence must be removed');
+    assert.equal(await page.locator('.intro').count(),0,'the converter intro must be removed');
     assert.equal(await page.getByText('选择或拖入一个或多个 CAN 日志',{exact:true}).count(),0,'the redundant source prompt must be removed');
     assert.equal(await page.locator('.card-heading > span').count(),0,'workflow summary must not be duplicated in the converter heading');
     assert.equal(await page.locator('.format-strip').count(),0,'top format badges must be removed');
     await page.click('#formatSummary');assert.equal(await page.locator('#formatAccordion').getAttribute('open'),'');
-    assert.equal(await page.locator('#formatSummary .accordion-action').count(),0,'format summary must not show expand or collapse copy');
+    assert.equal(await page.locator('#formatSummary .accordion-action').count(),1,'format summary must retain expand and collapse copy');
     await page.click('#formatSummary');assert.equal(await page.locator('#formatAccordion').getAttribute('open'),null);
     await page.click('#formatSummary');
-    assert.equal(await page.locator('.format-card small').count(),0,'target-format cards must not include secondary labels');
+    assert.equal(await page.locator('.format-card b, .format-card small').count(),0,'target-format cards must only include extensions');
+    assert.deepEqual(await page.locator('.format-card').allTextContents(),['.asc','.log','.trc','.blf','.txt','.mf4','.mdf']);
+    assert.equal(await page.locator('.available-signal-head #signalSearch').count(),1,'signal search must sit beside the available-signal heading');
     assert.equal(await page.locator('.target-info').textContent(),'.asc','only the selected extension should remain beside the conversion button');
     assert.deepEqual(await page.locator('.compatibility thead th').allTextContents(),['格式','设备','说明']);
     assert.deepEqual(await page.locator('.compatibility tbody tr').first().locator('td').allTextContents(),['.asc','Vector','经典 CAN / CAN FD 文本日志']);
@@ -277,7 +278,8 @@ const server=createServer(async(req,res)=>{
       const downloaded=page.waitForEvent('download');await page.click('#download');
       const download=await downloaded;assert.equal(download.suggestedFilename(),'demo.'+format);assert.equal(await download.failure(),null);
     }
-    const dbc=Buffer.from('BO_ 291 Demo: 8 ECU\n SG_ Value : 0|8@1+ (1,0) [0|255] "V" ECU\nBO_ 2566869221 Ext: 8 ECU\n SG_ ExtValue : 0|8@1+ (0.5,0) [0|127.5] "A" ECU\n');
+    const extraSignals=Array.from({length:60},(_,index)=>`BO_ ${0x300+index} Extra${index}: 8 ECU\n SG_ Signal${index} : 0|8@1+ (1,0) [0|255] "" ECU\n`).join('');
+    const dbc=Buffer.from('BO_ 291 Demo: 8 ECU\n SG_ Value : 0|8@1+ (1,0) [0|255] "V" ECU\nBO_ 2566869221 Ext: 8 ECU\n SG_ ExtValue : 0|8@1+ (0.5,0) [0|127.5] "A" ECU\n'+extraSignals);
     await page.locator('#sourceFile').setInputFiles({name:'demo.asc',mimeType:'text/plain',buffer:sample});
     await page.click('#csvSummary');assert.equal(await page.locator('#csvAccordion').getAttribute('open'),'');
     await page.click('#csvSummary');assert.equal(await page.locator('#csvAccordion').getAttribute('open'),null);
@@ -286,6 +288,9 @@ const server=createServer(async(req,res)=>{
     await page.locator('#dbcFile').setInputFiles({name:'vehicle.dbc',mimeType:'text/plain',buffer:dbc});
     await page.locator('#csvSelected').waitFor({state:'visible'});
     assert.equal(await page.locator('#csvSelected').isVisible(),true,'CSV selected count must appear after a DBC is loaded');
+    const signalScroll=await page.locator('#signalList').evaluate(node=>({scrollHeight:node.scrollHeight,clientHeight:node.clientHeight,overflowY:getComputedStyle(node).overflowY}));
+    assert.ok(signalScroll.scrollHeight>signalScroll.clientHeight,'long available-signal lists must overflow their viewport');
+    assert.equal(signalScroll.overflowY,'auto','long available-signal lists must be vertically scrollable');
     await page.locator('.signal-option').first().waitFor();await page.click('#selectAllSignals');await page.selectOption('#csvInterval','300');
     await page.click('#startCsvConvert');await page.locator('#result').waitFor({state:'visible'});
     const csvEvent=page.waitForEvent('download');await page.click('#download');const csvDownload=await csvEvent;

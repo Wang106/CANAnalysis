@@ -37,7 +37,7 @@ function select(items){
   $('fileMeta').textContent=size(total)+(total>200*1024**2?' · 大文件建议在电脑上转换':items.some(item=>item.handle)?' · 可请求保存到原目录':' · 转换后提供下载');
   renderSources();busy(false);
 }
-$('chooseFile').onclick=async()=>{
+async function openSourcePicker(){
   if(window.showOpenFilePicker){
     try{
       const handles=await window.showOpenFilePicker({multiple:true});
@@ -45,7 +45,8 @@ $('chooseFile').onclick=async()=>{
     }catch(error){if(error.name==='AbortError')return;}
   }
   $('sourceFile').value='';$('sourceFile').click();
-};
+}
+$('dropZone').onclick=openSourcePicker;
 $('sourceFile').onchange=event=>select([...event.target.files].map(file=>({file,handle:null})));
 $('dropZone').ondragover=event=>{event.preventDefault();if(!worker)$('dropZone').classList.add('drag');};
 $('dropZone').ondragleave=()=> $('dropZone').classList.remove('drag');
