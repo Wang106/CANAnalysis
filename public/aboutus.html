@@ -91,16 +91,15 @@
     .community-link{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 20px;border:1px solid rgba(74,158,255,.45);border-radius:9px;background:rgba(74,158,255,.1);color:#dcecff;font-size:13px;font-weight:700;}
     .community-link:hover,.community-link:focus-visible{border-color:var(--green);color:#e9fff2;outline:none;}
     .support{padding:68px 0 34px;border-top:1px solid var(--line);}
-    .support-summary{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:0;list-style:none;cursor:pointer;user-select:none;}
+    .support-summary{display:flex;align-items:center;gap:12px;padding:0;list-style:none;cursor:pointer;user-select:none;}
     .support-summary::-webkit-details-marker{display:none;}
     .support-summary:focus-visible{border-radius:10px;outline:2px solid var(--blue);outline-offset:8px;}
     .support-summary-title,.support-summary-title .section-kicker{display:block;min-width:0;}
-    .support-toggle{display:inline-flex;align-items:center;gap:9px;flex:none;padding:7px 11px;border:1px solid rgba(74,158,255,.38);border-radius:999px;background:rgba(74,158,255,.08);color:#cfe4ff;font-size:11px;font-weight:700;white-space:nowrap;}
-    .support-toggle i{display:inline-block;color:var(--blue);font-family:system-ui,sans-serif;font-style:normal;font-size:20px;font-weight:700;line-height:1;transition:transform .2s ease;}
-    .support-toggle .when-open{display:none;}
-    .support[open] .support-toggle .when-closed{display:none;}
-    .support[open] .support-toggle .when-open{display:inline;}
-    .support[open] .support-toggle i{transform:rotate(90deg);}
+    .support-heading-line{display:flex;align-items:center;gap:10px;}
+    .support-title-chevron{display:inline-block;flex:none;color:var(--blue);font-family:system-ui,sans-serif;font-style:normal;font-size:30px;font-weight:600;line-height:.8;text-shadow:0 0 16px rgba(74,158,255,.45);transition:color .18s ease,transform .2s ease;}
+    .support-summary:hover .support-title-chevron{color:var(--green);transform:translateX(3px);}
+    .support[open] .support-title-chevron{transform:rotate(90deg);}
+    .support[open] .support-summary:hover .support-title-chevron{color:var(--green);transform:rotate(90deg) scale(1.08);}
     .support-content{padding-top:18px;animation:support-content-in .2s ease both;}
     .support-note{max-width:680px;margin:0;color:var(--muted);font-size:12px;line-height:1.7;text-align:left;}
     @keyframes support-content-in{from{opacity:0;transform:translateY(-5px);}to{opacity:1;transform:none;}}
@@ -126,7 +125,7 @@
       h1{font-size:clamp(20px,6.4vw,31px);letter-spacing:-.8px;}
       .features,.support{padding:50px 0;}
       .support-summary{gap:14px;}
-      .support-toggle{padding:6px 9px;}
+      .support-title-chevron{font-size:27px;}
       .feature-grid,.pay-grid{grid-template-columns:1fr;}
       .community-invite{grid-template-columns:1fr;gap:18px;}
       .community-link{justify-self:start;}
@@ -253,8 +252,7 @@
 
     <details class="support" id="support" aria-labelledby="support-title">
       <summary class="support-summary">
-        <span class="support-summary-title"><span class="section-kicker">Support</span><h2 id="support-title">支持这个小工具</h2></span>
-        <span class="support-toggle"><span class="when-closed">点击展开</span><span class="when-open">点击收起</span><i aria-hidden="true">›</i></span>
+        <span class="support-summary-title"><span class="section-kicker">Support</span><span class="support-heading-line"><h2 id="support-title">支持这个小工具</h2><i class="support-title-chevron" aria-hidden="true">›</i></span></span>
       </summary>
       <div class="support-content" id="supportContent">
         <p class="support-note">如果它帮你节省了排查时间，可以自愿支持后续维护。支持与否不会影响任何功能的使用。</p>
