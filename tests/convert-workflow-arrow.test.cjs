@@ -27,6 +27,10 @@ assert.match(css,/\.format-card\{[^}]*min-height:52px[^}]*padding:7px 6px/,'targ
 assert.match(html,/class="signal-column-head available-signal-head"><label for="signalSearch">可选信号<\/label><input id="signalSearch"/,'the signal search field must sit directly to the right of Available Signals');
 assert.match(css,/\.signal-list\{[^}]*overflow-x:hidden[^}]*overflow-y:auto[^}]*overscroll-behavior:contain[^}]*scrollbar-gutter:stable/,'long signal lists must scroll independently');
 assert.match(css,/@media\(max-width:820px\)\{[\s\S]*?\.signal-column\{height:300px;min-height:300px;max-height:300px\}/,'mobile signal columns must keep a bounded scrolling height');
+assert.match(html,/class="csv-setup-row"[\s\S]*?class="csv-stage dbc-stage"[\s\S]*?选择 DBC 文件[\s\S]*?class="csv-stage interval-stage"[\s\S]*?确定时间间隔/,'DBC selection and interval selection must share one row in that order');
+assert.match(css,/\.csv-setup-row\{[^}]*display:grid[^}]*grid-template-columns:minmax\(0,1fr\) minmax\(180px,260px\)[^}]*gap:24px/,'desktop CSV setup controls must place the interval to the right of DBC selection');
+assert.match(css,/@media\(max-width:700px\)\{[\s\S]*?\.csv-setup-row\{[^}]*grid-template-columns:minmax\(0,1fr\) minmax\(112px,38%\)/,'mobile CSV setup controls must remain side by side');
+assert.match(html,/class="csv-stage signal-stage"><span class="stage-number">3<\/span>/,'signal selection must follow the two setup controls as step 3');
 assert.match(html,/class="target-info"><span id="targetExt">\.asc<\/span><\/div>/,'the target panel must only show the selected extension');
 assert.doesNotMatch(js,/targetTitle|targetDescription|targetCapability|descriptions=/,'removed target copy must not leave dead DOM updates');
 assert.match(css,/\.action-bar p\{[^}]*flex:1[^}]*min-width:0/,'the local-processing note must use the available width before wrapping');

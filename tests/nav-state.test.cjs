@@ -21,6 +21,7 @@ const fixed=fixture(code);fixed.advance(5000);assert(fixed.open());assert(fixed.
 fixed.fire(fixed.nav,'pointerleave',{pointerType:'mouse'});fixed.fire(fixed.root,'pointerdown',{target:{},pointerType:'touch'});fixed.fire(fixed.nav,'keydown',{key:'Escape'});assert(fixed.open());assert(fixed.fixed());
 
 const offline=fs.readFileSync('public/offline.html','utf8');
+assert.doesNotMatch(offline,/加载 DBC 与 ASC 文件后，选择信号并生成曲线|支持把文件直接拖入窗口 · 文件仅在当前浏览器本地处理/,'offline page must remove the requested helper copy from initial and rebuilt states');
 assert.match(offline,/id="topNav" class="nav-open nav-fixed"/,'offline page must use the same fixed navigation as other pages');
 assert.doesNotMatch(offline,/data-collapse="hover"/,'offline page must not collapse navigation on pointer exit');
 assert.match(offline,/canalyzer-visible-limit[\s\S]*?--canalyzer-visible-count[\s\S]*?Math\.min\(charts\.length,10\)/,'CANalyzer view must show at most ten chart rows before vertical scrolling');

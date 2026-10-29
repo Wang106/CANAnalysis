@@ -16,7 +16,8 @@ assert.match(worker,/Cf-Access-Jwt-Assertion|adminRoutes/,'admin API must be pro
 assert.match(config,/cananalysis-preview/,'preview resources must be isolated');
 assert.match(config,/dead_letter_queue/,'mail delivery must have a dead letter queue');
 assert.match(about,/crossBorderConsent/,'registration must request separate cross-border consent');
-assert.match(about,/评论需要登录并验证邮箱后发布/,'comments must require a verified account');
+assert.match(about,/注册并验证邮箱/,'registration must retain email verification after removing the community introduction');
+assert.match(communityJs,/请先登录并验证邮箱/,'comment submission must still require a verified account');
 for(const control of ['commentPrompt','commentExpansion','authCard','loginForm','registerForm','profileForm','passwordForm','exportButton','deleteAccountButton','resendForm','forgotForm','commentForm','comments'])assert.match(about,new RegExp(`id="${control}"`),`missing embedded community control ${control}`);
 assert.ok(about.indexOf('id="comments"')<about.indexOf('id="commentPrompt"'),'existing comments must appear before the comment entry row');
 assert.match(about,/id="commentPrompt"[^>]+aria-expanded="false"[^>]+aria-disabled="true" disabled><span>发表评论<\/span><small id="sessionSummary">暂未开放<\/small>/,'comment entry must be visibly unavailable and disabled');
