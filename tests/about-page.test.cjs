@@ -9,6 +9,7 @@ const i18n=fs.readFileSync('public/site-i18n.js','utf8');
 
 assert.match(html,/href="mailto:whf969@foxmail\.com"/,'about page must expose a clickable contact email');
 assert.match(html,/<h1 id="hero-title">让 CAN 报文更容易看懂<\/h1>/,'about title must remain on one line');
+assert.doesNotMatch(html,/signal-card|signal-grid|signal-svg|CAN 信号曲线示意图/,'about hero must not render the signal illustration beside the title');
 assert.doesNotMatch(html,/纯前端 · 本地分析|CANAnalysis 是一款面向测试与工程人员的浏览器工具|What it does|从原始报文到可读结果|工具围绕日常 CAN 测试场景设计|在这里分享使用体验、功能建议或站务问题。评论需要登录并验证邮箱后发布。/,'about page must remove the requested introductory and community copy');
 assert.match(html,/<section class="features" data-feature-list aria-label="功能介绍">/,'feature cards must retain an accessible section after removing their visible introduction');
 assert.match(html,/如在使用过程中遇到问题，或有功能建议与其他需求/,'about page must explain when to use the contact email');
