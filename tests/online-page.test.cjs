@@ -13,6 +13,7 @@ for(const page of pages){
 }
 
 assert.match(html,/<title>在线连接 · CANAnalysis<\/title>/);
+assert.doesNotMatch(html,/CAN HARDWARE BRIDGE|通过本机连接服务读取 CAN 总线，数据只在当前电脑与浏览器之间流转。/,'online page must remove the requested introductory copy');
 assert.match(html,/window\.CAN_ONLINE_VALIDATED=false/,'online validation state must be controlled by one boolean variable');
 assert.match(html,/dataset\.onlineValidated=String\(window\.CAN_ONLINE_VALIDATED\)/,'online validation state must be exposed to CSS');
 assert.match(css,/html\[data-online-validated="false"\] body\{--online-validation-text:#858c98\}/,'unverified online page must define a shared gray text color');
