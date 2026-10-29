@@ -39,5 +39,8 @@ assert.doesNotMatch(css,/\.compatibility-accordion/,'removed compatibility accor
 assert.doesNotMatch(html,/统一转换为 ASC、LOG、TRC、BLF、TXT、MF4 或 MDF|选择信号并按固定时间间隔导出宽表|转换的是原始 CAN 数据帧与远程帧/,'removed helper copy must not remain visible');
 const formatSummary=html.match(/<summary id="formatSummary"[\s\S]*?<\/summary>/)?.[0]||'';
 assert.match(formatSummary,/class="accordion-action"[\s\S]*?点击展开[\s\S]*?点击收起/,'the format summary must restore expand and collapse labels');
+assert.equal((html.match(/<i aria-hidden="true">&gt;<\/i>/g)||[]).length,3,'all three conversion accordions must use a right-pointing greater-than character while collapsed');
+assert.match(css,/\.conversion-accordion>summary>i\{[^}]*display:inline-block[^}]*transition:transform \.2s ease/,'conversion arrows must be transformable inline controls');
+assert.match(css,/\.conversion-accordion\[open\]>summary>i\{transform:rotate\(90deg\)\}/,'conversion arrows must rotate downward when expanded');
 
 console.log('PASS: format conversion highlights steps 01 through 03 and restores step 02 guidance');

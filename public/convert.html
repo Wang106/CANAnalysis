@@ -7,7 +7,7 @@
   <meta name="description" content="CAN 日志格式转换与 DBC 信号 CSV 导出：在浏览器本地处理 ASC、BLF、LOG、TRC、TXT、MDF/MF4。">
   <title>格式转换 · CANAnalysis</title>
   <link rel="icon" href="icon.png" type="image/png">
-  <link rel="stylesheet" href="convert.css?v=csv-header-row-20261029">
+  <link rel="stylesheet" href="convert.css?v=fold-arrow-20261029">
   <link rel="stylesheet" href="site-nav.css?v=mobile-nav-switcher-separated-20260926">
   <script src="site-i18n.js?v=mobile-nav-switcher-separated-20260926" defer></script>
   <script src="site-nav.js?v=fixed-nav-20260923" defer></script>
@@ -40,7 +40,7 @@
       <div class="card-heading"><h2 id="converter-title">日志格式转换</h2></div>
       <div class="conversion-flow">
         <details id="sourceAccordion" class="conversion-accordion source-accordion" open>
-          <summary id="sourceSummary" class="workflow-heading source-heading"><span class="accordion-index">01</span><span class="accordion-copy"><b>选择源文件</b></span><span class="accordion-action"><span class="when-closed">点击展开</span><span class="when-open">点击收起</span></span><i aria-hidden="true">⌄</i></summary>
+          <summary id="sourceSummary" class="workflow-heading source-heading"><span class="accordion-index">01</span><span class="accordion-copy"><b>选择源文件</b></span><span class="accordion-action"><span class="when-closed">点击展开</span><span class="when-open">点击收起</span></span><i aria-hidden="true">&gt;</i></summary>
           <div class="accordion-content source-pane">
           <button type="button" class="file-zone" id="dropZone" aria-label="选择一个或多个日志文件" aria-controls="sourceFile">
             <svg width="38" height="42" viewBox="0 0 38 42" fill="none" aria-hidden="true"><path d="M8 2h15l10 10v27H5V2h3Z" stroke="currentColor" stroke-width="1.5"/><path d="M23 2v11h10M19 32V19m-5 5 5-5 5 5" stroke="currentColor" stroke-width="1.5"/></svg>
@@ -56,7 +56,7 @@
           </div>
         </details>
         <details id="formatAccordion" class="conversion-accordion">
-          <summary id="formatSummary" class="workflow-heading format-heading"><span class="accordion-index">02</span><span class="accordion-copy"><b>日志格式转换</b></span><span class="accordion-action"><span class="when-closed">点击展开</span><span class="when-open">点击收起</span></span><i aria-hidden="true">⌄</i></summary>
+          <summary id="formatSummary" class="workflow-heading format-heading"><span class="accordion-index">02</span><span class="accordion-copy"><b>日志格式转换</b></span><span class="accordion-action"><span class="when-closed">点击展开</span><span class="when-open">点击收起</span></span><i aria-hidden="true">&gt;</i></summary>
           <div class="accordion-content target-pane">
             <label>选择目标转换格式</label><input id="targetFormat" type="hidden" value="asc">
             <div class="format-cards" role="group" aria-label="目标转换格式">
@@ -74,7 +74,7 @@
           </div>
         </details>
         <details id="csvAccordion" class="conversion-accordion">
-          <summary id="csvSummary" class="workflow-heading csv-heading"><span class="accordion-index">03</span><span class="accordion-copy"><b>转换为 CSV 文件</b></span><strong id="csvSelected" hidden>已选 0 个</strong><span class="accordion-action"><span class="when-closed">点击展开</span><span class="when-open">点击收起</span></span><i aria-hidden="true">⌄</i></summary>
+          <summary id="csvSummary" class="workflow-heading csv-heading"><span class="accordion-index">03</span><span class="accordion-copy"><b>转换为 CSV 文件</b></span><strong id="csvSelected" hidden>已选 0 个</strong><span class="accordion-action"><span class="when-closed">点击展开</span><span class="when-open">点击收起</span></span><i aria-hidden="true">&gt;</i></summary>
           <div id="csvOptions" class="accordion-content csv-options" aria-labelledby="csvSummary">
           <div class="csv-setup-row">
             <div class="csv-stage dbc-stage"><span class="stage-number">1</span><div><label>选择 DBC 文件</label><div class="dbc-picker"><button type="button" id="chooseDbc" class="secondary">选择 DBC 文件</button><span id="dbcName">未选择 DBC</span><input type="file" id="dbcFile" hidden></div></div></div>
