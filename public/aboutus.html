@@ -65,7 +65,7 @@
     @keyframes navNoticeShow{0%{opacity:0;transform:translate(0,5px);}12%,72%{opacity:1;transform:translate(0,0);}100%{opacity:0;transform:translate(0,-4px);visibility:hidden;}}
     .shell{width:min(1080px,calc(100% - 32px));margin:0 auto;}
     main{padding:72px 0 44px;}
-    .hero{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(260px,.6fr);align-items:center;gap:54px;padding-bottom:74px;}
+    .hero{display:block;padding-bottom:74px;}
     h1{margin:18px 0 20px;max-width:none;font-size:clamp(28px,4.6vw,56px);line-height:1.06;letter-spacing:-2px;color:#f3f6fb;white-space:nowrap;}
     .secondary-link{display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:0 18px;border-radius:8px;color:var(--text);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;}
     .secondary-link{border:1px solid var(--line);background:rgba(29,33,43,.75);}
@@ -73,11 +73,6 @@
     .contact-note a{color:var(--blue);font-weight:700;text-decoration:underline;text-decoration-color:color-mix(in srgb,var(--blue) 45%,transparent);text-underline-offset:3px;}
     .contact-note a:hover,.contact-note a:focus-visible{color:var(--green);text-decoration-color:currentColor;outline:none;}
     .hero-actions{display:flex;margin-top:15px;}
-    .signal-card{position:relative;min-height:280px;border:1px solid var(--line);border-radius:18px;background:linear-gradient(145deg,rgba(29,33,43,.94),rgba(23,26,33,.82));overflow:hidden;box-shadow:0 22px 60px rgba(0,0,0,.25);}
-    .signal-card::before{content:"CAN SIGNAL";position:absolute;top:18px;left:20px;color:var(--muted);font:10px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:2px;}
-    .signal-grid{position:absolute;inset:52px 18px 18px;background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:38px 38px;border-radius:9px;opacity:.68;}
-    .signal-svg{position:absolute;inset:48px 14px 15px;width:calc(100% - 28px);height:calc(100% - 63px);filter:drop-shadow(0 0 8px rgba(74,158,255,.25));}
-    .signal-meta{position:absolute;right:20px;top:16px;color:var(--blue);font:11px/1 ui-monospace,SFMono-Regular,Menlo,monospace;}
     .section-kicker{margin:0 0 8px;color:var(--blue);font-size:11px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;}
     h2{margin:0;font-size:clamp(26px,4vw,38px);line-height:1.2;color:#f0f3f8;}
     .features{padding:68px 0;border-top:1px solid var(--line);}
@@ -116,9 +111,8 @@
     @media (max-width:760px){
       .shell{width:min(100% - 24px,1080px);}
       main{padding-top:44px;}
-      .hero{grid-template-columns:1fr;gap:34px;padding-bottom:52px;}
+      .hero{padding-bottom:52px;}
       h1{font-size:clamp(20px,6.4vw,31px);letter-spacing:-.8px;}
-      .signal-card{min-height:220px;}
       .features,.support{padding:50px 0;}
       .feature-grid,.pay-grid{grid-template-columns:1fr;}
       .community-invite{grid-template-columns:1fr;gap:18px;}
@@ -171,14 +165,6 @@
         <h1 id="hero-title">让 CAN 报文更容易看懂</h1>
         <p class="contact-note"><span>如在使用过程中遇到问题，或有功能建议与其他需求，欢迎发送邮件联系：</span> <a href="mailto:whf969@foxmail.com">whf969@foxmail.com</a></p>
         <div class="hero-actions"><button type="button" id="supportButton" class="secondary-link" aria-controls="paymentOptions" aria-expanded="false">支持本站</button></div>
-      </div>
-      <div class="signal-card" aria-label="CAN 信号曲线示意图">
-        <span class="signal-meta">0x180 · Rx</span>
-        <div class="signal-grid"></div>
-        <svg class="signal-svg" viewBox="0 0 420 220" preserveAspectRatio="none" role="img" aria-hidden="true">
-          <path d="M0 164 L38 164 L38 118 L78 118 L78 142 L120 142 L120 72 L168 72 L168 102 L215 102 L215 42 L268 42 L268 86 L318 86 L318 58 L366 58 L366 24 L420 24" fill="none" stroke="#4a9eff" stroke-width="3" vector-effect="non-scaling-stroke"/>
-          <path d="M0 188 C45 188 52 176 88 176 S142 194 182 160 S247 126 284 144 S350 120 420 108" fill="none" stroke="#3ddc84" stroke-width="2" opacity=".78" vector-effect="non-scaling-stroke"/>
-        </svg>
       </div>
     </section>
 
