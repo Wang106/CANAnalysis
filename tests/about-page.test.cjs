@@ -19,8 +19,9 @@ const payGrid=html.indexOf('class="pay-grid"');
 const supportButton=html.lastIndexOf('>支持本站<');
 assert.ok(supportTitle>=0&&supportNote>supportTitle&&supportNote<payGrid,'support guidance must sit directly below the support title');
 assert.ok(contactNote>=0&&supportButton>contactNote&&supportButton<payGrid,'support button must sit directly below the contact guidance and above the payment area');
-assert.match(html,/<button type="button" id="supportButton" class="secondary-link">支持本站<\/button>/,'support control must not add a persistent URL anchor');
-assert.match(html,/supportButton[^\n]+addEventListener\(['"]click['"][\s\S]*?support[^\n]+scrollIntoView/,'support button must reveal the payment section without writing a URL hash');
+assert.match(html,/<button type="button" id="supportButton" class="secondary-link" aria-controls="paymentOptions" aria-expanded="false">支持本站<\/button>/,'support control must expose the hidden payment region without adding a URL anchor');
+assert.match(html,/<div class="pay-grid" id="paymentOptions" hidden>/,'payment QR codes must be hidden initially');
+assert.match(html,/supportButton[^\n]+addEventListener\(['"]click['"][\s\S]*?paymentOptions['"]\)\.hidden=false[\s\S]*?aria-expanded['"],['"]true[\s\S]*?support[^\n]+scrollIntoView/,'support button must reveal QR codes and scroll without writing a URL hash');
 assert.match(html,/#support[^\n]+history\.replaceState/,'legacy support hashes must be removed without changing the current scroll position');
 assert.match(html,/navigation\?\.type===['"]reload['"]/,'about page must distinguish a reload from ordinary navigation');
 assert.match(html,/sessionStorage\.setItem\(scrollKey[\s\S]*?y:scrollY/,'about page must remember its scroll position before reload');
@@ -30,7 +31,7 @@ assert.doesNotMatch(html,/移动鼠标，附近的动物会慢慢靠近你/,'oce
 
 assert.match(html,/<section class="ocean-scene"[^>]+aria-labelledby="ocean-title"/,'support area must include an accessible ocean scene');
 assert.match(html,/<canvas id="oceanCanvas"[^>]+aria-hidden="true"/,'ocean animation must be decorative to assistive technology');
-assert.match(html,/<script src="about-ocean-loader\.js\?v=turtle-motion-20260925" defer><\/script>/,'ocean animation must use the versioned page-ready lazy loader');
+assert.match(html,/<script src="about-ocean-loader\.js\?v=surface-bubbles-20261029" defer><\/script>/,'ocean animation must use the bubble version of the page-ready lazy loader');
 assert.match(oceanLoader,/addEventListener\(['"]load['"]/,'ocean assets must load only after the About page has opened');
 assert.match(oceanLoader,/requestIdleCallback/,'ocean loading must avoid competing with the initial page render');
 assert.match(ocean,/IntersectionObserver/,'ocean animation must pause while off screen');
@@ -38,22 +39,25 @@ assert.match(ocean,/visibilitychange/,'ocean animation must pause in a backgroun
 assert.match(ocean,/prefers-reduced-motion:\s*reduce/,'ocean animation must support reduced motion');
 assert.match(ocean,/Math\.min\(devicePixelRatio\s*\|\|\s*1,\s*2\)/,'canvas pixel density must be capped for mobile performance');
 assert.match(ocean,/pointerenter|pointerdown/,'nearby animals must react to mouse and touch pointers');
-assert.match(ocean,/['"](?:fish|turtle|crab)['"]/,'scene must contain multiple animal types');
+assert.match(ocean,/['"]fish['"][\s\S]*['"]crab['"]|['"]crab['"][\s\S]*['"]fish['"]/,'scene must retain fish and crab animal types');
+assert.doesNotMatch(ocean,/turtle|drawTurtle|frontStroke|rearStroke/i,'scene must remove turtle motion and rendering completely');
 assert.match(html,/ocean-cartoon-bg-v2\.jpg/,'ocean scene must use the brighter painted background');
-for(const asset of ['ocean-fish-v2.png','ocean-turtle-v2.png','ocean-crab-v2.png'])assert.match(oceanLoader,new RegExp(asset.replace('.','\\.')),'lazy loader must preload '+asset);
+for(const asset of ['ocean-fish-v2.png','ocean-crab-v2.png'])assert.match(oceanLoader,new RegExp(asset.replace('.','\\.')),'lazy loader must preload '+asset);
+assert.doesNotMatch(oceanLoader,/turtle|ocean-turtle-v2\.png/i,'lazy loader must not request the removed turtle asset');
 assert.match(ocean,/drawCreature/,'animals must share smooth image-led motion rendering');
 assert.match(ocean,/drawCaustics/,'ocean scene must include animated underwater light');
 assert.match(ocean,/drawGrass/,'ocean scene must include animated foreground seaweed');
+assert.match(ocean,/for\(let index=0;index<38;index\+\+\)bubbles\.push/,'ocean scene must increase its ambient bubble count');
+assert.match(ocean,/launchSurfaceBubbles[\s\S]*nextBubbleBurst=time\+random\(4500,9500\)/,'ocean scene must occasionally launch bubble groups toward the surface');
+assert.match(ocean,/bubble\.y-=bubble\.speed\*elapsed[\s\S]*bubble\.y<-bubble\.radius\*2/,'surface bubbles must rise out through the top of the water');
 assert.match(ocean,/ripples/,'ocean scene must track click ripples');
 assert.match(ocean,/addEventListener\(['"]click['"]/,'clicking the ocean scene must create a ripple');
 assert.match(ocean,/maxRadius:Math\.hypot/,'click ripples must calculate enough radius to cover the entire canvas');
 assert.match(ocean,/ctx\.arc\(ripple\.x,ripple\.y,ringProgress\*ripple\.maxRadius/,'click ripples must expand as circles on the screen plane');
 assert.match(ocean,/easeInOut/,'motion must use eased timing rather than rigid linear steps');
 assert.match(ocean,/breatheX=1\+wave/,'fish motion must include organic body deformation');
-assert.match(ocean,/drawTurtle/,'turtle must use a dedicated articulated renderer');
-assert.match(ocean,/frontStroke[\s\S]*rearStroke/,'turtle front and rear flippers must use separate stroke phases');
 assert.match(ocean,/Math\.abs\(wave\)/,'crab motion must include a softened walking bounce');
-for(const asset of ['ocean-cartoon-bg-v2.jpg','ocean-fish-v2.png','ocean-turtle-v2.png','ocean-crab-v2.png']){
+for(const asset of ['ocean-cartoon-bg-v2.jpg','ocean-fish-v2.png','ocean-crab-v2.png']){
   const file='public/'+asset;assert.equal(fs.existsSync(file),true,asset+' must exist');assert.ok(fs.statSync(file).size>100000,asset+' must not be an empty placeholder');
 }
 

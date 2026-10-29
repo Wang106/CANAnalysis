@@ -103,6 +103,7 @@
     .support-head{display:block;}
     .support-note{max-width:680px;margin:12px 0 0;color:var(--muted);font-size:12px;line-height:1.7;text-align:left;}
     .pay-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));justify-items:center;gap:18px;margin-top:30px;}
+    .pay-grid[hidden]{display:none;}
     .pay-card{display:flex;margin:0;padding:0;border:0;flex-direction:column;align-items:center;background:none;text-align:center;}
     .pay-card figcaption{margin:0 0 10px;color:#f0f3f8;font-size:14px;font-weight:700;line-height:1;}
     .qr-image{display:block;width:135px;height:135px;max-width:100%;margin:0;object-fit:contain;background:transparent;}
@@ -141,7 +142,7 @@
 <link rel="stylesheet" href="about-community.css?v=comments-paused-20260925">
 <script src="site-i18n.js?v=mobile-nav-switcher-separated-20260926" defer></script>
 <script src="site-nav.js?v=fixed-nav-20260923" defer></script>
-<script src="about-ocean-loader.js?v=turtle-motion-20260925" defer></script>
+<script src="about-ocean-loader.js?v=surface-bubbles-20261029" defer></script>
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 <script src="community.js?v=comments-paused-20260925" defer></script>
 </head>
@@ -175,7 +176,7 @@
         <h1 id="hero-title">让 CAN 报文更容易看懂</h1>
         <p class="hero-copy">CANAnalysis 是一款面向测试与工程人员的浏览器工具。加载 DBC 与 ASC 文件后，即可完成信号解码、曲线查看和报文统计，不需要安装软件，也不依赖后端服务。</p>
         <p class="contact-note"><span>如在使用过程中遇到问题，或有功能建议与其他需求，欢迎发送邮件联系：</span> <a href="mailto:whf969@foxmail.com">whf969@foxmail.com</a></p>
-        <div class="hero-actions"><button type="button" id="supportButton" class="secondary-link">支持本站</button></div>
+        <div class="hero-actions"><button type="button" id="supportButton" class="secondary-link" aria-controls="paymentOptions" aria-expanded="false">支持本站</button></div>
       </div>
       <div class="signal-card" aria-label="CAN 信号曲线示意图">
         <span class="signal-meta">0x180 · Rx</span>
@@ -264,7 +265,7 @@
         <p class="section-kicker">Support</p><h2 id="support-title">支持这个小工具</h2>
         <p class="support-note">如果它帮你节省了排查时间，可以自愿支持后续维护。支持与否不会影响任何功能的使用。</p>
       </div>
-      <div class="pay-grid">
+      <div class="pay-grid" id="paymentOptions" hidden>
         <figure class="pay-card" data-qr="wechat">
           <figcaption>微信</figcaption>
           <img class="qr-image" src="wechat-pay.jpeg" alt="微信收款二维码" width="382" height="382">
@@ -306,7 +307,9 @@
       const item=event.target.closest('.nav-item.pending');
       if(item)showPendingNavNotice(event.clientX,event.clientY);
     });
-    document.getElementById('supportButton').addEventListener('click',()=>{
+    document.getElementById('supportButton').addEventListener('click',event=>{
+      document.getElementById('paymentOptions').hidden=false;
+      event.currentTarget.setAttribute('aria-expanded','true');
       document.getElementById('support').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});
     });
   </script>

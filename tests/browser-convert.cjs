@@ -133,6 +133,9 @@ const server=createServer(async(req,res)=>{
     await languagePage.locator('#oceanCanvas').click({position:{x:180,y:120}});
     assert.ok(await languagePage.evaluate(()=>window.__aboutOcean.rippleCount)>0,'clicking the ocean must create a visible ripple');
     for(const selector of ['.eyebrow','.section-kicker','.support-note','footer'])await assertReadable(languagePage,selector);
+    assert.equal(await languagePage.locator('#paymentOptions').isHidden(),true,'payment QR codes must stay hidden before support is requested');
+    await languagePage.click('#supportButton');
+    assert.equal(await languagePage.locator('#paymentOptions').isVisible(),true,'support button must reveal the payment QR codes');
     const paymentQrLayout=await languagePage.locator('.pay-card').evaluateAll(cards=>cards.map(card=>{
       const image=card.querySelector('.qr-image'),caption=card.querySelector('figcaption'),box=image.getBoundingClientRect(),captionBox=caption.getBoundingClientRect(),cardStyle=getComputedStyle(card),imageStyle=getComputedStyle(image);
       return {width:Math.round(box.width),height:Math.round(box.height),cardBackground:cardStyle.backgroundImage,cardBorder:cardStyle.borderTopWidth,cardPadding:cardStyle.paddingTop,imageBackground:imageStyle.backgroundColor,captionCount:card.querySelectorAll('figcaption').length,title:caption.textContent.trim(),centerDelta:Math.round(Math.abs((box.left+box.width/2)-(captionBox.left+captionBox.width/2)))};
@@ -153,7 +156,7 @@ const server=createServer(async(req,res)=>{
     assert.equal(await languagePage.locator('.converter').evaluate(node=>getComputedStyle(node).borderRadius),'8px','alternate skins must use compact reference-style cards');
     assert.equal(await languagePage.locator('h1').evaluate(node=>getComputedStyle(node).color),'rgb(31, 36, 48)','converter heading must remain readable in light mode');
     assert.equal(await languagePage.locator('.conversion-flow').evaluate(node=>getComputedStyle(node).backgroundColor),'rgb(244, 246, 250)','conversion flow must use the light canvas');
-    for(const selector of ['.source-heading .accordion-index','.format-heading .accordion-index','.csv-heading .accordion-index','.compatibility-action','.notes strong','.format-card>span'])await assertReadable(languagePage,selector);
+    for(const selector of ['.source-heading .accordion-index','.format-heading .accordion-index','.csv-heading .accordion-index','.format-card>span'])await assertReadable(languagePage,selector);
     const convertUntranslated=await untranslated();assert.equal(convertUntranslated.length,0,'convert page must be fully translated to English: '+JSON.stringify(convertUntranslated));
     await languagePage.locator('#sourceFile').setInputFiles({name:'language.asc',mimeType:'text/plain',buffer:Buffer.from('base hex timestamps absolute\n0.125 1 123 Rx d 1 01\n')});
     await languagePage.waitForFunction(()=>!/文件|转换后|保存到/.test(document.querySelector('#fileMeta').textContent));
@@ -203,8 +206,8 @@ const server=createServer(async(req,res)=>{
     assert.equal((await languagePage.textContent('.skin-face')).trim(),'默认风格','switching back must restore the default skin label');
     await languagePage.goto(base+'/');
     assert.equal(await languagePage.locator('.page-card').count(),7,'home must show all seven page destinations');
-    assert.equal(await languagePage.locator('a.page-card').count(),4,'home must enable the four implemented destinations');
-    assert.equal(await languagePage.locator('.page-card.pending').count(),3,'home must gray out the three unimplemented destinations');
+    assert.equal(await languagePage.locator('a.page-card').count(),3,'home must enable only the three verified destinations');
+    assert.equal(await languagePage.locator('.page-card.pending').count(),4,'home must gray out online connection and the three unimplemented destinations');
     assert.equal(await languagePage.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'home must not overflow on mobile');
     await languageContext.close();
     assert.equal(await page.inputValue('#targetFormat'),'asc');
@@ -219,11 +222,7 @@ const server=createServer(async(req,res)=>{
     assert.equal(await page.locator('#sourceAccordion').getAttribute('open'),'','source accordion must be expanded by default');
     assert.equal(await page.locator('#formatAccordion').getAttribute('open'),null);
     assert.equal(await page.locator('#csvAccordion').getAttribute('open'),null,'CSV conversion must be collapsed by default');
-    assert.equal(await page.locator('#compatibilityAccordion').getAttribute('open'),null,'compatibility details must be collapsed by default');
-    assert.match(await page.textContent('#compatibilitySummary'),/格式与兼容范围说明/);
-    assert.equal(await page.locator('#compatibilitySummary').evaluate(node=>getComputedStyle(node).getPropertyValue('--section-accent').trim()),'#f59e0b','compatibility explanation must have its own accent color');
-    await page.click('#compatibilitySummary');assert.equal(await page.locator('#compatibilityAccordion').getAttribute('open'),'');
-    await page.click('#compatibilitySummary');assert.equal(await page.locator('#compatibilityAccordion').getAttribute('open'),null);
+    assert.equal(await page.locator('#compatibilityAccordion, #compatibilitySummary, .compatibility').count(),0,'compatibility section must be removed completely');
     assert.equal(await page.locator('.workflow-heading').count(),3,'all three workflow title rows must be visually emphasized');
     const headingColors=await page.locator('.workflow-heading').evaluateAll(nodes=>nodes.map(node=>getComputedStyle(node).getPropertyValue('--section-accent').trim()));
     assert.deepEqual(headingColors,['#38bdf8','#3ddc84','#a78bfa'],'workflow title colors must remain distinct for 01/02/03');
@@ -261,8 +260,6 @@ const server=createServer(async(req,res)=>{
     assert.deepEqual(await page.locator('.format-card').allTextContents(),['.asc','.log','.trc','.blf','.txt','.mf4','.mdf']);
     assert.equal(await page.locator('.available-signal-head #signalSearch').count(),1,'signal search must sit beside the available-signal heading');
     assert.equal(await page.locator('.target-info').textContent(),'.asc','only the selected extension should remain beside the conversion button');
-    assert.deepEqual(await page.locator('.compatibility thead th').allTextContents(),['格式','设备','说明']);
-    assert.deepEqual(await page.locator('.compatibility tbody tr').first().locator('td').allTextContents(),['.asc','Vector','经典 CAN / CAN FD 文本日志']);
     assert.equal(await page.locator('#startFormatConvert').isDisabled(),true);
     assert.equal(await page.locator('#startCsvConvert').isDisabled(),true);
     await page.evaluate(()=>scrollTo(0,700));await page.waitForTimeout(50);assert.ok(Math.abs(await page.locator('#topNav').evaluate(node=>node.getBoundingClientRect().top))<1,'navigation did not remain at viewport top while scrolling');await page.evaluate(()=>scrollTo(0,0));

@@ -6,7 +6,6 @@
   const sources={
     background:'/ocean-cartoon-bg-v2.jpg',
     fish:'/ocean-fish-v2.png',
-    turtle:'/ocean-turtle-v2.png',
     crab:'/ocean-crab-v2.png'
   };
   let started=false;
@@ -19,7 +18,7 @@
     }))).then(items=>{
       window.__aboutOceanAssets=Object.fromEntries(items);
       scene.classList.add('is-ready');
-      const script=document.createElement('script');script.src='/about-ocean.js?v=turtle-motion-20260925';script.async=true;document.head.appendChild(script);
+      const script=document.createElement('script');script.src='/about-ocean.js?v=surface-bubbles-20261029';script.async=true;document.head.appendChild(script);
     });
   };
   const afterPageLoad=()=>('requestIdleCallback' in window?requestIdleCallback(start,{timeout:900}):setTimeout(start,120));
