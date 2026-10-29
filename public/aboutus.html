@@ -91,8 +91,19 @@
     .community-link{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 20px;border:1px solid rgba(74,158,255,.45);border-radius:9px;background:rgba(74,158,255,.1);color:#dcecff;font-size:13px;font-weight:700;}
     .community-link:hover,.community-link:focus-visible{border-color:var(--green);color:#e9fff2;outline:none;}
     .support{padding:68px 0 34px;border-top:1px solid var(--line);}
-    .support-head{display:block;}
-    .support-note{max-width:680px;margin:12px 0 0;color:var(--muted);font-size:12px;line-height:1.7;text-align:left;}
+    .support-summary{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:0;list-style:none;cursor:pointer;user-select:none;}
+    .support-summary::-webkit-details-marker{display:none;}
+    .support-summary:focus-visible{border-radius:10px;outline:2px solid var(--blue);outline-offset:8px;}
+    .support-summary-title,.support-summary-title .section-kicker{display:block;min-width:0;}
+    .support-toggle{display:inline-flex;align-items:center;gap:9px;flex:none;padding:7px 11px;border:1px solid rgba(74,158,255,.38);border-radius:999px;background:rgba(74,158,255,.08);color:#cfe4ff;font-size:11px;font-weight:700;white-space:nowrap;}
+    .support-toggle i{color:var(--blue);font-style:normal;font-size:16px;line-height:1;transition:transform .2s ease;}
+    .support-toggle .when-open{display:none;}
+    .support[open] .support-toggle .when-closed{display:none;}
+    .support[open] .support-toggle .when-open{display:inline;}
+    .support[open] .support-toggle i{transform:rotate(180deg);}
+    .support-content{padding-top:18px;animation:support-content-in .2s ease both;}
+    .support-note{max-width:680px;margin:0;color:var(--muted);font-size:12px;line-height:1.7;text-align:left;}
+    @keyframes support-content-in{from{opacity:0;transform:translateY(-5px);}to{opacity:1;transform:none;}}
     .pay-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));justify-items:center;gap:18px;margin-top:30px;}
     .pay-grid[hidden]{display:none;}
     .pay-card{display:flex;margin:0;padding:0;border:0;flex-direction:column;align-items:center;background:none;text-align:center;}
@@ -114,6 +125,8 @@
       .hero{padding-bottom:52px;}
       h1{font-size:clamp(20px,6.4vw,31px);letter-spacing:-.8px;}
       .features,.support{padding:50px 0;}
+      .support-summary{gap:14px;}
+      .support-toggle{padding:6px 9px;}
       .feature-grid,.pay-grid{grid-template-columns:1fr;}
       .community-invite{grid-template-columns:1fr;gap:18px;}
       .community-link{justify-self:start;}
@@ -125,6 +138,7 @@
     }
     @media (prefers-reduced-motion:reduce){
       html{scroll-behavior:auto;}
+      .support-content{animation:none;}
       #navNotice.show{animation:none;opacity:1;visibility:visible;transform:none;}
     }
   </style>
@@ -164,7 +178,7 @@
       <div>
         <h1 id="hero-title">让 CAN 报文更容易看懂</h1>
         <p class="contact-note"><span>如在使用过程中遇到问题，或有功能建议与其他需求，欢迎发送邮件联系：</span> <a href="mailto:whf969@foxmail.com">whf969@foxmail.com</a></p>
-        <div class="hero-actions"><button type="button" id="supportButton" class="secondary-link" aria-controls="paymentOptions" aria-expanded="false">支持本站</button></div>
+        <div class="hero-actions"><button type="button" id="supportButton" class="secondary-link" aria-controls="supportContent" aria-expanded="false">支持本站</button></div>
       </div>
     </section>
 
@@ -237,22 +251,25 @@
       <nav class="policy-links" aria-label="社区政策"><a href="/privacy">隐私政策</a><a href="/terms">用户协议</a><a href="/community-guidelines">社区规则</a></nav>
     </section>
 
-    <section class="support" id="support" aria-labelledby="support-title">
-      <div class="support-head">
-        <p class="section-kicker">Support</p><h2 id="support-title">支持这个小工具</h2>
+    <details class="support" id="support" aria-labelledby="support-title">
+      <summary class="support-summary">
+        <span class="support-summary-title"><span class="section-kicker">Support</span><h2 id="support-title">支持这个小工具</h2></span>
+        <span class="support-toggle"><span class="when-closed">点击展开</span><span class="when-open">点击收起</span><i aria-hidden="true">⌄</i></span>
+      </summary>
+      <div class="support-content" id="supportContent">
         <p class="support-note">如果它帮你节省了排查时间，可以自愿支持后续维护。支持与否不会影响任何功能的使用。</p>
+        <div class="pay-grid" id="paymentOptions">
+          <figure class="pay-card" data-qr="wechat">
+            <figcaption>微信</figcaption>
+            <img class="qr-image" src="wechat-pay.jpeg" alt="微信收款二维码" width="382" height="382" loading="lazy" decoding="async">
+          </figure>
+          <figure class="pay-card" data-qr="alipay">
+            <figcaption>支付宝</figcaption>
+            <img class="qr-image" src="alipay-pay.jpeg" alt="支付宝收款二维码" width="1171" height="1171" loading="lazy" decoding="async">
+          </figure>
+        </div>
       </div>
-      <div class="pay-grid" id="paymentOptions" hidden>
-        <figure class="pay-card" data-qr="wechat">
-          <figcaption>微信</figcaption>
-          <img class="qr-image" src="wechat-pay.jpeg" alt="微信收款二维码" width="382" height="382">
-        </figure>
-        <figure class="pay-card" data-qr="alipay">
-          <figcaption>支付宝</figcaption>
-          <img class="qr-image" src="alipay-pay.jpeg" alt="支付宝收款二维码" width="1171" height="1171">
-        </figure>
-      </div>
-    </section>
+    </details>
     <section class="ocean-scene" aria-labelledby="ocean-title">
       <div class="ocean-copy"><h3 id="ocean-title">海洋伙伴</h3></div>
       <canvas id="oceanCanvas" aria-hidden="true"></canvas>
@@ -284,10 +301,12 @@
       const item=event.target.closest('.nav-item.pending');
       if(item)showPendingNavNotice(event.clientX,event.clientY);
     });
-    document.getElementById('supportButton').addEventListener('click',event=>{
-      document.getElementById('paymentOptions').hidden=false;
-      event.currentTarget.setAttribute('aria-expanded','true');
-      document.getElementById('support').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});
+    const supportPanel=document.getElementById('support');
+    const supportButton=document.getElementById('supportButton');
+    supportPanel.addEventListener('toggle',()=>supportButton.setAttribute('aria-expanded',String(supportPanel.open)));
+    supportButton.addEventListener('click',()=>{
+      supportPanel.open=true;
+      supportPanel.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});
     });
   </script>
 </body>
