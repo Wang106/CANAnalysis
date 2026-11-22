@@ -16,6 +16,7 @@
 ## 未发布
 
 - 离线解析和格式转换改为共用同一套 DBC 行解析、整数/浮点信号解码，以及经典 ASC 数据行读取。样本和现有转换夹具的输出保持不变。
+- 在线连接的软件路径要求 `listenOnly: true`。PCAN 使用 python-can 的 `BusState.PASSIVE`（对应 PCAN_LISTEN_ONLY），Vector 使用 `listen_only=True`，周立功 USBCANFD 使用 zlgcan 0.3.0 的 `ZCanChlMode.ListenOnly`。USBCAN-I/II 的 canalystii 0.1 没有已确认的只听参数，因此拒绝打开总线。这些是软件检查，不是实物验收。
 
 ## v2026.09.20.2 - 2026-09-20
 

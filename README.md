@@ -148,7 +148,7 @@ node tests/browser-convert.cjs
 
 ## 在线连接 CAN 设备
 
-在线连接目前是未验证预览。首页对应卡片是灰色且不可点击，导航里仍保留 `/online`，方便在没有实物时检查页面。网页不加载厂商 DLL，而是连接当前 Windows 电脑上的 `bridge/cananalysis_bridge.py`。CAN 数据只经过本机回环地址，不上传到 Cloudflare。页面可以配置设备型号、设备序号、通道、Classical CAN/CAN FD、仲裁波特率与数据波特率。
+在线连接目前是未验证预览。首页对应卡片是灰色且不可点击，导航里仍保留 `/online`，方便在没有实物时检查页面。网页不加载厂商 DLL，而是连接当前 Windows 电脑上的 `bridge/cananalysis_bridge.py`。CAN 数据只经过本机回环地址，不上传到 Cloudflare。页面可以配置设备型号、设备序号、通道、Classical CAN/CAN FD、仲裁波特率与数据波特率。页面协议固定带上 `listenOnly: true`。PCAN 与 Vector 会把该要求交给 python-can 已有的只听参数；周立功 USBCANFD 使用 zlgcan 的 `ListenOnly`。USBCAN-I/II 的现有后端没有已确认的只听参数，服务会拒绝打开。单元测试不代替实物验收。
 
 首批设备配置包括：
 

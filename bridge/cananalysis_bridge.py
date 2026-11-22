@@ -57,6 +57,8 @@ def _integer(config: dict[str, Any], name: str, default: int) -> int:
 
 
 def build_bus_config(config: dict[str, Any]) -> dict[str, Any]:
+    if config.get("listenOnly") is not True:
+        raise ValueError("在线连接只允许只听模式")
     model_key = str(config.get("model", ""))
     if model_key not in DEVICE_MODELS:
         raise ValueError("不支持的设备型号")
@@ -76,17 +78,20 @@ def build_bus_config(config: dict[str, Any]) -> dict[str, Any]:
 
     result: dict[str, Any] = {"interface": profile.interface, "bitrate": bitrate}
     if profile.interface == "pcan":
+        # python-can PCAN BusState.PASSIVE sets PCAN_LISTEN_ONLY.
         result.update(channel=f"PCAN_USBBUS{device_index + 1}", state="PASSIVE")
     elif profile.interface == "vector":
-        result.update(channel=(device_index * profile.channels) + channel - 1, state="PASSIVE", app_name="CANAnalysis")
+        # python-can VectorBus uses listen_only, not BusState.
+        result.update(channel=(device_index * profile.channels) + channel - 1, listen_only=True, app_name="CANAnalysis")
     elif profile.interface == "canalystii":
-        result.update(channel=channel - 1, device=device_index)
+        raise RuntimeError("周立功 USBCAN-I/II 的 canalystii 后端没有已确认的只听参数，拒绝打开总线")
     else:
         result.update(
             channel=channel - 1,
             device_index=device_index,
             device_type="ZCAN_USBCANFD_200U",
             libpath=os.environ.get("CANANALYSIS_ZLGCAN_LIBRARY", "library"),
+            listen_only_mode="ListenOnly",
         )
     if use_fd:
         data_bitrate = _integer(config, "dataBitrate", 2_000_000)
@@ -94,6 +99,17 @@ def build_bus_config(config: dict[str, Any]) -> dict[str, Any]:
             raise ValueError("不支持的数据波特率")
         result.update(fd=True, data_bitrate=data_bitrate)
     return result
+
+
+def _load_zlg_listen_only_mode() -> Any:
+    try:
+        from zlgcan.zlgcan import ZCanChlMode  # type: ignore
+    except ImportError as error:
+        raise RuntimeError("未安装 zlgcan，请运行 bridge/start.bat 并安装周立功官方 SDK") from error
+    mode = getattr(ZCanChlMode, "ListenOnly", None)
+    if mode is None:
+        raise RuntimeError("当前 zlgcan 没有 ListenOnly 通道模式，拒绝打开总线")
+    return mode
 
 
 def _load_zlg_device_type(name: str) -> Any:
@@ -115,11 +131,23 @@ def open_bus(config: dict[str, Any]) -> Any:
     kwargs = build_bus_config(config)
     if kwargs.get("state") == "PASSIVE":
         kwargs["state"] = can.BusState.PASSIVE
+    elif "state" in kwargs:
+        raise RuntimeError("只听状态无效，拒绝打开总线")
     if kwargs.get("interface") == "zlgcan":
+        listen_mode = _load_zlg_listen_only_mode()
+        if kwargs.pop("listen_only_mode", None) != "ListenOnly":
+            raise RuntimeError("周立功 USBCANFD 未强制只听，拒绝打开总线")
         kwargs["device_type"] = _load_zlg_device_type(str(kwargs["device_type"]))
         channel_count = DEVICE_MODELS[str(config["model"])].channels
+        data_bitrate = kwargs.get("data_bitrate")
         kwargs["configs"] = [
-            {"bitrate": kwargs["bitrate"], "data_bitrate": kwargs.get("data_bitrate"), "resistance": 0}
+            {
+                "bitrate": kwargs["bitrate"],
+                "dbitrate": data_bitrate,
+                "data_bitrate": data_bitrate,
+                "chl_mode": listen_mode,
+                "resistance": 0,
+            }
             for _ in range(channel_count)
         ]
     try:
@@ -162,6 +190,8 @@ class BridgeSession:
             await self.connect(dict(request.get("config") or {}))
         elif action == "disconnect":
             await self.disconnect()
+        elif action in {"send", "transmit"}:
+            raise ValueError("在线连接不提供发送")
         else:
             raise ValueError("未知操作")
 
