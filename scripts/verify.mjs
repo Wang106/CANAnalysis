@@ -24,6 +24,8 @@ export function createPlan({node = process.execPath, python = pythonCommand()} =
       check('public/site-version-core.mjs'),
       check('public/online.js'),
       check('public/convert.js'),
+      check('public/can/gbt27930-2015.mjs'),
+      check('public/gbt27930.js'),
       check('scripts/generate-version.mjs'),
       check('scripts/preview-static.mjs'),
       check('scripts/render-static-headers.mjs'),
@@ -32,6 +34,7 @@ export function createPlan({node = process.execPath, python = pythonCommand()} =
       [node, ['tests/convert.test.mjs']],
       [node, ['tests/csv.test.mjs']],
       [node, ['tests/shared-codec.test.mjs']],
+      [node, ['--test', 'tests/gbt27930-2015.test.mjs']],
       [node, ['tests/about-page.test.cjs']],
       [node, ['tests/brandbar.test.cjs']],
       [node, ['tests/community-contract.test.cjs']],
@@ -54,6 +57,7 @@ export function createPlan({node = process.execPath, python = pythonCommand()} =
       [node, ['tests/offline-home-version.test.cjs']],
       [node, ['tests/regression-page.test.cjs']],
       [node, ['tests/static-security.browser.test.cjs']],
+      [node, ['tests/gbt27930-page.test.cjs']],
     ],
   };
 }

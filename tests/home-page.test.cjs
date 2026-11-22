@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 
 const home=fs.readFileSync('public/index.html','utf8');
 const offline=fs.readFileSync('public/offline.html','utf8');
-const pages=['index.html','offline.html','online.html','convert.html','aboutus.html'];
+const pages=['index.html','offline.html','online.html','convert.html','aboutus.html','gbt27930.html'];
 
 assert.match(home,/<title>首页 · CANAnalysis<\/title>/);
 assert.match(home,/class="[^\"]*page-grid/);
@@ -42,10 +42,11 @@ for(const card of home.match(/<(?:a|article) class="page-card[\s\S]*?<\/(?:a|art
   assert.doesNotMatch(card,/<p>/,'home cards must not contain descriptive small copy');
 }
 
-for(const [route,title] of [['/offline','离线分析'],['/convert','格式转换'],['/aboutus','关于本站']]){
+for(const [route,title] of [['/offline','离线分析'],['/convert','格式转换'],['/aboutus','关于本站'],['/gbt27930','27930解析']]){
   assert.match(home,new RegExp(`<a[^>]+href="${route}"[^>]*[\\s\\S]*?${title}`),`${title} must be an enabled home card`);
 }
-for(const title of ['在线连接','27930解析','J1939分析','友情链接']){
+assert.match(home,/<a class="page-card" href="\/gbt27930">\s*<span class="card-state">2015离线<\/span>\s*<h2>27930解析<\/h2>/,'27930 home entry must say 2015 offline rather than generally available');
+for(const title of ['在线连接','J1939分析','友情链接']){
   const pattern=new RegExp(`<article[^>]+(?:pending|disabled)[^>]*[\\s\\S]*?${title}`);
   assert.match(home,pattern,`${title} must be a disabled gray home card`);
 }

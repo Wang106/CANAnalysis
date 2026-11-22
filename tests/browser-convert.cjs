@@ -206,8 +206,8 @@ const server=createServer(async(req,res)=>{
     assert.equal((await languagePage.textContent('.skin-face')).trim(),'默认风格','switching back must restore the default skin label');
     await languagePage.goto(base+'/');
     assert.equal(await languagePage.locator('.page-card').count(),7,'home must show all seven page destinations');
-    assert.equal(await languagePage.locator('a.page-card').count(),3,'home must enable only the three verified destinations');
-    assert.equal(await languagePage.locator('.page-card.pending').count(),4,'home must gray out online connection and the three unimplemented destinations');
+    assert.equal(await languagePage.locator('a.page-card').count(),4,'home enables offline analysis, conversion, about, and the 2015 offline entry');
+    assert.equal(await languagePage.locator('.page-card.pending').count(),3,'home still grays out online connection, J1939 and links');
     assert.equal(await languagePage.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'home must not overflow on mobile');
     await languageContext.close();
     assert.equal(await page.inputValue('#targetFormat'),'asc');
