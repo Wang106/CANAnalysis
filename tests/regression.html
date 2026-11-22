@@ -56,7 +56,8 @@ document.getElementById('app').addEventListener('load',async()=>{
     assert(aboutNav.querySelector('a.nav-item[href="/offline"]')?.textContent==='离线分析','关于本站导航缺少离线分析入口');
     assert(aboutNav.querySelector('a[href="/convert"]'),'关于本站缺少格式转换入口');
     assert(aboutNav.querySelector('a.nav-item[href="/gbt27930"]')?.textContent==='27930解析','关于本站导航缺少 2015 离线入口');
-    assert(aboutItems.filter(item=>item.classList.contains('pending')&&item.getAttribute('aria-disabled')==='true').length===2,'关于本站未开放栏目缺少禁用语义');
+    assert(aboutNav.querySelector('a.nav-item[href="/j1939"]')?.textContent==='J1939分析','关于本站导航缺少 J1939 基础离线入口');
+    assert(aboutItems.filter(item=>item.classList.contains('pending')&&item.getAttribute('aria-disabled')==='true').length===1,'关于本站未开放栏目缺少禁用语义');
   });
 
   for(const page of ['offline.html','index.html','aboutus.html','convert.html','online.html']){
@@ -317,12 +318,13 @@ document.getElementById('app').addEventListener('load',async()=>{
     const aboutLink=nav.querySelector('a.nav-item[href="/aboutus"]');
     assert(aboutLink?.textContent==='关于本站','主页面导航缺少关于本站链接');
     assert(nav.querySelector('a[href="/convert"]'),'主页面缺少格式转换入口');
-    assert(items.filter(item=>item.classList.contains('pending')&&item.getAttribute('aria-disabled')==='true').length===2,'未开放栏目缺少禁用语义');
+    assert(items.filter(item=>item.classList.contains('pending')&&item.getAttribute('aria-disabled')==='true').length===1,'未开放栏目缺少禁用语义');
     assert(items[4].getAttribute('href')==='/gbt27930','27930 栏目应进入 2015 离线分析');
+    assert(items[5].getAttribute('href')==='/j1939','J1939 栏目应进入基础离线分析');
     nav.dispatchEvent(new win.PointerEvent('pointerenter',{pointerType:'mouse'}));
     nav.dispatchEvent(new win.PointerEvent('pointerleave',{pointerType:'mouse'}));
     assert(nav.classList.contains('nav-open')&&nav.classList.contains('nav-fixed')&&win.getComputedStyle(nav).height==='44px','生成曲线后导航栏未保持固定显示');
-    items[5].dispatchEvent(new win.MouseEvent('click',{bubbles:true,clientX:80,clientY:8}));
+    items[6].dispatchEvent(new win.MouseEvent('click',{bubbles:true,clientX:80,clientY:8}));
     const notice=doc.getElementById('navNotice');
     assert(notice.classList.contains('show'),'点击未开放栏目后未显示鼠标旁提示');
     assert(notice.textContent==='页面还未完成开发，不急不急～','未开放栏目提示文字错误');

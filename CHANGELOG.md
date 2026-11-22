@@ -18,6 +18,7 @@
 - 离线解析和格式转换改为共用同一套 DBC 行解析、整数/浮点信号解码，以及经典 ASC 数据行读取。样本和现有转换夹具的输出保持不变。
 - 在线连接的软件路径要求 `listenOnly: true`。PCAN 使用 python-can 的 `BusState.PASSIVE`（对应 PCAN_LISTEN_ONLY），Vector 使用 `listen_only=True`，周立功 USBCANFD 使用 zlgcan 0.3.0 的 `ZCanChlMode.ListenOnly`。USBCAN-I/II 的 canalystii 0.1 没有已确认的只听参数，因此拒绝打开总线。这些是软件检查，不是实物验收。
 - 增加 GB/T 27930—2015 离线分析。页面只读取本地经典 ASC，解码已交叉核对的单帧报文，并用 BAM 重组 BCP 与 BCS。BRM、CTS、BSM、BST、CST、BEM、CEM 只识别；BMV、BMT、BSP 和 RTS/CTS 不作为解码成功。样本是合成夹具，不能证明设备兼容，也不是一致性认证。范围和出处见 `docs/gbt27930-2015.md`。
+- 增加 SAE J1939-21 基础离线分析。页面与 2015 分析共用同一套标识符解析和传输重组。它归一 PDU1/PDU2，重组 BAM，并被动观察日志里已经出现的 RTS 数据帧；不发送任何帧，也不内置 J1939DA。CAN FD、ETP 和标准帧不作为解码成功。样本是合成夹具。范围和出处见 `docs/j1939.md`。
 
 ## v2026.09.20.2 - 2026-09-20
 

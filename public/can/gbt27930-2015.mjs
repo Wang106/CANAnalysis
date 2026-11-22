@@ -1,4 +1,6 @@
-import {parseClassicAscDataLine} from './asc-text.mjs';
+import {framesFromClassicAsc, reassembleTransport} from './j1939.mjs';
+
+export {framesFromClassicAsc};
 
 // Offline GB/T 27930-2015 identification. Constants are cross-checked between
 // the public restatement at https://canfd.net/gbt27930.html and the field table
@@ -35,11 +37,6 @@ const MESSAGES = [
 ];
 
 const BY_PGN = new Map(MESSAGES.map(message => [message.pgn, message]));
-const TP_CM = 0xec00;
-const TP_DT = 0xeb00;
-const BAM = 32;
-const RTS = 16;
-
 export const GBT27930_COVERAGE = {
   edition: 'GB/T 27930-2015',
   offline: true,
@@ -54,43 +51,6 @@ export const GBT27930_COVERAGE = {
   identifiedWithoutFieldDecode: ['CTS', 'BRM', 'BSM', 'BST', 'CST', 'BEM', 'CEM'],
   unsupported: ['BMV', 'BMT', 'BSP', 'RTS/CTS', 'GB/T 27930-2011', 'GB/T 27930-2023'],
 };
-
-export function framesFromClassicAsc(text) {
-  const frames = [];
-  const skipped = [];
-  String(text).split(/\n/).forEach((line, index) => {
-    const parsed = parseClassicAscDataLine(line);
-    if (!parsed) return;
-    if (parsed.kind !== 'data') {
-      skipped.push(index + 1);
-      return;
-    }
-    frames.push({
-      time: parsed.time,
-      id: parsed.id,
-      data: parsed.bytes,
-      extended: parsed.extended,
-      sourceLine: index + 1,
-    });
-  });
-  return {frames, skipped};
-}
-
-export function parseJ1939Id(id) {
-  const value = Number(id) >>> 0;
-  const pf = (value >>> 16) & 0xff;
-  const ps = (value >>> 8) & 0xff;
-  const sa = value & 0xff;
-  return {
-    id: value,
-    priority: (value >>> 26) & 7,
-    pf,
-    ps,
-    sa,
-    pgn: pf < 240 ? pf << 8 : (pf << 8) | ps,
-    destination: pf < 240 ? ps : null,
-  };
-}
 
 function u16(data, offset) {
   return data[offset] | (data[offset + 1] << 8);
@@ -206,89 +166,10 @@ function eventFrom(message, frame, data, transport) {
 }
 
 function reassembleBam(sorted) {
-  const produced = [];
-  const anomalies = [];
-  const open = new Map();
-  for (const frame of sorted) {
-    const header = parseJ1939Id(frame.id);
-    if (frame.extended === false) {
-      produced.push({...frame, header, kind: 'single'});
-      continue;
-    }
-    if (header.pgn === TP_CM && frame.data[0] !== BAM) {
-      anomalies.push({time: frame.time, sourceIndex: frame.sourceIndex, code: 'TP-CM', message: '见到非 BAM 的连接管理（含 RTS/CTS），本次不重组，不能当作报文解码成功'});
-      produced.push({...frame, header, kind: 'control'});
-      continue;
-    }
-    if (header.pgn === TP_CM && frame.data[0] === BAM && frame.data.length >= 8) {
-      const key = header.sa;
-      const previous = open.get(key);
-      if (previous) {
-        anomalies.push({time: frame.time, sourceIndex: frame.sourceIndex, code: 'TP-BAM', message: '上一包 BAM 未收齐，不作为解码成功'});
-        produced.push({...previous, header: {pgn: previous.pgn, sa: previous.sa}, kind: 'incomplete-tp', data: []});
-      }
-      open.set(key, {
-        size: frame.data[1] | (frame.data[2] << 8),
-        packets: frame.data[3],
-        pgn: frame.data[5] | (frame.data[6] << 8) | (frame.data[7] << 16),
-        parts: new Map(),
-        time: frame.time,
-        sourceIndex: frame.sourceIndex,
-        sourceLine: frame.sourceLine ?? null,
-        id: frame.id,
-        sa: header.sa,
-        trace: [traceOf(frame)],
-      });
-      produced.push({...frame, header, kind: 'control'});
-      continue;
-    }
-    if (header.pgn === TP_DT) {
-      const session = open.get(header.sa);
-      if (!session) {
-        anomalies.push({time: frame.time, sourceIndex: frame.sourceIndex, code: 'TP-DT', message: '数据传输没有对应的 BAM，不作为解码成功'});
-        produced.push({...frame, header, kind: 'control'});
-        continue;
-      }
-      session.parts.set(frame.data[0], frame.data.slice(1, 8));
-      session.trace.push(traceOf(frame));
-      let complete = session.packets > 0;
-      const data = [];
-      for (let sequence = 1; sequence <= session.packets; sequence++) {
-        const part = session.parts.get(sequence);
-        if (!part) {
-          complete = false;
-          break;
-        }
-        data.push(...part);
-      }
-      if (!complete || data.length < session.size) continue;
-      data.length = session.size;
-      const message = BY_PGN.get(session.pgn & 0xffff00);
-        if (message) {
-          produced.push({
-            time: session.time,
-            sourceIndex: session.sourceIndex,
-            sourceLine: frame.sourceLine ?? null,
-            id: session.id,
-            data,
-            header: {pgn: message.pgn, sa: header.sa},
-            kind: 'reassembled',
-            message,
-            trace: session.trace,
-          });
-        } else {
-          anomalies.push({time: session.time, sourceIndex: session.sourceIndex, code: 'TP', message: `BAM 重组出的 PGN ${session.pgn} 不在本次 2015 范围内`});
-        }
-        open.delete(header.sa);
-      continue;
-    }
-    produced.push({...frame, header, kind: 'single'});
-  }
-  for (const session of open.values()) {
-    anomalies.push({time: session.time, sourceIndex: session.sourceIndex, code: 'TP-BAM', message: 'BAM 未收齐，不作为解码成功'});
-    produced.push({...session, header: {pgn: session.pgn, sa: session.sa}, kind: 'incomplete-tp', data: []});
-  }
-  return {produced, anomalies};
+  return reassembleTransport(sorted, {
+    sessionKey: (header) => header.sa,
+    resolveMessage: (pgn) => BY_PGN.get(pgn & 0xffff00) || null,
+  });
 }
 
 function gapAnomalies(events, code, limitMs) {

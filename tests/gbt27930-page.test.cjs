@@ -34,7 +34,10 @@ const path = require('node:path');
     const card = page.locator('a.page-card[href="/gbt27930"]');
     assert.equal(await card.locator('h2').innerText(), '27930解析');
     assert.match(await card.innerText(), /2015离线/);
-    assert.equal(await page.locator('article.page-card h2', {hasText: 'J1939分析'}).count(), 1);
+    const j1939 = page.locator('a.page-card[href="/j1939"]');
+    assert.equal(await j1939.locator('h2').innerText(), 'J1939分析');
+    assert.match(await j1939.innerText(), /基础离线/);
+    assert.equal(await page.locator('article.page-card h2', {hasText: '友情链接'}).count(), 1);
     await page.setViewportSize({width: 390, height: 844});
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true);
   } finally {
