@@ -7,9 +7,9 @@ const js=fs.readFileSync('public/convert.js','utf8');
 
 assert.doesNotMatch(html,/workflow-arrow|>➜<\/span>/,'the old arrow guide must be removed');
 assert.doesNotMatch(css,/workflow-arrow-guide|offset-path/,'the old arrow path animation must be removed');
-assert.match(css,/\.source-heading\{animation:workflow-row-guide 1s ease-out \.12s 1 both\}/,'step 01 must highlight first for one second');
-assert.match(css,/\.format-heading\{animation:workflow-row-guide 1s ease-out 1\.12s 1 both\}/,'step 02 must highlight after step 01');
-assert.match(css,/\.csv-heading\{animation:workflow-row-guide 1s ease-out 2\.12s 1 both\}/,'step 03 must highlight after step 02');
+assert.match(css,/\.source-heading\{animation:workflow-row-guide 1s ease-out \.12s 1 backwards\}/,'step 01 must highlight first for one second without retaining the shadow');
+assert.match(css,/\.format-heading\{animation:workflow-row-guide 1s ease-out 1\.12s 1 backwards\}/,'step 02 must highlight after step 01 without retaining the shadow');
+assert.match(css,/\.csv-heading\{animation:workflow-row-guide 1s ease-out 2\.12s 1 backwards\}/,'step 03 must highlight after step 02 without retaining the shadow');
 assert.match(css,/@keyframes workflow-row-guide\{[^}]*box-shadow[\s\S]*var\(--section-accent\)/,'each workflow row must use its own highlight color');
 assert.match(css,/@media\(prefers-reduced-motion:reduce\)\{\.workflow-heading\{animation:none\}\}/,'the sequential highlight must respect reduced-motion preferences');
 assert.doesNotMatch(html,/01 — 源文件 · 02 — 格式转换 · 03 — 信号 CSV/,'the duplicated workflow sentence must be removed');

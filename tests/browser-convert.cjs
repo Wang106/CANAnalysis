@@ -229,6 +229,7 @@ const server=createServer(async(req,res)=>{
     assert.equal(await page.locator('.workflow-heading').count(),3,'all three workflow title rows must be visually emphasized');
     const headingColors=await page.locator('.workflow-heading').evaluateAll(nodes=>nodes.map(node=>getComputedStyle(node).getPropertyValue('--section-accent').trim()));
     assert.deepEqual(headingColors,['#38bdf8','#3ddc84','#a78bfa'],'workflow title colors must remain distinct for 01/02/03');
+    await page.locator('#sourceSummary').evaluate(node=>Promise.all(node.getAnimations().map(animation=>animation.finished)));
     const sourceHeadingRest=await page.locator('#sourceSummary').evaluate(node=>{const glow=getComputedStyle(node,'::after');return {opacity:Number(glow.opacity),duration:glow.transitionDuration,animation:glow.animationName,left:glow.left,right:glow.right,top:glow.top,bottom:glow.bottom,transform:glow.transform,shadow:getComputedStyle(node).boxShadow};});
     assert.deepEqual([sourceHeadingRest.duration,sourceHeadingRest.animation,sourceHeadingRest.left,sourceHeadingRest.right,sourceHeadingRest.top,sourceHeadingRest.bottom,sourceHeadingRest.transform],['1.2s','none','0px','0px','0px','0px','none'],'workflow glow must slowly brighten the whole heading instead of sweeping sideways');
     await page.hover('#sourceSummary');await page.waitForTimeout(250);
