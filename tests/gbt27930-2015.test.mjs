@@ -124,6 +124,25 @@ test('catalogued stop and error messages are identified without field values', (
   assert.ok(result.anomalies.some(item => item.code === 'BST' && item.message.includes('字段解码未纳入')));
 });
 
+test('a 2015 BAM does not decode data sent elsewhere or data after Abort', () => {
+  const bam = frame(0, id(7, 0xec, 0x56, 0xf4), [0x20, 13, 0, 2, 0xff, 0x00, 0x06, 0]);
+  const packet = (time, da, sequence, bytes) => frame(time, id(7, 0xeb, da, 0xf4), [sequence, ...bytes]);
+  const elsewhere = analyze27930([
+    bam,
+    packet(0.1, 0x10, 1, [0xa4, 0x01, 0x70, 0x17, 0xf4, 0x01, 0x88]),
+    packet(0.2, 0x10, 2, [0x13, 0x5f, 0x20, 0x03, 0x3c, 0x0f, 0xff]),
+  ]);
+  assert.equal(elsewhere.events.some(event => event.status === 'decoded'), false);
+  const aborted = analyze27930([
+    bam,
+    frame(0.05, id(7, 0xec, 0x56, 0xf4), [0xff, 0xff, 0xff, 0xff, 0xff, 0x00, 0x06, 0]),
+    packet(0.1, 0x56, 1, [0xa4, 0x01, 0x70, 0x17, 0xf4, 0x01, 0x88]),
+    packet(0.2, 0x56, 2, [0x13, 0x5f, 0x20, 0x03, 0x3c, 0x0f, 0xff]),
+  ]);
+  assert.equal(aborted.events.some(event => event.status === 'decoded'), false);
+  assert.ok(aborted.anomalies.some(item => item.message.includes('Abort')));
+});
+
 test('a session without handshake or identification is marked incomplete', () => {
   const result = analyze27930([frame(0, 0x181056F4, [0xa0, 0x0f, 0x88, 0x13, 0x01])]);
   assert.equal(result.events[0].status, 'decoded');

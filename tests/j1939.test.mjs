@@ -108,6 +108,34 @@ test('RTS data already in a log is observed passively and ETP is not reassembled
   assert.ok(result.anomalies.some(item => item.code === 'ETP'));
 });
 
+test('a short non-final packet, a replaced session and a foreign destination are not successes', () => {
+  const bam = (time, da, pgnLow, pgnMid) => frame(time, id(7, 0xec, da, 1), [0x20, 8, 0, 2, 0xff, pgnLow, pgnMid, 0]);
+  const dt = (time, da, sequence, bytes) => frame(time, id(7, 0xeb, da, 1), [sequence, ...bytes]);
+  const short = analyzeJ1939([
+    frame(0, id(7, 0xec, 0xff, 1), [0x20, 10, 0, 2, 0xff, 0xaa, 0xf0, 0]),
+    dt(0.1, 0xff, 1, [1, 2, 3]),
+    dt(0.2, 0xff, 2, [4, 5, 6, 7, 8, 9, 10]),
+  ]);
+  assert.equal(short.events.some(event => event.status === 'reassembled'), false);
+  assert.ok(short.anomalies.some(item => item.code === 'TP-LEN' && item.message.includes('不是末包')));
+  const replaced = analyzeJ1939([
+    bam(0, 0xff, 0xaa, 0xf0),
+    dt(0.1, 0xff, 1, [1, 2, 3, 4, 5, 6, 7]),
+    bam(0.2, 0xff, 0x00, 0xef),
+    dt(0.3, 0xff, 1, [8, 7, 6, 5, 4, 3, 2]),
+    dt(0.4, 0xff, 2, [1, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]),
+  ]);
+  assert.equal(replaced.events.filter(event => event.status === 'reassembled').length, 1);
+  assert.deepEqual(replaced.events.find(event => event.status === 'reassembled').raw, [8, 7, 6, 5, 4, 3, 2, 1]);
+  assert.equal(replaced.events.find(event => event.status === 'incomplete').pgn, 0xf0aa);
+  const foreign = analyzeJ1939([
+    bam(0, 0xff, 0xaa, 0xf0),
+    dt(0.1, 0x22, 1, [9, 9, 9, 9, 9, 9, 9]),
+    dt(0.2, 0x22, 2, [9, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]),
+  ]);
+  assert.equal(foreign.events.some(event => event.status === 'reassembled'), false);
+});
+
 test('a long classic frame is not treated as J1939-22', () => {
   const result = analyzeJ1939([frame(0, id(6, 0xf0, 0xaa, 1), [1, 2, 3, 4, 5, 6, 7, 8, 9])]);
   assert.equal(result.events[0].status, 'unsupported');

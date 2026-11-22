@@ -167,7 +167,7 @@ function eventFrom(message, frame, data, transport) {
 
 function reassembleBam(sorted) {
   return reassembleTransport(sorted, {
-    sessionKey: (header) => header.sa,
+    sessionKey: (header) => `${header.sa}:${header.destination ?? ''}`,
     resolveMessage: (pgn) => BY_PGN.get(pgn & 0xffff00) || null,
   });
 }

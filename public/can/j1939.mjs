@@ -110,11 +110,12 @@ function lengthConsistent(session) {
 }
 
 function finishSession(session, frame, produced, anomalies, open, resolveMessage) {
-  if (!lengthConsistent(session)) return;
+  if (!lengthConsistent(session) || session.rejected) return;
   const data = [];
   for (let sequence = 1; sequence <= session.packets; sequence++) {
     const part = session.parts.get(sequence);
     if (!part) return;
+    if (sequence < session.packets && part.length !== 7) return;
     data.push(...part);
   }
   if (data.length < session.size) return;
@@ -164,7 +165,7 @@ function finishSession(session, frame, produced, anomalies, open, resolveMessage
 }
 
 export function reassembleTransport(sorted, options = {}) {
-  const sessionKey = options.sessionKey || ((header) => header.sa);
+  const sessionKey = options.sessionKey || ((header) => `${header.sa}:${header.destination ?? ''}`);
   const acceptRts = options.acceptRts === true;
   const resolveMessage = options.resolveMessage;
   const produced = [];
@@ -221,7 +222,7 @@ export function reassembleTransport(sorted, options = {}) {
         produced.push({...frame, header, kind: 'control'});
         continue;
       }
-      if (acceptRts && control === ABORT) {
+      if (control === ABORT) {
         const session = open.get(key);
         if (session) closeOpen(session, '见到 Abort，未完成的传输不作为重组成功');
         else anomalies.push({time: frame.time, sourceIndex: frame.sourceIndex, code: 'TP-ABORT', message: 'Abort 没有对应的传输会话，不作为重组成功'});
@@ -247,7 +248,12 @@ export function reassembleTransport(sorted, options = {}) {
         session.trace.push(traceOf(frame));
         continue;
       }
-      session.parts.set(sequence, frame.data.slice(1, 8));
+      const part = frame.data.slice(1, 8);
+      if (sequence >= 1 && sequence < session.packets && part.length !== 7) {
+        session.rejected = true;
+        anomalies.push({time: frame.time, sourceIndex: frame.sourceIndex, code: 'TP-LEN', message: `序号 ${sequence} 不是末包但只有 ${part.length} 字节，经典 TP 每包应有 7 字节，不作为重组成功`});
+      }
+      session.parts.set(sequence, part);
       session.trace.push(traceOf(frame));
       finishSession(session, frame, produced, anomalies, open, resolveMessage);
       continue;
@@ -255,7 +261,7 @@ export function reassembleTransport(sorted, options = {}) {
     produced.push({...frame, header, kind: 'single'});
   }
   for (const session of open.values()) {
-    anomalies.push({time: session.time, sourceIndex: session.sourceIndex, code: session.transport === 'RTS' ? 'TP-RTS' : 'TP-BAM', message: session.transport === 'RTS' ? 'RTS 未收齐，不作为重组成功' : 'BAM 未收齐，不作为解码成功'});
+    if (!session.rejected) anomalies.push({time: session.time, sourceIndex: session.sourceIndex, code: session.transport === 'RTS' ? 'TP-RTS' : 'TP-BAM', message: session.transport === 'RTS' ? 'RTS 未收齐，不作为重组成功' : 'BAM 未收齐，不作为解码成功'});
     produced.push({...session, header: {pgn: session.pgn, sa: session.sa}, kind: 'incomplete-tp', data: []});
   }
   return {produced, anomalies};
