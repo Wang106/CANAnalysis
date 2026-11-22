@@ -116,7 +116,7 @@ npm run preview:static
 - 文本分片读取，输出分块组装；单压缩块限制 64 MB、单输出累积器限制 1 GB。手机可用内存更少，大于 200 MB 建议在电脑上转换。
 - CSV 模式额外加载 DBC，可搜索并勾选信号，支持 100–1000 ms（每 100 ms 一档）采样间隔。列依次为序号、时间（秒）和所选信号；每个时间点使用此前最近的有效报文值，信号尚未出现时留空。支持 Intel/Motorola、带符号、factor/offset、基础复用及 DBC Float32/Float64。
 
-下面这些转换和页面测试由 `npm test` 按层调用。`tests/browser-convert.cjs` 目前不在统一入口里：关于页切到 English 后，标题和未启用的社区表单仍有中文，这是现有失败，不是这次发布基线引入的。需要单独复现某一项时可以直接运行：
+下面这些转换和页面测试由 `npm test` 按层调用。`tests/browser-convert.cjs` 在 browser 层里，会检查七种格式下载、英文界面和关于页里仍关闭的社区表单。需要单独复现某一项时可以直接运行：
 
 ```bash
 node tests/convert.test.mjs

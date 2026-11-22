@@ -51,9 +51,6 @@ export function createPlan({node = process.execPath, python = pythonCommand()} =
       [python, ['-m', 'unittest', 'tests.test_bridge']],
       [python, ['tests/verify-convert-output.py']],
     ],
-    // browser-convert.cjs is omitted: on current main it still fails after the
-    // about page switches to English, because community copy and several
-    // headings remain Chinese. That gap predates this release baseline.
     browser: [
       [node, ['tests/about-scroll.test.cjs']],
       [node, ['tests/about-ocean-motion.test.cjs']],
@@ -62,6 +59,7 @@ export function createPlan({node = process.execPath, python = pythonCommand()} =
       [node, ['tests/static-security.browser.test.cjs']],
       [node, ['tests/gbt27930-page.test.cjs']],
       [node, ['tests/j1939-page.test.cjs']],
+      [node, ['tests/browser-convert.cjs']],
     ],
   };
 }

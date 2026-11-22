@@ -58,7 +58,7 @@ npm test
 
 - core：Node 测试、语法检查、版本清单和静态响应头。
 - python：`tests.test_bridge`，以及 `tests/verify-convert-output.py`。后者需要 `requirements-dev.txt` 里的 python-can 与 asammdf。
-- browser：`about-scroll`、`about-ocean-motion`、`offline-home-version`、`tests/regression.html`，以及安全响应头和版本回退。`tests/browser-convert.cjs` 不在这一层。当前关于页切到 English 后仍有 54 处中文，主要在未启用的社区表单和部分标题；这个失败在本次改动之前就存在，最近几次提交也因为环境没有 Chromium 而没有跑到这里。
+- browser：`about-scroll`、`about-ocean-motion`、`offline-home-version`、`tests/regression.html`、安全响应头和版本回退，以及 `tests/browser-convert.cjs`。后者覆盖格式转换下载和关于页切到 English 后的可见文案，包括仍关闭的社区表单。
 
 GitHub Actions 使用同样的三层，权限只有 `contents: read`。工作流不部署，不读取 Secret，因此没有 Cloudflare 凭据也能运行。
 

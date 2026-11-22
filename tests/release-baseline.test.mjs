@@ -149,6 +149,6 @@ test('verify workflow stays read-only and the locked inputs exist', () => {
   assert.match(browser, /static-security\.browser\.test\.cjs/);
   assert.match(browser, /regression-page\.test\.cjs/);
   assert.match(browser, /offline-home-version\.test\.cjs/);
-  assert.doesNotMatch(browser, /browser-convert\.cjs/);
+  assert.match(browser, /browser-convert\.cjs/);
   assert.match(plan.python.map((item) => item.join(' ')).join('\n'), /verify-convert-output\.py/);
 });
