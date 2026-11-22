@@ -1,4 +1,5 @@
 import {frame,uint,hex,bytesFrom,DLC_LENGTHS,Parts,read} from './utils.mjs';
+import {parseClassicAscDataLine} from '../can/asc-text.mjs';
 
 async function* lines(blob,options){
   const bom=await read(blob,0,Math.min(4,blob.size));
@@ -37,6 +38,14 @@ export async function* readText(blob,format,options={}){
           const idText=tokens[4],extended=/x$/i.test(idText),dlc=uint(tokens[k+2],base),length=uint(tokens[k+3]);
           yield frame({time:t,channel:uint(tokens[2]),rx:tokens[3]==='Rx',id:uint(idText.replace(/x$/i,''),base),extended,fd:true,brs:tokens[k]==='1',esi:tokens[k+1]==='1',dlc,data:bytesFrom(tokens.slice(k+4),length)});
         }else{
+          if(!relative&&base===16){
+            const parsed=parseClassicAscDataLine(line);
+            const dataTokens=tokens.slice(6);
+            if(parsed?.kind==='data'&&dataTokens.slice(0,parsed.dlc).every(token=>/^[0-9a-f]{2}$/i.test(token))){
+              yield frame({time:parsed.time,channel:uint(parsed.channel),id:parsed.id,extended:parsed.extended,rx:parsed.rx,remote:false,dlc:parsed.dlc,data:Uint8Array.from(parsed.bytes)});
+              continue;
+            }
+          }
           if(!['Rx','Tx'].includes(tokens[3])||!['d','r'].includes(tokens[4]))throw Error('不支持的 ASC CAN 行格式');
           const idText=tokens[2],extended=/x$/i.test(idText),remote=tokens[4]==='r',dlc=uint(tokens[5]||'0');
           const data=base===16?bytesFrom(tokens.slice(6),remote?0:dlc):Uint8Array.from(tokens.slice(6,6+dlc),t=>{const n=uint(t);if(n>255)throw Error('数据字节超范围');return n;});

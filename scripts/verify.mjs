@@ -31,6 +31,7 @@ export function createPlan({node = process.execPath, python = pythonCommand()} =
       [node, ['tests/batch.test.mjs']],
       [node, ['tests/convert.test.mjs']],
       [node, ['tests/csv.test.mjs']],
+      [node, ['tests/shared-codec.test.mjs']],
       [node, ['tests/about-page.test.cjs']],
       [node, ['tests/brandbar.test.cjs']],
       [node, ['tests/community-contract.test.cjs']],
