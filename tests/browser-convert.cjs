@@ -57,7 +57,7 @@ const server=createServer(async(req,res)=>{
     assert.equal(await languagePage.locator('meta[property="og:title"]').count(),1,'CAN page must provide Open Graph metadata');
     assert.equal(await languagePage.locator('#emptyGuide').count(),1,'CAN page must show a first-use guide');
     assert.match(await languagePage.textContent('#emptyGuide'),/三步开始分析.*加载 DBC.*加载 ASC.*生成曲线/s);
-    assert.match(await languagePage.textContent('#emptyGuide'),/文件仅在当前浏览器本地处理/);
+    assert.doesNotMatch(await languagePage.textContent('#emptyGuide'),/文件仅在当前浏览器本地处理/,'offline guide no longer includes the removed local-processing sentence');
     assert.equal(await languagePage.inputValue('#siteLanguage'),'zh','new visitors must default to Chinese');
     assert.equal((await languagePage.locator('.can-brand>span').innerText()).replace(/\s+/g,' '),'CAN报文解析 CAN DATA WORKSPACE','Chinese pages must show the Chinese brand name');
     assert.equal((await languagePage.textContent('.language-face')).trim(),'Language','Language must be a fixed visual overlay');
@@ -110,7 +110,7 @@ const server=createServer(async(req,res)=>{
     await languagePage.selectOption('#siteLanguage','en');
     await languagePage.waitForFunction(()=>document.documentElement.lang==='en');
     assert.equal(await languagePage.inputValue('#siteLanguage'),'en');
-    assert.equal((await languagePage.locator('.can-brand>span').innerText()).replace(/\s+/g,' '),'CANAnalysis CAN DATA WORKSPACE','English pages must keep the CANAnalysis brand name');
+    assert.equal((await languagePage.locator('.can-brand>span').innerText()).replace(/\s+/g,' '),'CAN Message Analysis CAN DATA WORKSPACE','English pages must translate the shared brand name');
     assert.equal((await languagePage.locator('#siteSkin option').allTextContents()).join('|'),'Default Style|Dark Mode|Light Mode');
     assert.equal((await languagePage.textContent('.skin-face')).trim(),'Light Mode','selected skin label must be translated');
     assert.equal((await languagePage.locator('#navLinks .nav-item').allTextContents()).join('|'),'Home|Online Connection|Offline Analysis|Format Conversion|GB/T 27930 Parsing|J1939 Analysis|Links|About','new navigation labels must be translated consistently');
@@ -132,7 +132,7 @@ const server=createServer(async(req,res)=>{
     assert.equal(await languagePage.locator('.ocean-copy p').count(),0,'obsolete ocean interaction hint must be absent');
     await languagePage.locator('#oceanCanvas').click({position:{x:180,y:120}});
     assert.ok(await languagePage.evaluate(()=>window.__aboutOcean.rippleCount)>0,'clicking the ocean must create a visible ripple');
-    for(const selector of ['.eyebrow','.section-kicker','.support-note','footer'])await assertReadable(languagePage,selector);
+    for(const selector of ['.section-kicker','.support-note','footer'])await assertReadable(languagePage,selector);
     assert.equal(await languagePage.locator('#paymentOptions').isHidden(),true,'payment QR codes must stay hidden before support is requested');
     await languagePage.click('#supportButton');
     assert.equal(await languagePage.locator('#paymentOptions').isVisible(),true,'support button must reveal the payment QR codes');

@@ -1,9 +1,25 @@
 {
   "name": "cananalysis",
+  "version": "1.2.0",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
+    "test": "node scripts/verify.mjs",
+    "verify": "node scripts/verify.mjs",
+    "verify:core": "node scripts/verify.mjs --layer core",
+    "verify:python": "node scripts/verify.mjs --layer python",
+    "verify:browser": "node scripts/verify.mjs --layer browser",
     "test:community": "node --test tests/community-security.test.mjs && node tests/community-contract.test.cjs",
-    "check:worker": "node --check src/worker.js"
+    "check:worker": "node --check src/worker.js",
+    "version:generate": "node scripts/generate-version.mjs",
+    "headers:render": "node scripts/render-static-headers.mjs",
+    "preview:static": "node scripts/preview-static.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.65.1",
+    "wrangler": "^4.166.0"
   }
 }

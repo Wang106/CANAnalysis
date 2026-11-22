@@ -1,48 +1,51 @@
-(function(){
-  'use strict';
+import {commitInstant, formatReleaseDate, selectVersion, shortCommit} from './site-version-core.mjs';
 
-  const commitEl=document.getElementById('hcommit');
-  const releaseEl=document.getElementById('hmodtime');
-  if(!commitEl||!releaseEl) return;
+const commitEl = document.getElementById('hcommit');
+const releaseEl = document.getElementById('hmodtime');
 
-  function setReleaseTime(d,source){
-    if(!d||typeof d.getTime!=='function'||Number.isNaN(d.getTime())) return;
-    const pad=n=>String(n).padStart(2,'0');
-    const dateStr=d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
-    releaseEl.textContent=dateStr+'发布';
-    releaseEl.dataset.source=source||'default';
-    releaseEl.title=source==='github'?'GitHub 代码提交时间':'等待获取 GitHub 代码提交时间';
+async function loadJson(url, github) {
+  const headers = github
+    ? {Accept: 'application/vnd.github+json'}
+    : {Accept: 'application/json'};
+  const response = await fetch(url, {cache: 'no-store', headers});
+  if (!response.ok) throw new Error('request failed');
+  return response.json();
+}
+
+async function refreshVersion() {
+  let manifest = null;
+  try {
+    manifest = await loadJson('/version.json', false);
+  } catch {
+    manifest = null;
   }
-
-  function setCommitDisplay(commit,source){
-    if(typeof commit!=='string'||!commit.trim()) return;
-    const normalized=commit.trim();
-    commitEl.textContent=normalized.slice(-8);
-    commitEl.dataset.source=source||'manifest';
-    commitEl.title='GitHub 提交号 '+normalized+(source==='manifest'?'（站点版本清单）':'');
+  const early = selectVersion(manifest, null);
+  let github = null;
+  if (!(early.source === 'manifest' && early.committedAt)) {
+    const ref = early.commit || 'main';
+    try {
+      github = await loadJson('https://api.github.com/repos/Wang106/CANAnalysis/commits/' + encodeURIComponent(ref), true);
+    } catch {
+      github = null;
+    }
   }
+  const selected = selectVersion(manifest, github);
+  window.__siteVersionState = selected;
+  if (!commitEl || !releaseEl) return selected;
+  const short = shortCommit(selected.commit);
+  const instant = commitInstant(selected.committedAt);
+  if (short) {
+    commitEl.textContent = short;
+    commitEl.dataset.source = selected.source;
+    commitEl.title = 'GitHub 提交号 ' + selected.commit.trim();
+  }
+  if (instant) {
+    releaseEl.textContent = formatReleaseDate(instant);
+    releaseEl.dataset.source = selected.source;
+    releaseEl.title = selected.source === 'github' ? 'GitHub 代码提交时间' : 'Git 提交时间（站点版本清单）';
+  }
+  return selected;
+}
 
-  setReleaseTime(new Date(2000,0,1,0,0,0),'default');
-  (async function(){
-    try{
-      const response=await fetch('/version.json',{cache:'no-store'});
-      if(!response.ok) throw new Error('Version manifest request failed');
-      const metadata=await response.json();
-      setCommitDisplay(metadata&&metadata.commit,'manifest');
-    }catch(error){}
-    try{
-      const response=await fetch('https://api.github.com/repos/Wang106/CANAnalysis/commits/main',{
-        cache:'no-store',headers:{Accept:'application/vnd.github+json'}
-      });
-      if(!response.ok) throw new Error('GitHub commit request failed');
-      const data=await response.json();
-      if(data&&data.sha){
-        setCommitDisplay(data.sha,'github');
-        const committedAt=data.commit&&data.commit.committer&&data.commit.committer.date||data.commit&&data.commit.author&&data.commit.author.date;
-        if(committedAt)setReleaseTime(new Date(committedAt),'github');
-      }
-    }catch(error){}
-  })();
-
-  window.__siteVersion={setReleaseTime,setCommitDisplay};
-})();
+window.__siteVersion = {shortCommit, commitInstant, formatReleaseDate, selectVersion, refresh: refreshVersion};
+refreshVersion();
