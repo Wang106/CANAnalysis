@@ -132,6 +132,7 @@ function finishSession(session, frame, produced, anomalies, open, resolveMessage
         header: {pgn: message.pgn, sa: frame.header?.sa ?? session.sa},
         kind: 'reassembled',
         message,
+        transport: session.transport,
         trace: session.trace,
       });
     } else {
@@ -167,6 +168,7 @@ function finishSession(session, frame, produced, anomalies, open, resolveMessage
 export function reassembleTransport(sorted, options = {}) {
   const sessionKey = options.sessionKey || ((header) => `${header.sa}:${header.destination ?? ''}`);
   const acceptRts = options.acceptRts === true;
+  const observeControl = options.observeControl !== false;
   const resolveMessage = options.resolveMessage;
   const produced = [];
   const anomalies = [];
@@ -218,7 +220,7 @@ export function reassembleTransport(sorted, options = {}) {
         continue;
       }
       if (acceptRts && (control === CTS || control === EOM)) {
-        anomalies.push({time: frame.time, sourceIndex: frame.sourceIndex, code: 'TP-OBSERVE', message: control === CTS ? '日志里有 CTS。本工具不发送 CTS，也不把这一帧当成载荷解码成功' : '日志里有 End of Message ACK。本工具不发送确认，载荷仍只来自已经出现的数据帧'});
+        if (observeControl) anomalies.push({time: frame.time, sourceIndex: frame.sourceIndex, code: 'TP-OBSERVE', message: control === CTS ? '日志里有 CTS。本工具不发送 CTS，也不把这一帧当成载荷解码成功' : '日志里有 End of Message ACK。本工具不发送确认，载荷仍只来自已经出现的数据帧'});
         produced.push({...frame, header, kind: 'control'});
         continue;
       }

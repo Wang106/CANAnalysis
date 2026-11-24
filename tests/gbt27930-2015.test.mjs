@@ -72,7 +72,7 @@ test('unknown, standard, truncated and unsupported transport are not decoded suc
   assert.ok(result.events.some(event => event.status === 'ignored'));
   assert.ok(result.events.some(event => event.code === 'BMV' && event.status === 'identified' && event.fields.length === 0));
   assert.ok(result.events.some(event => event.code === 'BCP' && event.status === 'incomplete' && event.fields.length === 0));
-  assert.ok(result.anomalies.some(item => item.code === 'TP-CM'));
+  assert.ok(result.anomalies.some(item => item.code === 'TP-LEN'));
   assert.ok(result.anomalies.some(item => item.code === 'TP-BAM'));
 });
 
@@ -88,6 +88,7 @@ test('BCL gap uses the stated one-second boundary and does not invent a five-sec
 test('current offset and BRM identification stay inside the cited field rules', () => {
   const zero = analyze27930([frame(0, 0x181056F4, [0, 0, 0, 0, 0x01])]);
   assert.equal(field(zero.events[0], '电流需求').value, -400);
+  assert.equal(field(zero.events[0], '电流需求').note, '负值表示充电方向');
   const brm = [frame(0, id(7, 0xec, 0x56, 0xf4), [32, 49, 0, 7, 0xff, 0, 2, 0])];
   for (let sequence = 1; sequence <= 7; sequence++) brm.push(frame(sequence / 100, id(7, 0xeb, 0x56, 0xf4), [sequence, 0, 0, 0, 0, 0, 0, 0]));
   const identified = analyze27930(brm);
@@ -147,4 +148,36 @@ test('a session without handshake or identification is marked incomplete', () =>
   const result = analyze27930([frame(0, 0x181056F4, [0xa0, 0x0f, 0x88, 0x13, 0x01])]);
   assert.equal(result.events[0].status, 'decoded');
   assert.ok(result.anomalies.some(item => item.code === 'SESSION'));
+});
+
+test('synthetic RTS sessions, FF padding, foreign nodes and session splits stay separate', () => {
+  const cm = (time, control, size, packets, pgnLo, pgnMid) => frame(time, id(7, 0xec, 0x56, 0xf4), [control, size, 0, packets, control === 0x10 ? packets : 0xff, pgnLo, pgnMid, 0]);
+  const dt = (time, sequence, bytes, dlc) => frame(time, id(7, 0xeb, 0x56, 0xf4), [sequence, ...bytes, ...Array(Math.max(0, dlc - 1 - bytes.length)).fill(0xff)].slice(0, dlc));
+  const result = analyze27930([
+    frame(0, id(6, 0x1d, 0xf4, 0x56), [1, 0, 0, 0, 0, 0, 0, 0]),
+    frame(0.2, id(6, 0x26, 0xf4, 0x56), [1, 1, 0]),
+    cm(1, 0x10, 9, 2, 0x00, 0x11),
+    frame(1.01, id(7, 0xec, 0xf4, 0x56), [0x11, 2, 1, 0xff, 0xff, 0x00, 0x11, 0]),
+    dt(1.02, 1, [0xa0, 0x0f, 0x88, 0x13, 0x9f, 0x21, 0x37], 8),
+    dt(1.03, 2, [0x14, 0x00], 3),
+    frame(1.04, id(7, 0xec, 0xf4, 0x56), [0x13, 9, 0, 2, 0xff, 0x00, 0x11, 0]),
+    frame(1.2, id(6, 0x1f, 0xf4, 0x56), [0xfc, 0xf0, 0xc0, 0xfc, 0xff, 0xff, 0xff, 0xff]),
+    frame(1.3, id(6, 0x01, 0xf4, 0xe5), [0x00, 1, 0, 0, 0, 0, 0, 0]),
+    frame(8, id(6, 0x26, 0xf4, 0x56), [1, 1, 0]),
+    frame(8.1, id(4, 0x1a, 0xf4, 0x56), [0x04, 0, 0, 0xf0]),
+  ]);
+  const bcs = result.events.find(event => event.code === 'BCS');
+  assert.equal(bcs.status, 'decoded');
+  assert.equal(bcs.transport, 'RTS');
+  assert.equal(result.anomalies.filter(item => item.code === 'TP-OBSERVE').length, 0);
+  const cem = result.events.find(event => event.code === 'CEM' && event.sa === 0x56);
+  assert.equal(cem.status, 'identified');
+  assert.equal(cem.padding, 4);
+  assert.equal(result.foreign.length, 1);
+  assert.equal(result.foreign[0].sa, 0xe5);
+  assert.equal(result.sessions[0].residue[0].code, 'CSD');
+  assert.equal(result.sessions[0].stages.map(stage => stage.stage).join(','), '握手,充电');
+  assert.equal(result.sessions[0].stops[0].code, 'CEM');
+  assert.equal(result.sessions[1].stops[0].code, 'CST');
+  assert.equal(result.sessions[1].stages.some(stage => stage.stage === '充电'), false);
 });

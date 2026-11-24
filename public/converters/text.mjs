@@ -1,5 +1,6 @@
 import {frame,uint,hex,bytesFrom,DLC_LENGTHS,Parts,read} from './utils.mjs';
 import {parseClassicAscDataLine} from '../can/asc-text.mjs';
+import {createZlgClock, isZlgCanTestHeader, parseZlgCanTestRow} from '../can/zlg-text.mjs';
 
 async function* lines(blob,options){
   const bom=await read(blob,0,Math.min(4,blob.size));
@@ -21,7 +22,7 @@ function clock(token){
   return +m[1]*3600 + +m[2]*60 + +m[3] + Number('0.'+m[4]);
 }
 export async function* readText(blob,format,options={}){
-  let base=16,relative=false,lastTime=0,trcVersion='1.0',columns=null,txtColumns=null;
+  let base=16,relative=false,lastTime=0,trcVersion='1.0',columns=null,txtColumns=null,zlgClock=null;
   let dayOffset=0,previousClock=0;
   for await(const {line,number} of lines(blob,options)){
     if(!line)continue;
@@ -81,6 +82,14 @@ export async function* readText(blob,format,options={}){
         yield frame({time,id:uint(idText,16),extended:idText.length>4,channel,rx,remote,fd,brs,esi,dlc,data});
       }else if(format==='txt'){
         if(line.startsWith('#'))continue;
+        if(isZlgCanTestHeader(line)){zlgClock=createZlgClock(options.txtTimeUnit?Number(options.txtTimeUnit):undefined);continue;}
+        if(zlgClock){
+          const row=parseZlgCanTestRow(line,zlgClock);
+          if(!row)continue;
+          if(row.error)throw Error(row.error);
+          yield frame({time:row.time,id:row.id,extended:row.extended,channel:1,rx:row.direction==='接收',remote:row.remote,dlc:row.dlc,data:Uint8Array.from(row.data)});
+          continue;
+        }
         // CANTest/ZCAN tabular exports; column names are used rather than fixed positions.
         if(/帧ID|\bID\b/i.test(line)&&/数据|Data/i.test(line)&&/时间|Time/i.test(line)){
           txtColumns=line.split(/\t+|\s*,\s*|\s+/);continue;

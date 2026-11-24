@@ -47,9 +47,9 @@ export const GBT27930_COVERAGE = {
     'https://github.com/MisakaMikoto128/GBT27930-Sim/blob/main/charger/protocol_tables.py',
   ],
   decodedSingleFrame: ['CHM', 'BHM', 'CRM', 'CML', 'BRO', 'CRO', 'BCL', 'CCS', 'BSD', 'CSD'],
-  decodedAfterBam: ['BCP', 'BCS'],
+  decodedAfterTransport: ['BCP', 'BCS'],
   identifiedWithoutFieldDecode: ['CTS', 'BRM', 'BSM', 'BST', 'CST', 'BEM', 'CEM'],
-  unsupported: ['BMV', 'BMT', 'BSP', 'RTS/CTS', 'GB/T 27930-2011', 'GB/T 27930-2023'],
+  unsupported: ['BMV', 'BMT', 'BSP', '位域明细', 'GB/T 27930-2011', 'GB/T 27930-2023'],
 };
 
 function u16(data, offset) {
@@ -63,6 +63,15 @@ function scaled(data, offset, length, scale, bias) {
   if (scale >= 1) return value;
   const places = Math.round(-Math.log10(scale));
   return Number(value.toFixed(places));
+}
+
+function usablePayload(message, data) {
+  if (message.length == null) return {bytes: data, padding: 0};
+  if (data.length === message.length) return {bytes: data, padding: 0};
+  if (data.length > message.length && data.slice(message.length).every(byte => byte === 0xff)) {
+    return {bytes: data.slice(0, message.length), padding: data.length - message.length};
+  }
+  return null;
 }
 
 function readyText(value) {
@@ -143,10 +152,16 @@ function traceOf(frame) {
 }
 
 function eventFrom(message, frame, data, transport) {
-  const exact = message.length == null || data.length === message.length;
-  const status = message.unsupported || message.identifyOnly
-    ? (exact ? 'identified' : 'incomplete')
-    : (exact ? 'decoded' : 'incomplete');
+  const usable = usablePayload(message, data);
+  const matched = usable != null;
+  const status = !matched
+    ? (message.unsupported || message.identifyOnly ? 'incomplete' : 'incomplete')
+    : (message.unsupported || message.identifyOnly ? 'identified' : 'decoded');
+  const bytes = usable ? usable.bytes : data;
+  const fields = status === 'decoded' ? decodePayload(message, bytes) : [];
+  for (const field of fields) {
+    if (field.unit === 'A' && typeof field.value === 'number' && field.value < 0) field.note = '负值表示充电方向';
+  }
   return {
     time: frame.time,
     sourceIndex: frame.sourceIndex,
@@ -159,14 +174,17 @@ function eventFrom(message, frame, data, transport) {
     pgn: message.pgn,
     status,
     transport: transport || null,
-    fields: status === 'decoded' ? decodePayload(message, data) : [],
-    raw: [...data],
+    fields,
+    padding: usable?.padding || 0,
+    raw: [...bytes],
     trace: frame.trace || [traceOf(frame)],
   };
 }
 
 function reassembleBam(sorted) {
   return reassembleTransport(sorted, {
+    acceptRts: true,
+    observeControl: false,
     sessionKey: (header) => `${header.sa}:${header.destination ?? ''}`,
     resolveMessage: (pgn) => BY_PGN.get(pgn & 0xffff00) || null,
   });
@@ -199,11 +217,11 @@ export function analyze27930(frames) {
     }
     if (frame.kind === 'incomplete-tp') {
       const message = BY_PGN.get(frame.pgn & 0xffff00);
-      events.push({time: frame.time, sourceIndex: frame.sourceIndex, sourceLine: frame.sourceLine ?? null, id: frame.id, sa: frame.sa, code: message?.code || 'TP', name: message?.name || '多包传输', stage: message?.stage || null, pgn: message?.pgn ?? frame.pgn, status: 'incomplete', transport: 'BAM', fields: [], raw: [], trace: frame.trace || []});
+      events.push({time: frame.time, sourceIndex: frame.sourceIndex, sourceLine: frame.sourceLine ?? null, id: frame.id, sa: frame.sa, code: message?.code || 'TP', name: message?.name || '多包传输', stage: message?.stage || null, pgn: message?.pgn ?? frame.pgn, status: 'incomplete', transport: frame.transport || null, fields: [], raw: [], trace: frame.trace || []});
       continue;
     }
     if (frame.kind === 'reassembled') {
-      events.push(eventFrom(frame.message, frame, frame.data, 'BAM'));
+      events.push(eventFrom(frame.message, frame, frame.data, frame.transport || null));
       continue;
     }
     const message = BY_PGN.get(frame.header.pgn);
@@ -214,15 +232,19 @@ export function analyze27930(frames) {
     }
     const event = eventFrom(message, frame, frame.data, null);
     events.push(event);
-    if (event.sa != null && event.sa !== message.source) {
+    if (event.sa != null && event.sa !== 0x56 && event.sa !== 0xf4) {
+      event.foreign = true;
+      anomalies.push({time: event.time, sourceIndex: event.sourceIndex, code: event.code, message: `${event.code} 源地址 ${event.sa.toString(16)} 不是 56 或 f4，单独列出，不参与主会话`});
+    } else if (event.sa != null && event.sa !== message.source) {
       anomalies.push({time: event.time, sourceIndex: event.sourceIndex, code: event.code, message: `${event.code} 源地址 ${event.sa.toString(16)} 与资料所述 ${message.source.toString(16)} 不一致`});
     }
+    if (event.padding) anomalies.push({time: event.time, sourceIndex: event.sourceIndex, code: event.code, message: `${event.code} 多出 ${event.padding} 字节且均为 FF，已按声明长度 ${message.length} 处理`});
   }
   if (disordered) anomalies.unshift({time: indexed[0]?.time ?? 0, sourceIndex: 0, code: 'TIME', message: '输入时间戳存在回退；结果按时间排序，并保留原始序号'});
   if (unknown) anomalies.push({time: null, sourceIndex: null, code: 'UNKNOWN', message: `${unknown} 条扩展帧不在本次 2015 报文表内，未按故障判断`});
   if (ignored) anomalies.push({time: null, sourceIndex: null, code: 'STANDARD', message: `${ignored} 条非扩展帧不在本次 2015 范围内，未按故障判断`});
   for (const event of events) {
-    if (event.status === 'incomplete' && event.transport !== 'BAM') anomalies.push({time: event.time, sourceIndex: event.sourceIndex, code: event.code, message: `${event.code} 数据长度 ${event.raw.length}，与资料所述 ${BY_PGN.get(event.pgn).length} 字节不一致，未按解码成功处理`});
+    if (event.status === 'incomplete' && !event.transport) anomalies.push({time: event.time, sourceIndex: event.sourceIndex, code: event.code, message: `${event.code} 数据长度 ${event.raw.length}，与资料所述 ${BY_PGN.get(event.pgn).length} 字节不一致，未按解码成功处理`});
   }
   const identified = new Map();
   for (const event of events) {
@@ -232,13 +254,52 @@ export function analyze27930(frames) {
     anomalies.push({time: null, sourceIndex: null, code, message: `${code} 已识别 ${count} 帧，字段解码未纳入本次范围`});
   }
   anomalies.push(...gapAnomalies(events, 'BCL', 1000), ...gapAnomalies(events, 'CCS', 1000));
-  const stages = [];
-  for (const event of events) {
-    if (event.stage && stages.at(-1) !== event.stage) stages.push(event.stage);
-  }
-  const known = events.filter(event => event.status === 'decoded' || event.status === 'identified');
+  const {sessions, foreign} = buildSessions(events);
+  const stages = sessions.flatMap(session => session.stages.map(stage => stage.stage));
+  const known = events.filter(event => !event.foreign && (event.status === 'decoded' || event.status === 'identified'));
   if (known.length && !known.some(event => event.stage === '握手' || event.stage === '辨识')) {
     anomalies.push({time: known[0].time, sourceIndex: known[0].sourceIndex, code: 'SESSION', message: '会话中未见握手或辨识报文，记录为不完整会话'});
   }
-  return {edition: GBT27930_COVERAGE.edition, events, stages, anomalies, coverage: GBT27930_COVERAGE, unknown};
+  return {edition: GBT27930_COVERAGE.edition, events, stages, sessions, foreign, anomalies, coverage: GBT27930_COVERAGE, unknown};
+}
+
+const MAIN_ADDRESS = new Set([0x56, 0xf4]);
+const STOP_CODES = new Set(['BST', 'CST', 'BEM', 'CEM']);
+const END_CODES = new Set(['BSD', 'CSD']);
+
+function buildSessions(events, gapSeconds = 5) {
+  const sessions = [];
+  const foreign = [];
+  let current = null;
+  let previousTime = null;
+  for (const event of events) {
+    if (!event.code || event.foreign || (event.sa != null && !MAIN_ADDRESS.has(event.sa))) {
+      if (event.code && event.sa != null && !MAIN_ADDRESS.has(event.sa)) foreign.push(event);
+      continue;
+    }
+    const restart = event.code === 'CHM' && current && current.stages.some(stage => stage.stage !== '握手');
+    const gap = previousTime != null && event.time - previousTime > gapSeconds;
+    if (!current || restart || gap) {
+      current = {index: sessions.length + 1, start: event.time, end: event.time, stages: [], stops: [], residue: []};
+      sessions.push(current);
+    }
+    current.end = event.time;
+    if (!current.stages.length && END_CODES.has(event.code)) {
+      current.residue.push({code: event.code, time: event.time, note: '前一会话残留'});
+      previousTime = event.time;
+      continue;
+    }
+    if (STOP_CODES.has(event.code)) {
+      current.stops.push({code: event.code, name: event.name, time: event.time});
+      previousTime = event.time;
+      continue;
+    }
+    if (event.stage && (event.status === 'decoded' || event.status === 'identified')) {
+      const last = current.stages.at(-1);
+      if (!last || last.stage !== event.stage) current.stages.push({stage: event.stage, first: event.time, last: event.time});
+      else last.last = event.time;
+    }
+    previousTime = event.time;
+  }
+  return {sessions, foreign};
 }
