@@ -1,36 +1,36 @@
+import {decodeFields, appendAnalysisHints} from './gbt27930-2015-fields.mjs';
 import {framesFromClassicAsc, reassembleTransport} from './j1939.mjs';
 
 export {framesFromClassicAsc};
 
-// Offline GB/T 27930-2015 identification. Constants are cross-checked between
-// the public restatement at https://canfd.net/gbt27930.html and the field table
-// in https://github.com/MisakaMikoto128/GBT27930-Sim (protocol_tables.py), which
-// cites GB/T 27930-2015 section 11. This is not the standards body's text and
-// is not a conformance claim. 2011 and 2023 layouts are intentionally absent.
+// Offline GB/T 27930-2015 identification. Lengths, priorities and bit fields follow
+// a checked reading of the 2015 message tables (see docs/gbt27930-2015.md). The
+// standard text is not copied into this repository. This is not a conformance claim.
+// 2011 and 2023 layouts are intentionally absent.
 
 const CHARGER = 0x56;
 const BMS = 0xF4;
 
 const MESSAGES = [
-  {code: 'CHM', name: '充电机握手', pgn: 0x2600, stage: '握手', length: 3, periodMs: 250, source: CHARGER, timeoutMs: 5000},
-  {code: 'BHM', name: 'BMS握手', pgn: 0x2700, stage: '握手', length: 2, periodMs: 250, source: BMS, timeoutMs: 5000},
-  {code: 'CRM', name: '充电机辨识', pgn: 0x0100, stage: '辨识', length: 8, periodMs: 250, source: CHARGER, timeoutMs: 5000},
-  {code: 'CTS', name: '充电机时间同步', pgn: 0x0700, stage: '参数配置', length: 7, periodMs: 500, source: CHARGER, timeoutMs: 5000, identifyOnly: true},
-  {code: 'CML', name: '充电机最大输出能力', pgn: 0x0800, stage: '参数配置', length: 8, periodMs: 250, source: CHARGER, timeoutMs: 5000},
-  {code: 'BRO', name: 'BMS充电准备就绪', pgn: 0x0900, stage: '参数配置', length: 1, periodMs: 250, source: BMS, timeoutMs: 5000},
-  {code: 'CRO', name: '充电机输出准备就绪', pgn: 0x0a00, stage: '参数配置', length: 1, periodMs: 250, source: CHARGER, timeoutMs: 5000},
-  {code: 'BCL', name: '电池充电需求', pgn: 0x1000, stage: '充电', length: 5, periodMs: 50, source: BMS, timeoutMs: 1000},
-  {code: 'CCS', name: '充电机充电状态', pgn: 0x1200, stage: '充电', length: 7, periodMs: 50, source: CHARGER, timeoutMs: 1000},
-  {code: 'BSM', name: '动力蓄电池状态信息', pgn: 0x1300, stage: '充电', length: 7, periodMs: 250, source: BMS, identifyOnly: true},
-  {code: 'BST', name: 'BMS中止充电', pgn: 0x1900, stage: '充电', length: 4, periodMs: 10, source: BMS, identifyOnly: true},
-  {code: 'CST', name: '充电机中止充电', pgn: 0x1a00, stage: '充电', length: 4, periodMs: 10, source: CHARGER, identifyOnly: true},
-  {code: 'BSD', name: 'BMS统计数据', pgn: 0x1c00, stage: '结束', length: 7, periodMs: 250, source: BMS, timeoutMs: 5000},
-  {code: 'CSD', name: '充电机统计数据', pgn: 0x1d00, stage: '结束', length: 8, periodMs: 250, source: CHARGER, timeoutMs: 5000},
-  {code: 'BEM', name: 'BMS错误报文', pgn: 0x1e00, stage: '错误', length: 4, periodMs: 250, source: BMS, identifyOnly: true},
-  {code: 'CEM', name: '充电机错误报文', pgn: 0x1f00, stage: '错误', length: 4, periodMs: 250, source: CHARGER, identifyOnly: true},
-  {code: 'BCP', name: '动力蓄电池充电参数', pgn: 0x0600, stage: '参数配置', length: 13, periodMs: 500, source: BMS, timeoutMs: 5000, transport: true},
-  {code: 'BCS', name: '电池充电总状态', pgn: 0x1100, stage: '充电', length: 9, periodMs: 250, source: BMS, timeoutMs: 5000, transport: true},
-  {code: 'BRM', name: 'BMS和车辆辨识', pgn: 0x0200, stage: '辨识', length: 49, periodMs: 250, source: BMS, timeoutMs: 5000, transport: true, identifyOnly: true},
+  {code: 'CHM', name: '充电机握手', pgn: 0x2600, stage: '握手', length: 3, priority: 6, periodMs: 250, source: CHARGER, timeoutMs: 5000},
+  {code: 'BHM', name: 'BMS握手', pgn: 0x2700, stage: '握手', length: 2, priority: 6, periodMs: 250, source: BMS, timeoutMs: 5000},
+  {code: 'CRM', name: '充电机辨识', pgn: 0x0100, stage: '辨识', length: 8, priority: 6, periodMs: 250, source: CHARGER, timeoutMs: 5000},
+  {code: 'CTS', name: '充电机时间同步', pgn: 0x0700, stage: '参数配置', length: 7, priority: 6, periodMs: 500, source: CHARGER, timeoutMs: 5000},
+  {code: 'CML', name: '充电机最大输出能力', pgn: 0x0800, stage: '参数配置', length: 8, priority: 6, periodMs: 250, source: CHARGER, timeoutMs: 5000},
+  {code: 'BRO', name: 'BMS充电准备就绪', pgn: 0x0900, stage: '参数配置', length: 1, priority: 4, periodMs: 250, source: BMS, timeoutMs: 5000},
+  {code: 'CRO', name: '充电机输出准备就绪', pgn: 0x0a00, stage: '参数配置', length: 1, priority: 4, periodMs: 250, source: CHARGER, timeoutMs: 5000},
+  {code: 'BCL', name: '电池充电需求', pgn: 0x1000, stage: '充电', length: 5, priority: 6, periodMs: 50, source: BMS, timeoutMs: 1000},
+  {code: 'CCS', name: '充电机充电状态', pgn: 0x1200, stage: '充电', length: 7, lengths: [7, 8], priority: 6, periodMs: 50, source: CHARGER, timeoutMs: 1000},
+  {code: 'BSM', name: '动力蓄电池状态信息', pgn: 0x1300, stage: '充电', length: 7, priority: 6, periodMs: 250, source: BMS},
+  {code: 'BST', name: 'BMS中止充电', pgn: 0x1900, stage: '充电', length: 4, priority: 4, periodMs: 10, source: BMS},
+  {code: 'CST', name: '充电机中止充电', pgn: 0x1a00, stage: '充电', length: 4, priority: 4, periodMs: 10, source: CHARGER},
+  {code: 'BSD', name: 'BMS统计数据', pgn: 0x1c00, stage: '结束', length: 7, priority: 6, periodMs: 250, source: BMS, timeoutMs: 5000},
+  {code: 'CSD', name: '充电机统计数据', pgn: 0x1d00, stage: '结束', length: 8, priority: 6, periodMs: 250, source: CHARGER, timeoutMs: 5000},
+  {code: 'BEM', name: 'BMS错误报文', pgn: 0x1e00, stage: '错误', length: 4, priority: 2, periodMs: 250, source: BMS},
+  {code: 'CEM', name: '充电机错误报文', pgn: 0x1f00, stage: '错误', length: 4, priority: 2, periodMs: 250, source: CHARGER},
+  {code: 'BCP', name: '动力蓄电池充电参数', pgn: 0x0600, stage: '参数配置', length: 13, priority: 7, periodMs: 500, source: BMS, timeoutMs: 5000, transport: true},
+  {code: 'BCS', name: '电池充电总状态', pgn: 0x1100, stage: '充电', length: 9, priority: 7, periodMs: 250, source: BMS, timeoutMs: 5000, transport: true},
+  {code: 'BRM', name: 'BMS和车辆辨识', pgn: 0x0200, stage: '辨识', length: 49, lengths: [41, 49], priority: 7, periodMs: 250, source: BMS, timeoutMs: 5000, transport: true},
   {code: 'BMV', name: '单体动力蓄电池电压', pgn: 0x1500, stage: '充电', length: null, periodMs: 10000, source: BMS, unsupported: true},
   {code: 'BMT', name: '动力蓄电池温度', pgn: 0x1600, stage: '充电', length: null, periodMs: 10000, source: BMS, unsupported: true},
   {code: 'BSP', name: '动力蓄电池预留报文', pgn: 0x1700, stage: '充电', length: null, periodMs: 10000, source: BMS, unsupported: true},
@@ -46,10 +46,10 @@ export const GBT27930_COVERAGE = {
     'https://canfd.net/gbt27930.html',
     'https://github.com/MisakaMikoto128/GBT27930-Sim/blob/main/charger/protocol_tables.py',
   ],
-  decodedSingleFrame: ['CHM', 'BHM', 'CRM', 'CML', 'BRO', 'CRO', 'BCL', 'CCS', 'BSD', 'CSD'],
-  decodedAfterTransport: ['BCP', 'BCS'],
-  identifiedWithoutFieldDecode: ['CTS', 'BRM', 'BSM', 'BST', 'CST', 'BEM', 'CEM'],
-  unsupported: ['BMV', 'BMT', 'BSP', '位域明细', 'GB/T 27930-2011', 'GB/T 27930-2023'],
+  decodedSingleFrame: ['CHM', 'BHM', 'CRM', 'CTS', 'CML', 'BRO', 'CRO', 'BCL', 'CCS', 'BSM', 'BST', 'CST', 'BSD', 'CSD', 'BEM', 'CEM'],
+  decodedAfterTransport: ['BCP', 'BCS', 'BRM'],
+  identifiedWithoutFieldDecode: [],
+  unsupported: ['BMV', 'BMT', 'BSP', 'GB/T 27930-2011', 'GB/T 27930-2023'],
 };
 
 function u16(data, offset) {
@@ -65,11 +65,19 @@ function scaled(data, offset, length, scale, bias) {
   return Number(value.toFixed(places));
 }
 
+function acceptedLengths(message) {
+  if (message.lengths) return [...message.lengths].sort((left, right) => left - right);
+  if (message.length == null) return null;
+  return [message.length];
+}
+
 function usablePayload(message, data) {
-  if (message.length == null) return {bytes: data, padding: 0};
-  if (data.length === message.length) return {bytes: data, padding: 0};
-  if (data.length > message.length && data.slice(message.length).every(byte => byte === 0xff)) {
-    return {bytes: data.slice(0, message.length), padding: data.length - message.length};
+  const lengths = acceptedLengths(message);
+  if (lengths == null) return {bytes: data, padding: 0, lengthNote: null};
+  if (lengths.includes(data.length)) return {bytes: data, padding: 0, lengthNote: null};
+  const chosen = lengths.filter(length => length < data.length).at(-1);
+  if (chosen != null && data.slice(chosen).every(byte => byte === 0xff)) {
+    return {bytes: data.slice(0, chosen), padding: data.length - chosen, lengthNote: '不符合长度要求'};
   }
   return null;
 }
@@ -81,8 +89,9 @@ function readyText(value) {
   return '未定义';
 }
 
-function decodePayload(message, data) {
-  if (message.code === 'CHM') return [{name: '协议版本', value: `${data[0]}.${u16(data, 1)}`, raw: [...data]}];
+function decodePayload(message, data, memory) {
+  const detailed = decodeFields(message, data, memory);
+  if (detailed) return detailed;
   if (message.code === 'BHM') return [{name: '最高允许充电总电压', value: scaled(data, 0, 2, 0.1, 0), unit: 'V'}];
   if (message.code === 'CRM') return [
     {name: '辨识结果', value: data[0] === 0xaa ? '成功' : data[0] === 0x00 ? '未成功' : '未定义', raw: data[0]},
@@ -100,12 +109,6 @@ function decodePayload(message, data) {
     {name: '电流需求', value: scaled(data, 2, 2, 0.1, -400), unit: 'A'},
     {name: '充电模式', value: data[4] === 0x01 ? '恒压' : data[4] === 0x02 ? '恒流' : '未定义', raw: data[4]},
   ];
-  if (message.code === 'CCS') return [
-    {name: '电压输出值', value: scaled(data, 0, 2, 0.1, 0), unit: 'V'},
-    {name: '电流输出值', value: scaled(data, 2, 2, 0.1, -400), unit: 'A'},
-    {name: '累计充电时间', value: u16(data, 4), unit: 'min'},
-    {name: '充电允许', value: (data[6] & 3) === 1 ? '允许' : (data[6] & 3) === 0 ? '暂停' : '未定义', raw: data[6] & 3},
-  ];
   if (message.code === 'BSD') return [
     {name: '中止荷电状态', value: data[0], unit: '%'},
     {name: '单体最低电压', value: scaled(data, 1, 2, 0.01, 0), unit: 'V'},
@@ -116,7 +119,7 @@ function decodePayload(message, data) {
   if (message.code === 'CSD') return [
     {name: '累计充电时间', value: u16(data, 0), unit: 'min'},
     {name: '输出能量', value: scaled(data, 2, 2, 0.1, 0), unit: 'kW·h'},
-    {name: '充电机编号', value: scaled(data, 4, 4, 1, 0)},
+    {name: '充电机编号', value: scaled(data, 4, 4, 1, 1)},
   ];
   if (message.code === 'BCP') return [
     {name: '单体最高允许充电电压', value: scaled(data, 0, 2, 0.01, 0), unit: 'V'},
@@ -151,14 +154,21 @@ function traceOf(frame) {
   };
 }
 
-function eventFrom(message, frame, data, transport) {
-  const usable = usablePayload(message, data);
-  const matched = usable != null;
-  const status = !matched
-    ? (message.unsupported || message.identifyOnly ? 'incomplete' : 'incomplete')
-    : (message.unsupported || message.identifyOnly ? 'identified' : 'decoded');
+function isMainSa(sa) {
+  return sa === 0x56 || sa === 0xf4;
+}
+
+function eventFrom(message, frame, data, transport, memory) {
+  const sa = frame.header?.sa ?? null;
+  const foreign = sa != null && !isMainSa(sa);
+  const usable = foreign ? null : usablePayload(message, data);
+  const status = foreign
+    ? 'noted'
+    : message.unsupported
+      ? (usable ? 'identified' : 'incomplete')
+      : (usable ? 'decoded' : 'incomplete');
   const bytes = usable ? usable.bytes : data;
-  const fields = status === 'decoded' ? decodePayload(message, bytes) : [];
+  const fields = status === 'decoded' ? decodePayload(message, bytes, memory) : [];
   for (const field of fields) {
     if (field.unit === 'A' && typeof field.value === 'number' && field.value < 0) field.note = '负值表示充电方向';
   }
@@ -167,18 +177,38 @@ function eventFrom(message, frame, data, transport) {
     sourceIndex: frame.sourceIndex,
     sourceLine: frame.sourceLine ?? null,
     id: frame.id,
-    sa: frame.header?.sa ?? null,
+    sa,
     code: message.code,
     name: message.name,
     stage: message.stage,
     pgn: message.pgn,
     status,
+    foreign,
     transport: transport || null,
     fields,
     padding: usable?.padding || 0,
+    lengthNote: usable?.lengthNote || null,
     raw: [...bytes],
     trace: frame.trace || [traceOf(frame)],
   };
+}
+
+function annotate(anomalies, event, frame, message) {
+  if (event.foreign) {
+    anomalies.push({time: event.time, sourceIndex: event.sourceIndex, code: event.code, message: `${event.code} 源地址 ${event.sa.toString(16)} 不是 56 或 f4，单独列出，不按 2015 字段布局下结论，不参与主会话`});
+    return;
+  }
+  if (event.sa != null && message && event.sa !== message.source) {
+    anomalies.push({time: event.time, sourceIndex: event.sourceIndex, code: event.code, message: `${event.code} 源地址 ${event.sa.toString(16)} 与资料所述 ${message.source.toString(16)} 不一致`});
+  }
+  const priority = frame.header?.priority;
+  if (!event.transport && priority != null && message?.priority != null && priority !== message.priority) {
+    const follow = event.status === 'decoded' ? '仍按字段解码' : '不作为解码成功';
+    anomalies.push({time: event.time, sourceIndex: event.sourceIndex, code: event.code, message: `${event.code} 优先级 ${priority} 与报文格式所述 ${message.priority} 不一致，${follow}`});
+  }
+  if (event.lengthNote) {
+    anomalies.push({time: event.time, sourceIndex: event.sourceIndex, code: event.code, message: `${event.code} 多出 ${event.padding} 字节且均为 FF，已按 ${event.raw.length} 字节解，不符合长度要求`});
+  }
 }
 
 function reassembleBam(sorted) {
@@ -206,8 +236,13 @@ export function analyze27930(frames) {
   const sorted = [...indexed].sort((left, right) => left.time - right.time || left.sourceIndex - right.sourceIndex);
   const {produced, anomalies} = reassembleBam(sorted);
   const events = [];
+  const memory = new Map();
   let unknown = 0;
   let ignored = 0;
+  const remember = (message, frame) => {
+    const sa = frame.header?.sa ?? frame.sa ?? null;
+    if (message?.code === 'CHM' && isMainSa(sa)) memory.clear();
+  };
   for (const frame of produced) {
     if (frame.kind === 'control') continue;
     if (frame.extended === false) {
@@ -221,7 +256,10 @@ export function analyze27930(frames) {
       continue;
     }
     if (frame.kind === 'reassembled') {
-      events.push(eventFrom(frame.message, frame, frame.data, frame.transport || null));
+      remember(frame.message, frame);
+      const event = eventFrom(frame.message, frame, frame.data, frame.transport || null, memory);
+      events.push(event);
+      annotate(anomalies, event, frame, frame.message);
       continue;
     }
     const message = BY_PGN.get(frame.header.pgn);
@@ -230,21 +268,20 @@ export function analyze27930(frames) {
       events.push({time: frame.time, sourceIndex: frame.sourceIndex, sourceLine: frame.sourceLine ?? null, id: frame.id, code: null, name: '未知报文', stage: null, pgn: frame.header.pgn, status: 'unknown', fields: [], raw: [...frame.data], trace: [traceOf(frame)]});
       continue;
     }
-    const event = eventFrom(message, frame, frame.data, null);
+    remember(message, frame);
+    const event = eventFrom(message, frame, frame.data, null, memory);
     events.push(event);
-    if (event.sa != null && event.sa !== 0x56 && event.sa !== 0xf4) {
-      event.foreign = true;
-      anomalies.push({time: event.time, sourceIndex: event.sourceIndex, code: event.code, message: `${event.code} 源地址 ${event.sa.toString(16)} 不是 56 或 f4，单独列出，不参与主会话`});
-    } else if (event.sa != null && event.sa !== message.source) {
-      anomalies.push({time: event.time, sourceIndex: event.sourceIndex, code: event.code, message: `${event.code} 源地址 ${event.sa.toString(16)} 与资料所述 ${message.source.toString(16)} 不一致`});
-    }
-    if (event.padding) anomalies.push({time: event.time, sourceIndex: event.sourceIndex, code: event.code, message: `${event.code} 多出 ${event.padding} 字节且均为 FF，已按声明长度 ${message.length} 处理`});
+    annotate(anomalies, event, frame, message);
   }
   if (disordered) anomalies.unshift({time: indexed[0]?.time ?? 0, sourceIndex: 0, code: 'TIME', message: '输入时间戳存在回退；结果按时间排序，并保留原始序号'});
   if (unknown) anomalies.push({time: null, sourceIndex: null, code: 'UNKNOWN', message: `${unknown} 条扩展帧不在本次 2015 报文表内，未按故障判断`});
   if (ignored) anomalies.push({time: null, sourceIndex: null, code: 'STANDARD', message: `${ignored} 条非扩展帧不在本次 2015 范围内，未按故障判断`});
   for (const event of events) {
-    if (event.status === 'incomplete' && !event.transport) anomalies.push({time: event.time, sourceIndex: event.sourceIndex, code: event.code, message: `${event.code} 数据长度 ${event.raw.length}，与资料所述 ${BY_PGN.get(event.pgn).length} 字节不一致，未按解码成功处理`});
+    if (event.status !== 'incomplete' || event.transport || event.foreign) continue;
+    const message = BY_PGN.get(event.pgn);
+    const lengths = message ? acceptedLengths(message) : null;
+    const expected = lengths ? lengths.join(' 或 ') : '不定';
+    anomalies.push({time: event.time, sourceIndex: event.sourceIndex, code: event.code, message: `${event.code} 数据长度 ${event.raw.length}，与资料所述 ${expected} 字节不一致，未按解码成功处理`});
   }
   const identified = new Map();
   for (const event of events) {
@@ -254,6 +291,7 @@ export function analyze27930(frames) {
     anomalies.push({time: null, sourceIndex: null, code, message: `${code} 已识别 ${count} 帧，字段解码未纳入本次范围`});
   }
   anomalies.push(...gapAnomalies(events, 'BCL', 1000), ...gapAnomalies(events, 'CCS', 1000));
+  appendAnalysisHints(events, anomalies);
   const {sessions, foreign} = buildSessions(events);
   const stages = sessions.flatMap(session => session.stages.map(stage => stage.stage));
   const known = events.filter(event => !event.foreign && (event.status === 'decoded' || event.status === 'identified'));

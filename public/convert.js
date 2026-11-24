@@ -23,11 +23,15 @@ function busy(active){
 async function renderSources(){
   const stamp=sources;$('fileList').replaceChildren();
   if(!sources.length)return;
+  const rows=[];
   for(const source of sources){
     const row=document.createElement('div');row.className='file-item';
     const name=document.createElement('strong'),meta=document.createElement('span');name.textContent=source.file.name;meta.textContent=size(source.file.size)+' · 识别中…';row.append(name,meta);$('fileList').appendChild(row);
-    try{const format=await detectInputFormat(source.file);if(sources===stamp)meta.textContent=size(source.file.size)+' · '+format.toUpperCase();}
-    catch(error){if(sources===stamp)meta.textContent=size(source.file.size)+' · '+error.message;}
+    rows.push({source,meta});
+  }
+  for(const item of rows){
+    try{const format=await detectInputFormat(item.source.file);if(sources===stamp)item.meta.textContent=size(item.source.file.size)+' · '+format.toUpperCase();}
+    catch(error){if(sources===stamp)item.meta.textContent=size(item.source.file.size)+' · '+error.message;}
   }
 }
 function select(items){

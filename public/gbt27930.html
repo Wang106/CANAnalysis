@@ -41,7 +41,7 @@
       <h1>27930解析 <span>2015 离线</span></h1>
       <p id="coverage">GB/T 27930—2015 离线分析读取本地经典 ASC 或 ZLG CANTest 文本。多包使用日志里已经出现的 BAM 或 RTS/CTS/EOM 重组，本页不发送。这不是实物验收，也不是协议一致性认证。合成样例不等于真实设备兼容。</p>
     </section>
-    <p class="limit" id="limits">未纳入字段解码：BRM、时间同步 CTS、BSM、BST、CST、BEM、CEM 的位域仍只识别。RTS/CTS 只重组日志中的数据帧。BMV、BMT、BSP 不作为解码成功。GB/T 27930-2011 和 GB/T 27930-2023 不在本次范围。未知报文不会被当成故障。</p>
+    <p class="limit" id="limits">位域按 GB/T 27930—2015 报文格式解码。RTS/CTS 只重组日志中的数据帧。BMV、BMT、BSP 不作为解码成功。超出规定长度且用 FF 补齐时标明不符合长度要求。电流、超时和 BSM 异常只作提示，不是故障结论。GB/T 27930-2011 和 GB/T 27930-2023 不在本次范围。未知报文不会被当成故障。</p>
     <section class="panel">
       <label for="logFile">选择经典 ASC 日志</label>
       <input id="logFile" type="file" accept=".asc,.txt,text/plain">

@@ -25,12 +25,14 @@ test('synthetic 2015 session decodes cross-checked messages and keeps raw frames
   assert.equal(result.edition, 'GB/T 27930-2015');
   assert.equal(result.coverage.certification, false);
   const byCode = new Map(result.events.filter(event => event.status === 'decoded').map(event => [event.code, event]));
-  assert.equal(field(byCode.get('CHM'), '协议版本').value, '1.1');
+  assert.match(field(byCode.get('CHM'), '协议版本').value, /01 01 00/);
+  assert.match(field(byCode.get('CHM'), '协议版本').value, /V1\.1/);
   assert.equal(byCode.get('CHM').trace[0].sourceLine, 4);
   assert.equal(byCode.get('CHM').trace[0].id, 0x1826F456);
   assert.deepEqual(byCode.get('CHM').trace[0].raw, [0x01, 0x01, 0x00]);
   assert.equal(field(byCode.get('BHM'), '最高允许充电总电压').value, 500);
   assert.equal(field(byCode.get('CRM'), '辨识结果').value, '成功');
+  assert.equal(field(byCode.get('CRM'), '充电机编号').value, 1);
   assert.equal(field(byCode.get('BCP'), '最高允许充电电流').value, 200);
   assert.equal(field(byCode.get('BCP'), '当前电池电压').value, 390);
   assert.equal(byCode.get('BCP').transport, 'BAM');
@@ -41,6 +43,7 @@ test('synthetic 2015 session decodes cross-checked messages and keeps raw frames
   assert.equal(field(byCode.get('CCS'), '充电允许').value, '允许');
   assert.equal(field(byCode.get('BSD'), '最低温度').value, 20);
   assert.equal(field(byCode.get('CSD'), '输出能量').value, 12.5);
+  assert.equal(field(byCode.get('CSD'), '充电机编号').value, 2);
   const unknown = result.events.find(event => event.status === 'unknown');
   assert.equal(unknown.pgn, 0xff56);
   assert.equal(unknown.fields.length, 0);
@@ -85,7 +88,7 @@ test('BCL gap uses the stated one-second boundary and does not invent a five-sec
   assert.equal(late.anomalies.some(item => item.message.includes('5000')), false);
 });
 
-test('current offset and BRM identification stay inside the cited field rules', () => {
+test('current offset and BRM version bytes stay inside the cited field rules', () => {
   const zero = analyze27930([frame(0, 0x181056F4, [0, 0, 0, 0, 0x01])]);
   assert.equal(field(zero.events[0], '电流需求').value, -400);
   assert.equal(field(zero.events[0], '电流需求').note, '负值表示充电方向');
@@ -93,8 +96,9 @@ test('current offset and BRM identification stay inside the cited field rules', 
   for (let sequence = 1; sequence <= 7; sequence++) brm.push(frame(sequence / 100, id(7, 0xeb, 0x56, 0xf4), [sequence, 0, 0, 0, 0, 0, 0, 0]));
   const identified = analyze27930(brm);
   const event = identified.events.find(item => item.code === 'BRM');
-  assert.equal(event.status, 'identified');
-  assert.deepEqual(event.fields, []);
+  assert.equal(event.status, 'decoded');
+  assert.match(field(event, '协议版本').value, /00 00 00/);
+  assert.match(field(event, '协议版本').value, /版本号字节分配未确定/);
   assert.equal(event.trace.length, 8);
 });
 
@@ -112,17 +116,18 @@ test('BCS packed cell voltage is decoded only after a complete BAM', () => {
   assert.equal(field(event, '预估剩余充电时间').value, 20);
 });
 
-test('catalogued stop and error messages are identified without field values', () => {
+test('a complete BST is decoded and a short BST is not a success', () => {
   const result = analyze27930([
     frame(0, id(4, 0x19, 0x56, 0xf4), [1, 2, 3, 4]),
     frame(0.1, id(4, 0x19, 0x56, 0xf4), [1, 2]),
   ]);
   assert.equal(result.events[0].code, 'BST');
-  assert.equal(result.events[0].status, 'identified');
-  assert.deepEqual(result.events[0].fields, []);
+  assert.equal(result.events[0].status, 'decoded');
+  assert.equal(field(result.events[0], '达到SOC目标').value, '成立');
   assert.equal(result.events[1].status, 'incomplete');
   assert.equal(result.events.some(event => event.status === 'unknown'), false);
-  assert.ok(result.anomalies.some(item => item.code === 'BST' && item.message.includes('字段解码未纳入')));
+  assert.ok(result.anomalies.some(item => item.code === 'BST' && item.message.includes('未按解码成功')));
+  assert.equal(result.anomalies.some(item => item.message.includes('字段解码未纳入')), false);
 });
 
 test('a 2015 BAM does not decode data sent elsewhere or data after Abort', () => {
@@ -174,8 +179,12 @@ test('synthetic RTS sessions, FF padding, foreign nodes and session splits stay 
   assert.equal(bcs.transport, 'RTS');
   assert.equal(result.anomalies.filter(item => item.code === 'TP-OBSERVE').length, 0);
   const cem = result.events.find(event => event.code === 'CEM' && event.sa === 0x56);
-  assert.equal(cem.status, 'identified');
+  assert.equal(cem.status, 'decoded');
   assert.equal(cem.padding, 4);
+  assert.equal(cem.lengthNote, '不符合长度要求');
+  assert.equal(field(cem, '接收BRM超时').value, '未发生');
+  const cst = result.events.find(event => event.code === 'CST');
+  assert.equal(field(cst, '人工中止').value, '成立');
   assert.equal(result.foreign.length, 1);
   assert.equal(result.foreign[0].sa, 0xe5);
   assert.equal(result.sessions[0].residue[0].code, 'CSD');
