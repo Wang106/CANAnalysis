@@ -156,6 +156,9 @@ test('synthetic RTS sessions, FF padding, foreign nodes and session splits stay 
   const result = analyze27930([
     frame(0, id(6, 0x1d, 0xf4, 0x56), [1, 0, 0, 0, 0, 0, 0, 0]),
     frame(0.2, id(6, 0x26, 0xf4, 0x56), [1, 1, 0]),
+    cm(0.4, 0x10, 13, 2, 0x00, 0x06),
+    dt(0.41, 1, [0xa4, 0x01, 0x70, 0x17, 0xf4, 0x01, 0x88], 8),
+    dt(0.42, 2, [0x13, 0x5f, 0x20, 0x03, 0x3c, 0x0f], 7),
     cm(1, 0x10, 9, 2, 0x00, 0x11),
     frame(1.01, id(7, 0xec, 0xf4, 0x56), [0x11, 2, 1, 0xff, 0xff, 0x00, 0x11, 0]),
     dt(1.02, 1, [0xa0, 0x0f, 0x88, 0x13, 0x9f, 0x21, 0x37], 8),
@@ -176,7 +179,8 @@ test('synthetic RTS sessions, FF padding, foreign nodes and session splits stay 
   assert.equal(result.foreign.length, 1);
   assert.equal(result.foreign[0].sa, 0xe5);
   assert.equal(result.sessions[0].residue[0].code, 'CSD');
-  assert.equal(result.sessions[0].stages.map(stage => stage.stage).join(','), '握手,充电');
+  assert.equal(result.events.find(event => event.code === 'BCP').transport, 'RTS');
+  assert.equal(result.sessions[0].stages.map(stage => stage.stage).join(','), '握手,参数配置,充电');
   assert.equal(result.sessions[0].stops[0].code, 'CEM');
   assert.equal(result.sessions[1].stops[0].code, 'CST');
   assert.equal(result.sessions[1].stages.some(stage => stage.stage === '充电'), false);
