@@ -13,39 +13,60 @@
 - **自动分析**：汇总报文总数/时间范围/报文率/未知ID，并检测信号超量程、恒定/卡死、报文丢帧等问题
 - **固定导航**：页面向下滚动时栏目导航保持在屏幕顶部；CAN 解析页生成曲线后自动缩回，释放曲线空间
 - **中英双语**：导航栏右侧可在中文与 English 之间切换，选择会跨页面保留，静态内容与运行时状态同步切换
-- **在线连接**：`/online` 通过只监听本机的连接服务接入 PCAN、周立功 USBCAN 与 Vector 设备，首版固定为只接收模式
+- **在线连接（未验证预览）**：`/online` 通过只监听本机的连接服务接入 PCAN、周立功 USBCAN 与 Vector 设备，固定为只接收。首页卡片保持灰色不可点击，导航保留预览入口；实物验收完成前不是正式功能
 
 ## 在线访问
 
-已部署至 Cloudflare，访问根 URL 即可使用：
+生产站点由维护者在 Cloudflare 上发布。仓库里的 GitHub Actions 只做验证，不会部署生产。
 
-```
-https://can-analysis.<your-subdomain>.workers.dev
-```
+## 本地安装与验证
 
-## 本地使用方法
-
-1. 克隆或下载本仓库
-2. 在仓库根目录运行 `npx wrangler dev`
-3. 用浏览器（推荐 Chrome）打开终端显示的本地地址；进入 `/offline` 使用离线解析
-4. 依次加载 DBC 与 ASC 文件，在左侧勾选需要分析的信号
-5. 点击「生成曲线」，需要异常汇总时再点击「报文分析」
-
-## 部署到 Cloudflare
-
-本项目使用 [Cloudflare Workers Static Assets](https://developers.cloudflare.com/workers/static-assets/) 部署，仓库根目录的 `wrangler.jsonc` 已配置好静态资源目录。
+需要 Node.js 22 或更新版本、Python 3.12 和 Git。
 
 ```bash
-# 安装 wrangler
-npm install -D wrangler
-
-# 部署
-npx wrangler deploy
+npm ci
+python3 -m venv .venv
+.venv/bin/pip install -r requirements-dev.txt
+npx playwright install chromium
+npm test
 ```
 
-在 Cloudflare Dashboard 中连接此 GitHub 仓库后，Build 配置如下：
-- **Build command**: 留空（纯静态项目无需构建）
-- **Deploy command**: `npx wrangler deploy`
+`npm test` 与 `npm run verify` 是同一个入口，按依赖分成三层：
+
+- `npm run verify:core`：Node 转换器、页面契约、社区安全、版本清单和安全响应头。只需要 `npm ci`。
+- `npm run verify:python`：本机桥接单元测试，以及用 python-can / asammdf 交叉读取转换结果。需要上面的 Python 虚拟环境。
+- `npm run verify:browser`：Playwright 打开首页、离线解析、格式转换、在线连接和关于页。需要已安装的 Chromium。
+
+静态预览带有与 `public/_headers` 相同的响应头，不连接 Cloudflare 账号：
+
+```bash
+npm run version:generate
+npm run preview:static
+```
+
+然后用浏览器打开终端里的地址。离线解析在 `/offline`，格式转换在 `/convert`，在线预览在 `/online`。加载 DBC 与 ASC 后勾选信号，再点击「生成曲线」。
+
+需要同时看 Worker 路由时，在本机执行 `npx wrangler dev --local`。该命令会先根据当前 Git 提交重新生成 `public/version.json`。
+
+## 版本
+
+从 1.2.0 起使用语义化版本。页面展示提交号的前八位和 Git 提交日期。日期来自提交者时间；`generatedAt` 只记录清单生成时刻，页面不把它当成发布时间。清单里的 `commit` 与 `committedAt` 都有效时，页面直接使用清单。只有清单不完整时才询问 GitHub API。两处都没有有效时间时，发布日期留空，不显示 `2000-01-01`。
+
+`wrangler dev` 和 `wrangler deploy` 会在上传前运行 `node scripts/generate-version.mjs`。仓库里提交的 `public/version.json` 是最近一次生成的快照，部署时会被当前检出的提交覆盖。
+
+发布步骤、验证命令和生产门禁见 [`docs/release.md`](docs/release.md)。变更记录见 [`CHANGELOG.md`](CHANGELOG.md)。
+
+## 部署
+
+静态资源目录由 `wrangler.jsonc` 配置，使用 [Cloudflare Workers Static Assets](https://developers.cloudflare.com/workers/static-assets/)。
+
+维护者需要在 Cloudflare 控制台手工完成这些设置，仓库里的工作流不能代替它们：
+
+- 构建命令使用 `npm ci && node scripts/generate-version.mjs`。
+- 部署命令可以继续使用 `npx wrangler deploy`，并且只在 GitHub Actions 的 `verify` 成功后运行。
+- 保持 `COMMUNITY_ENABLED=false`。
+
+不要把生产 Secret 放进 GitHub Actions。当前工作流不读取 Secret。
 
 ## 鼠标/键盘操作
 
@@ -61,9 +82,12 @@ npx wrangler deploy
 
 ## 技术栈
 
-- 纯 HTML + JavaScript，无后端依赖
-- [ECharts 5.5](https://echarts.apache.org/) 用于波形绘制
-- 支持大文件（百万级报文）解析，采用约 8 ms 自适应时间片保持界面响应，并使用 TypedArray 紧凑存储与 LTTB 降采样渲染
+- 离线解析和格式转换在浏览器本地完成。打开页面不会上传 DBC、ASC 或其他日志。
+- Cloudflare Worker 提供 `/api/*`。社区、账号、评论和管理接口已经写在仓库里，`COMMUNITY_ENABLED=false` 时这些接口返回 503。
+- D1、R2、Queue 和 Cron 属于尚未启用的社区后端。
+- 在线连接页面通过本机 `ws://127.0.0.1:8765` 访问 Windows 桥接服务，目前是未验证预览。
+- [ECharts 5.5](https://echarts.apache.org/) 用于波形绘制。
+- 支持大文件（百万级报文）解析，采用约 8 ms 自适应时间片保持界面响应，并使用 TypedArray 紧凑存储与 LTTB 降采样渲染。
 
 ## 数据兼容性说明
 
@@ -74,15 +98,7 @@ npx wrangler deploy
 
 ## 回归测试
 
-从仓库根目录启动静态服务器：
-
-```bash
-python3 -m http.server 8000
-```
-
-访问 `http://127.0.0.1:8000/tests/regression.html`，页面应显示全部测试通过。
-
-版本变更与回滚基线见 [`CHANGELOG.md`](CHANGELOG.md)。部署时由 `public/version.json` 保存页面代码提交号，避免 GitHub 公共 API 限流导致版本信息空白。
+完整验证使用 `npm test`。它会运行 Node 套件、Python 套件，以及 Playwright 打开的 `tests/regression.html`。只想在浏览器里看离线解析页的旧测试页时，可以从仓库根目录执行 `python3 -m http.server 8000`，再访问 `http://127.0.0.1:8000/tests/regression.html`。这个临时服务器不会附带生产响应头；检查响应头时用 `npm run preview:static`。
 
 ## CAN 日志格式转换
 
@@ -100,7 +116,7 @@ python3 -m http.server 8000
 - 文本分片读取，输出分块组装；单压缩块限制 64 MB、单输出累积器限制 1 GB。手机可用内存更少，大于 200 MB 建议在电脑上转换。
 - CSV 模式额外加载 DBC，可搜索并勾选信号，支持 100–1000 ms（每 100 ms 一档）采样间隔。列依次为序号、时间（秒）和所选信号；每个时间点使用此前最近的有效报文值，信号尚未出现时留空。支持 Intel/Motorola、带符号、factor/offset、基础复用及 DBC Float32/Float64。
 
-新增测试（先加入独立样本及失败用例，再实现引擎）：
+下面这些转换和页面测试由 `npm test` 按层调用。`tests/browser-convert.cjs` 在 browser 层里，会检查七种格式下载、英文界面和关于页里仍关闭的社区表单。需要单独复现某一项时可以直接运行：
 
 ```bash
 node tests/convert.test.mjs
@@ -124,18 +140,17 @@ node tests/browser-convert.cjs
 ## 页面与路由
 
 - `/`：首页，展示全部页面入口；未实现栏目以灰色卡片标记为“开发中”。
-- `/online`：在线连接 PCAN、周立功 USBCAN 和 Vector 设备。
+- `/online`：在线连接的未验证预览。首页卡片不可点击，导航保留入口。PCAN、周立功 USBCAN 和 Vector 仍等待实物验收。
 - `/offline`：DBC 与 ASC 离线报文解析、曲线和统计。
 - `/convert`：CAN 日志格式转换与 DBC 信号 CSV。
+- `/gbt27930`：GB/T 27930—2015 离线分析。读取本地经典 ASC 或 ZLG CANTest 文本，解码已核对的报文格式，并用日志中的 BAM 或 RTS/CTS/EOM 重组多包。首页状态是“2015离线”，不是已完成实物验收。
+- `/j1939`：SAE J1939-21 基础离线分析。只读取本地经典 ASC，归一 PDU1/PDU2 的 PGN，并重组 BAM 和日志中已有的 RTS 数据。没有 J1939DA。首页状态是“基础离线”。
 - `/aboutus`：本站介绍、数据隐私说明与支持方式。
-- 27930 报文分析、J1939 分析和友情链接为规划栏目，首页显示但暂不可进入。
+- 友情链接仍是规划栏目，首页显示但暂不可进入。
 
 ## 在线连接 CAN 设备
 
-访问 `/online`（导航中的「在线连接」）可以配置设备型号、设备序号、通道、
-Classical CAN/CAN FD、仲裁波特率与数据波特率。网页本身不直接加载厂商 DLL，
-而是连接当前 Windows 电脑上的 `bridge/cananalysis_bridge.py`；CAN 数据只经过
-本机回环地址，不上传到 Cloudflare。
+在线连接目前是未验证预览。首页对应卡片是灰色且不可点击，导航里仍保留 `/online`，方便在没有实物时检查页面。网页不加载厂商 DLL，而是连接当前 Windows 电脑上的 `bridge/cananalysis_bridge.py`。CAN 数据只经过本机回环地址，不上传到 Cloudflare。页面可以配置设备型号、设备序号、通道、Classical CAN/CAN FD、仲裁波特率与数据波特率。页面协议固定带上 `listenOnly: true`。PCAN 与 Vector 会把该要求交给 python-can 已有的只听参数；周立功 USBCANFD 使用 zlgcan 的 `ListenOnly`。USBCAN-I/II 的现有后端没有已确认的只听参数，服务会拒绝打开。单元测试不代替实物验收。
 
 首批设备配置包括：
 

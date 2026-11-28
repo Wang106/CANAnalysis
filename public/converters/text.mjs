@@ -1,4 +1,6 @@
 import {frame,uint,hex,bytesFrom,DLC_LENGTHS,Parts,read} from './utils.mjs';
+import {parseClassicAscDataLine} from '../can/asc-text.mjs';
+import {createZlgClock, isZlgCanTestHeader, parseZlgCanTestRow} from '../can/zlg-text.mjs';
 
 async function* lines(blob,options){
   const bom=await read(blob,0,Math.min(4,blob.size));
@@ -20,7 +22,7 @@ function clock(token){
   return +m[1]*3600 + +m[2]*60 + +m[3] + Number('0.'+m[4]);
 }
 export async function* readText(blob,format,options={}){
-  let base=16,relative=false,lastTime=0,trcVersion='1.0',columns=null,txtColumns=null;
+  let base=16,relative=false,lastTime=0,trcVersion='1.0',columns=null,txtColumns=null,zlgClock=null;
   let dayOffset=0,previousClock=0;
   for await(const {line,number} of lines(blob,options)){
     if(!line)continue;
@@ -37,6 +39,14 @@ export async function* readText(blob,format,options={}){
           const idText=tokens[4],extended=/x$/i.test(idText),dlc=uint(tokens[k+2],base),length=uint(tokens[k+3]);
           yield frame({time:t,channel:uint(tokens[2]),rx:tokens[3]==='Rx',id:uint(idText.replace(/x$/i,''),base),extended,fd:true,brs:tokens[k]==='1',esi:tokens[k+1]==='1',dlc,data:bytesFrom(tokens.slice(k+4),length)});
         }else{
+          if(!relative&&base===16){
+            const parsed=parseClassicAscDataLine(line);
+            const dataTokens=tokens.slice(6);
+            if(parsed?.kind==='data'&&dataTokens.slice(0,parsed.dlc).every(token=>/^[0-9a-f]{2}$/i.test(token))){
+              yield frame({time:parsed.time,channel:uint(parsed.channel),id:parsed.id,extended:parsed.extended,rx:parsed.rx,remote:false,dlc:parsed.dlc,data:Uint8Array.from(parsed.bytes)});
+              continue;
+            }
+          }
           if(!['Rx','Tx'].includes(tokens[3])||!['d','r'].includes(tokens[4]))throw Error('不支持的 ASC CAN 行格式');
           const idText=tokens[2],extended=/x$/i.test(idText),remote=tokens[4]==='r',dlc=uint(tokens[5]||'0');
           const data=base===16?bytesFrom(tokens.slice(6),remote?0:dlc):Uint8Array.from(tokens.slice(6,6+dlc),t=>{const n=uint(t);if(n>255)throw Error('数据字节超范围');return n;});
@@ -72,6 +82,14 @@ export async function* readText(blob,format,options={}){
         yield frame({time,id:uint(idText,16),extended:idText.length>4,channel,rx,remote,fd,brs,esi,dlc,data});
       }else if(format==='txt'){
         if(line.startsWith('#'))continue;
+        if(isZlgCanTestHeader(line)){zlgClock=createZlgClock(options.txtTimeUnit?Number(options.txtTimeUnit):undefined);continue;}
+        if(zlgClock){
+          const row=parseZlgCanTestRow(line,zlgClock);
+          if(!row)continue;
+          if(row.error)throw Error(row.error);
+          yield frame({time:row.time,id:row.id,extended:row.extended,channel:1,rx:row.direction==='接收',remote:row.remote,dlc:row.dlc,data:Uint8Array.from(row.data)});
+          continue;
+        }
         // CANTest/ZCAN tabular exports; column names are used rather than fixed positions.
         if(/帧ID|\bID\b/i.test(line)&&/数据|Data/i.test(line)&&/时间|Time/i.test(line)){
           txtColumns=line.split(/\t+|\s*,\s*|\s+/);continue;

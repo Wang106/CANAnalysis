@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 
 const home=fs.readFileSync('public/index.html','utf8');
 const offline=fs.readFileSync('public/offline.html','utf8');
-const pages=['index.html','offline.html','online.html','convert.html','aboutus.html'];
+const pages=['index.html','offline.html','online.html','convert.html','aboutus.html','gbt27930.html','j1939.html'];
 
 assert.match(home,/<title>首页 · CANAnalysis<\/title>/);
 assert.match(home,/class="[^\"]*page-grid/);
@@ -42,10 +42,12 @@ for(const card of home.match(/<(?:a|article) class="page-card[\s\S]*?<\/(?:a|art
   assert.doesNotMatch(card,/<p>/,'home cards must not contain descriptive small copy');
 }
 
-for(const [route,title] of [['/offline','离线分析'],['/convert','格式转换'],['/aboutus','关于本站']]){
+for(const [route,title] of [['/offline','离线分析'],['/convert','格式转换'],['/aboutus','关于本站'],['/gbt27930','27930解析'],['/j1939','J1939分析']]){
   assert.match(home,new RegExp(`<a[^>]+href="${route}"[^>]*[\\s\\S]*?${title}`),`${title} must be an enabled home card`);
 }
-for(const title of ['在线连接','27930解析','J1939分析','友情链接']){
+assert.match(home,/<a class="page-card" href="\/gbt27930">\s*<span class="card-state">2015离线<\/span>\s*<h2>27930解析<\/h2>/,'27930 home entry must say 2015 offline rather than generally available');
+assert.match(home,/<a class="page-card" href="\/j1939">\s*<span class="card-state">基础离线<\/span>\s*<h2>J1939分析<\/h2>/,'J1939 home entry must say basic offline rather than generally available');
+for(const title of ['在线连接','友情链接']){
   const pattern=new RegExp(`<article[^>]+(?:pending|disabled)[^>]*[\\s\\S]*?${title}`);
   assert.match(home,pattern,`${title} must be a disabled gray home card`);
 }
@@ -56,14 +58,20 @@ assert.doesNotMatch(home,/id="btnDbc"|id="btnAsc"/,'home must not contain the of
 assert.match(home,/<footer>[\s\S]*?id="hcommit"[\s\S]*?id="hmodtime"[\s\S]*?<\/footer>/,'home footer must contain the commit and publication time');
 assert.match(home,/site-version\.js/,'home must load the version display logic');
 const versionJs=fs.readFileSync('public/site-version.js','utf8');
-assert.match(versionJs,/commitEl\.textContent=normalized\.slice\(-8\)/,'home must display the last eight characters of the current GitHub commit SHA');
-assert.match(versionJs,/fetch\('https:\/\/api\.github\.com\/repos\/Wang106\/CANAnalysis\/commits\/main'/,'home must request the current main-branch commit from GitHub');
-assert.match(versionJs,/setReleaseTime\(new Date\(2000,0,1,0,0,0\),'default'\)/,'publication time must start at the requested 2000-01-01 default');
-assert.match(versionJs,/data\.commit&&data\.commit\.committer&&data\.commit\.committer\.date/,'publication time must use the current GitHub commit time');
-assert.match(versionJs,/if\(committedAt\)setReleaseTime\(new Date\(committedAt\),'github'\)/,'publication time must update as soon as the code commit time is available');
-assert.match(versionJs,/releaseEl\.textContent=dateStr\+'发布'/,'publication time must display the commit date without hours, minutes or seconds');
-assert.doesNotMatch(versionJs,/timeStr|getHours|getMinutes|getSeconds/,'publication date must not generate a time-of-day string');
-assert.doesNotMatch(versionJs,/check-runs|latestSuccessfulDeployment|completed_at/,'publication time must no longer depend on deployment completion');
+const versionCore=fs.readFileSync('public/site-version-core.mjs','utf8');
+const versionSource=versionJs+'\n'+versionCore;
+assert.match(versionCore,/slice\(0,\s*8\)/,'home must display the first eight characters of the commit SHA');
+assert.doesNotMatch(versionSource,/slice\(-8\)/,'commit display must not keep the last eight characters');
+assert.doesNotMatch(versionSource,/new Date\(2000,\s*0,\s*1/,'publication time must not start at the 2000-01-01 placeholder');
+assert.match(versionCore,/committedAt/,'a complete manifest must supply the commit timestamp');
+assert.match(versionCore,/committer/,'an incomplete manifest may use the GitHub committer timestamp');
+assert.match(versionJs,/\/version\.json/,'home must read the same-origin version manifest');
+assert.match(versionJs,/api\.github\.com\/repos\/Wang106\/CANAnalysis\/commits\//,'GitHub remains available when the manifest is incomplete');
+assert.doesNotMatch(versionSource,/commits\/main'/,'GitHub main must not replace a deployed manifest');
+assert.match(versionCore,/generatedAt/,'build time stays separate from the commit timestamp');
+assert.match(versionCore,/发布/,'publication time must display the commit date without hours, minutes or seconds');
+assert.doesNotMatch(versionSource,/timeStr|getHours|getMinutes|getSeconds/,'publication date must not generate a time-of-day string');
+assert.doesNotMatch(versionSource,/check-runs|latestSuccessfulDeployment|completed_at/,'publication time must no longer depend on deployment completion');
 assert.doesNotMatch(offline,/id="hcommit"|id="hmodtime"/,'offline header must no longer display version information');
 assert.match(offline,/<div id="sigBar" class="collapsed">/,'offline signal selection must start collapsed');
 assert.match(offline,/signalPanel\.classList\.remove\('collapsed','resized'\);\s*signalPanel\.classList\.add\('expanded'\);/,'a valid DBC load must automatically expand signal selection');

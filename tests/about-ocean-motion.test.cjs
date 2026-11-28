@@ -36,7 +36,8 @@ const server=createServer(async(req,res)=>{
     await page.waitForTimeout(700);
     assert.equal(await page.locator('#paymentOptions').isVisible(),true,'support button must reveal payment QR codes');
     const paymentTop=await page.$eval('#paymentOptions',element=>element.getBoundingClientRect().top);
-    assert.ok(layout.button.bottom<paymentTop+scrollY,'support button must remain above the revealed payment area');
+    const pageScroll=await page.evaluate(()=>scrollY);
+    assert.ok(layout.button.bottom<paymentTop+pageScroll,'support button must remain above the revealed payment area');
     assert.equal(new URL(page.url()).hash,'','support button must reveal payment without adding a URL hash');
     assert.ok(Math.abs(await page.$eval('#support',element=>element.getBoundingClientRect().top))<90,'support button must scroll the payment section into view');
 

@@ -350,8 +350,8 @@
       <a class="nav-item" href="/online">在线连接</a>
       <span class="nav-item active" aria-current="page">离线分析</span>
       <a class="nav-item" href="/convert">格式转换</a>
-      <span class="nav-item pending" aria-disabled="true">27930解析</span>
-      <span class="nav-item pending" aria-disabled="true">J1939分析</span>
+      <a class="nav-item" href="/gbt27930">27930解析</a>
+      <a class="nav-item" href="/j1939">J1939分析</a>
       <span class="nav-item pending" aria-disabled="true">友情链接</span>
       <a class="nav-item" href="/aboutus">关于本站</a>
     </div>
@@ -471,6 +471,7 @@
 
 <script src="/echarts.min.js"></script>
 <script>if(typeof echarts==='undefined'){document.write('<'+'script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"><'+'/script>');}</script>
+<script type="module" src="/can/page-codec.mjs"></script>
 <script>
 "use strict";
 /* ============================================================
@@ -548,28 +549,25 @@ function parseDBC(text, isCancelled, onProgress){
         const line=text.slice(pos,end).replace(/\r$/,'').trim();
         pos=nl<0?total+1:nl+1;
         if(line.startsWith('BO_ ')){
-          const m = line.match(/^BO_\s+(\d+)\s+(\S+)\s*:\s*(\d+)\s*(\S+)/);
-          if(m){
-            const id = parseInt(m[1],10);
-            const isExt = (id & 0x80000000)!==0;
-            const realId = id & 0x1FFFFFFF;
-            cur = { id, realId, isExt, key: realId+'_'+(isExt?'x':'s'),
-                    name:m[2], dlc:parseInt(m[3],10), sender:m[4], signals:[],
+          const parsed=window.__canCodec.parseDbcMessageLine(line);
+          if(parsed){
+            cur = { id:parsed.encoded, realId:parsed.id, isExt:parsed.extended, key:parsed.id+'_'+(parsed.extended?'x':'s'),
+                    name:parsed.name, dlc:parsed.dlc, sender:parsed.sender, signals:[],
                     signalByName:Object.create(null) };
             messages[cur.key]=cur;
           }
         } else if(line.startsWith('SG_ ')){
-          const m = line.match(/^SG_\s+(\w+)\s*(?:(M|m\d+)\s*)?:\s*(\d+)\|(\d+)@(\d)([+-])\s*\(([^,]+),([^)]+)\)\s*\[([^|]+)\|([^\]]+)\]\s*"([^"]*)"\s*(.*)$/);
-          if(m && cur){
+          const parsed=window.__canCodec.parseDbcSignalLine(line);
+          if(parsed && cur){
             const sig = {
-              name:m[1], mux:m[2]||null,
-              isMultiplexer:m[2]==='M',
-              muxValue:m[2]&&/^m\d+/.test(m[2])?parseInt(m[2].slice(1),10):null,
-              startBit:parseInt(m[3],10), length:parseInt(m[4],10),
-              byteOrder:parseInt(m[5],10), isSigned:m[6]==='-',
-              factor:parseFloat(m[7]), offset:parseFloat(m[8]),
-              min:parseFloat(m[9]), max:parseFloat(m[10]),
-              unit:m[11]||'', receivers:(m[12]||'').trim(),
+              name:parsed.name, mux:parsed.mux,
+              isMultiplexer:parsed.isMultiplexer,
+              muxValue:parsed.muxValue,
+              startBit:parsed.startBit, length:parsed.length,
+              byteOrder:parsed.byteOrder, isSigned:parsed.isSigned,
+              factor:parsed.factor, offset:parsed.offset,
+              min:parsed.min, max:parsed.max,
+              unit:parsed.unit, receivers:parsed.receivers,
               messageName:cur.name, messageId:cur.id, messageKey:cur.key,
               valueTable:null
             };
@@ -582,22 +580,14 @@ function parseDBC(text, isCancelled, onProgress){
             if(cur.signalByName[sig.name]===undefined) cur.signalByName[sig.name]=sig;
           }
         } else if(line.startsWith('VAL_ ')){
-          const m = line.match(/^VAL_\s+(\d+)\s+(\w+)\s+(.*);$/);
-          if(m){
-            const id=parseInt(m[1],10);
-            const isExt=(id&0x80000000)!==0;
-            const realId=id&0x1FFFFFFF;
+          const parsed=window.__canCodec.parseDbcValueLine(line);
+          if(parsed){
+            const isExt=(parsed.encoded&0x80000000)!==0;
+            const realId=parsed.encoded&0x1FFFFFFF;
             const key=realId+'_'+(isExt?'x':'s');
             const msg=messages[key];
-            if(msg){
-              const sig=msg.signalByName[m[2]];
-              if(sig){
-                const table={};
-                const re=/(-?\d+)\s+"([^"]*)"/g; let pm;
-                while((pm=re.exec(m[3]))!==null) table[parseInt(pm[1],10)]=pm[2];
-                sig.valueTable=table;
-              }
-            }
+            const sig=msg&&msg.signalByName[parsed.name];
+            if(sig) sig.valueTable=parsed.table;
           }
         }
       }while(pos<=total&&!shouldYield(started));
@@ -638,56 +628,20 @@ function parseDBC(text, isCancelled, onProgress){
  * Motorola: startBit = MSB position, bits go in decreasing order within byte,
  *           wrapping from bit 0 of byte N to bit 7 of byte N+1
  */
+function codecBytes(data, base, dlc){
+  if(data.subarray) return data.subarray(base, base+dlc);
+  const out=new Uint8Array(Math.max(0, dlc));
+  for(let i=0;i<dlc;i++) out[i]=data[base+i]||0;
+  return out;
+}
 function extractRawAt(data, base, dlc, sig){
-  const {startBit, length, byteOrder} = sig;
-  let value=0;
-  if(length<=32){
-    if(byteOrder===1){ // Intel LE (DBC @1)
-      let bp=startBit;
-      for(let i=0;i<length;i++){
-        const bi=bp>>>3;
-        const bit = (bi<dlc) ? ((data[base+bi]>>>(bp&7))&1) : 0;
-        value |= bit<<i;
-        bp++;
-      }
-    } else { // Motorola BE (DBC @0)
-      let bp=startBit;
-      for(let i=0;i<length;i++){
-        const bi=bp>>>3;
-        const bit = (bi<dlc) ? ((data[base+bi]>>>(bp&7))&1) : 0;
-        value |= bit<<(length-1-i);
-        if((bp&7)===0) bp+=15; else bp-=1;
-      }
-    }
-    value = value>>>0;
-  } else {
-    if(byteOrder===1){ // Intel LE
-      let bp=startBit;
-      for(let i=0;i<length;i++){ const bi=bp>>>3; const bit=(bi<dlc)?((data[base+bi]>>>(bp&7))&1):0; value+=bit*Math.pow(2,i); bp++; }
-    } else { // Motorola BE
-      let bp=startBit;
-      for(let i=0;i<length;i++){ const bi=bp>>>3; const bit=(bi<dlc)?((data[base+bi]>>>(bp&7))&1):0; value+=bit*Math.pow(2,length-1-i); if((bp&7)===0)bp+=15;else bp-=1; }
-    }
-  }
-  return value;
+  return window.__canCodec.unsignedRaw(codecBytes(data, base, dlc), sig);
 }
 function toPhysical(raw, sig){
-  if(sig.isSigned){
-    const signVal=Math.pow(2,sig.length-1);
-    if(raw>=signVal) raw-=Math.pow(2,sig.length);
-  }
-  return raw*sig.factor+sig.offset;
+  return window.__canCodec.applyScale(raw, sig);
 }
 function signalFitsDlc(sig, dlc){
-  if(!sig||!Number.isInteger(sig.startBit)||!Number.isInteger(sig.length)||sig.startBit<0||sig.length<=0||!Number.isInteger(dlc)||dlc<0) return false;
-  let bp=sig.startBit;
-  for(let i=0;i<sig.length;i++){
-    if((bp>>>3)>=dlc) return false;
-    if(sig.byteOrder===1) bp++;
-    else if((bp&7)===0) bp+=15;
-    else bp--;
-  }
-  return true;
+  return window.__canCodec.signalFitsDlc(sig, dlc);
 }
 function signalIsActiveAt(sig, data, base, dlc){
   if(sig.muxValue==null) return true;
@@ -698,7 +652,6 @@ function signalIsActiveAt(sig, data, base, dlc){
 }
 
 /* ---------- ASC parser (async chunked, 可取消) ---------- */
-const ASC_RE = /^\s*([0-9]+\.?[0-9]*(?:[eE][-+]?[0-9]+)?)\s+(\d+)\s+([0-9A-Fa-f]+)([xX]?)\s+(Rx|Tx)\s+(\S+)\s+(\d+)\s*(.*)$/;
 const ASC_BUFFER_FRAMES = 8192;
 function createASCCollector(){
   const sources = {};
@@ -713,23 +666,16 @@ function createASCCollector(){
   }
   function addLine(line){
     if(!line) return;
-    const m=line.replace(/\r$/,'').match(ASC_RE);
-    if(!m) return;
-    const t=parseFloat(m[1]);
-    if(!isFinite(t)) return;
-    const channel=m[2];
-    const realId=parseInt(m[3],16);
-    const isExt=m[4].toLowerCase()==='x';
-    const direction=m[5];
-    const frameType=m[6].toLowerCase();
-    const dlc=parseInt(m[7],10);
-    if(frameType!=='d'||!isFinite(realId)||dlc<=0||dlc>64){ rejectedFrames++; return; }
-    const toks=(m[8]||'').split(/\s+/);
-    const bytes=[];
-    for(const tk of toks){
-      if(/^[0-9A-Fa-f]{1,2}$/.test(tk)&&bytes.length<dlc) bytes.push(parseInt(tk,16));
-    }
-    if(bytes.length!==dlc){ rejectedFrames++; return; }
+    const parsed=window.__canCodec.parseClassicAscDataLine(line);
+    if(!parsed) return;
+    if(parsed.kind!=='data'){ rejectedFrames++; return; }
+    const t=parsed.time;
+    const channel=parsed.channel;
+    const realId=parsed.id;
+    const isExt=parsed.extended;
+    const direction=parsed.direction;
+    const dlc=parsed.dlc;
+    const bytes=parsed.bytes;
     const sourceKey=channel+'_'+direction;
     let source=sources[sourceKey];
     if(!source){

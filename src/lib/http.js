@@ -22,6 +22,8 @@ export function assertSameOrigin(request, env) {
 }
 
 export function securityHeaders(response) {
+  // API responses stay on connect-src 'self'. Static documents get their own
+  // policy from public/_headers, including the local bridge on /online.
   const headers = new Headers(response.headers);
   headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   headers.set('X-Content-Type-Options', 'nosniff');

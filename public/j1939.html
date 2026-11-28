@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0f1115">
+  <meta name="description" content="在浏览器本地读取经典 ASC，显示 SAE J1939-21 的 29 位标识符、PGN 和 BAM/RTS 原始帧。没有 J1939DA，也不连接车辆。">
+  <title>J1939分析 · CANAnalysis</title>
+  <link rel="icon" href="/icon.png" type="image/png">
+  <link rel="stylesheet" href="/gbt27930.css?v=j1939-offline">
+  <link rel="stylesheet" href="/j1939.css?v=j1939-offline">
+  <link rel="stylesheet" href="/site-nav.css?v=mobile-nav-switcher-separated-20260926">
+  <script src="/site-i18n.js?v=mobile-nav-switcher-separated-20260926" defer></script>
+  <script src="/site-nav.js?v=fixed-nav-20260923" defer></script>
+  <script src="/j1939.js?v=j1939-offline" type="module"></script>
+</head>
+<body>
+  <nav id="topNav" class="nav-open nav-fixed" aria-label="本站栏目">
+    <button type="button" class="nav-peek" aria-expanded="true" aria-controls="navLinks"><span>栏目导航</span><span aria-hidden="true">⌄</span></button>
+    <div class="top-nav-inner" id="navLinks">
+      <a class="nav-item" href="/">首页</a>
+      <a class="nav-item" href="/online">在线连接</a>
+      <a class="nav-item" href="/offline">离线分析</a>
+      <a class="nav-item" href="/convert">格式转换</a>
+      <a class="nav-item" href="/gbt27930">27930解析</a>
+      <span class="nav-item active" aria-current="page">J1939分析</span>
+      <span class="nav-item pending" aria-disabled="true">友情链接</span>
+      <a class="nav-item" href="/aboutus">关于本站</a>
+    </div>
+  </nav>
+  <header class="can-brandbar">
+    <div class="shell can-brandbar-inner">
+      <a class="can-brand" href="/" aria-label="返回 CANAnalysis 首页">
+        <img src="/icon.png" width="34" height="34" alt="">
+        <span>CAN报文解析<small>CAN DATA WORKSPACE</small></span>
+      </a>
+    </div>
+  </header>
+  <main class="shell">
+    <section class="intro">
+      <div class="eyebrow">SAE J1939-21 · OFFLINE</div>
+      <h1>J1939分析 <span>基础离线</span></h1>
+      <p id="coverage">经典 CAN 的 SAE J1939-21 离线分析只读取本地 ASC。它显示 29 位标识符里的优先级、保留位、数据页、PF、PS 和源地址，并按 PDU1/PDU2 归一 PGN。没有 J1939DA，未知 PGN 只显示编号和原始数据。这不是一致性认证。</p>
+    </section>
+    <p class="limit" id="limits">支持经典 TP.BAM 重组，以及日志中已经出现的 RTS 数据帧的被动重组；本页不发送 CTS 或任何帧。ISO 11783 ETP、J1939-22 CAN FD 和标准帧不作为解码成功。</p>
+    <section class="panel">
+      <label for="logFile">选择经典 ASC 日志</label>
+      <input id="logFile" type="file" accept=".asc,.txt,text/plain">
+      <div class="filters">
+        <label>PGN<input id="pgnFilter" inputmode="text" placeholder="十进制或十六进制"></label>
+        <label>源地址<input id="saFilter" inputmode="text" placeholder="十进制或十六进制"></label>
+      </div>
+      <p id="fileNote">文件留在浏览器里，不会上传。</p>
+      <div class="summary" id="summary" hidden></div>
+      <div class="table-wrap"><table id="events" hidden>
+        <caption>按时间排序的帧和传输载荷</caption>
+        <thead><tr><th>时间</th><th>PGN</th><th>格式</th><th>源地址</th><th>目的或组扩展</th><th>状态</th><th>原始帧</th></tr></thead>
+        <tbody></tbody>
+      </table></div>
+      <div class="table-wrap"><table id="anomalies" hidden>
+        <caption>观察项</caption>
+        <thead><tr><th>时间</th><th>代码</th><th>说明</th></tr></thead>
+        <tbody></tbody>
+      </table></div>
+    </section>
+  </main>
+  <footer class="shell"><span>CANAnalysis · SAE J1939-21 基础离线分析</span><span>本地处理</span></footer>
+</body>
+</html>

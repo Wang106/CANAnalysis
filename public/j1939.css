@@ -1,0 +1,4 @@
+.filters{display:flex;flex-wrap:wrap;gap:12px;margin:16px 0}
+.filters label{min-width:180px}
+.filters input{width:100%;height:42px;padding:0 12px;border:1px solid #36404f;border-radius:7px;background:var(--panel2);color:var(--txt);font:inherit}
+@media(max-width:700px){.filters{display:grid;grid-template-columns:1fr}}

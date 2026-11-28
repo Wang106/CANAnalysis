@@ -5,7 +5,7 @@ const path=require('node:path');
 const assert=require('node:assert/strict');
 
 const root=path.resolve(__dirname,'..');
-const types={'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json','.png':'image/png'};
+const types={'.html':'text/html','.js':'text/javascript','.mjs':'text/javascript','.css':'text/css','.json':'application/json','.png':'image/png','.webp':'image/webp','.jpg':'image/jpeg','.jpeg':'image/jpeg'};
 const server=createServer(async(req,res)=>{
   let pathname=new URL(req.url,'http://localhost').pathname;
   if(pathname==='/') pathname='/public/index.html';
